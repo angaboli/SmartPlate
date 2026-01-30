@@ -160,6 +160,52 @@ export const openApiSpec = {
         },
       },
     },
+    '/recipes': {
+      get: {
+        tags: ['Recipes'],
+        summary: 'List recipes',
+        description: 'Returns all recipes with optional filters.',
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search by title' },
+          { name: 'category', in: 'query', schema: { type: 'string' }, description: 'Filter by category (e.g. SafariTaste)' },
+          { name: 'goal', in: 'query', schema: { type: 'string' }, description: 'Filter by goal (balanced, high-protein, light, energy-boost)' },
+          { name: 'aiRecommended', in: 'query', schema: { type: 'boolean' }, description: 'Filter AI-recommended recipes' },
+        ],
+        responses: {
+          '200': {
+            description: 'List of recipes',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Recipe' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/recipes/{id}': {
+      get: {
+        tags: ['Recipes'],
+        summary: 'Get recipe by ID',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Recipe details',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Recipe' },
+              },
+            },
+          },
+          '404': { description: 'Recipe not found' },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -224,6 +270,49 @@ export const openApiSpec = {
         properties: {
           accessToken: { type: 'string', example: 'eyJhbG...' },
           refreshToken: { type: 'string', example: 'eyJhbG...' },
+        },
+      },
+      Recipe: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string', example: 'Grilled Chicken Quinoa Bowl' },
+          description: { type: 'string', nullable: true },
+          imageUrl: { type: 'string', nullable: true },
+          prepTimeMin: { type: 'integer', nullable: true, example: 15 },
+          cookTimeMin: { type: 'integer', nullable: true, example: 25 },
+          servings: { type: 'integer', nullable: true, example: 2 },
+          calories: { type: 'integer', nullable: true, example: 420 },
+          category: { type: 'string', example: 'Regular' },
+          goal: { type: 'string', nullable: true, example: 'high-protein' },
+          aiRecommended: { type: 'boolean' },
+          isImported: { type: 'boolean' },
+          sourceUrl: { type: 'string', nullable: true },
+          sourceProvider: { type: 'string', nullable: true },
+          ingredients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                text: { type: 'string', example: '200g quinoa' },
+                sortOrder: { type: 'integer' },
+              },
+            },
+          },
+          steps: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                text: { type: 'string', example: 'Cook quinoa according to package directions' },
+                sortOrder: { type: 'integer' },
+              },
+            },
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
         },
       },
     },
