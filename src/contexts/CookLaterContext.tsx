@@ -1,38 +1,44 @@
 'use client';
 
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
-  addRecipe as addRecipeAction,
-  removeRecipe as removeRecipeAction,
-  updateRecipe as updateRecipeAction,
-  markAsCooked as markAsCookedAction,
-  selectSavedRecipes,
-  type SavedRecipe,
-  type RecipeSource,
-  type RecipeTag,
-} from '@/store/slices/cookLaterSlice';
+  useSavedRecipes,
+  useSaveRecipe,
+  useUnsaveRecipe,
+  useUpdateSavedRecipe,
+  type SavedRecipeDTO,
+} from '@/hooks/useCookLater';
 
-export type { SavedRecipe, RecipeSource, RecipeTag };
+export type { SavedRecipeDTO };
 
 export function useCookLater() {
-  const dispatch = useAppDispatch();
-  const savedRecipes = useAppSelector(selectSavedRecipes);
+  const { data: savedRecipes = [], isLoading } = useSavedRecipes();
+  const saveRecipeMutation = useSaveRecipe();
+  const unsaveRecipeMutation = useUnsaveRecipe();
+  const updateMutation = useUpdateSavedRecipe();
 
-  const addRecipe = (recipe: Omit<SavedRecipe, 'id' | 'dateAdded'>) => {
-    dispatch(addRecipeAction(recipe));
+  const saveRecipe = (recipeId: string, tag?: string) => {
+    saveRecipeMutation.mutate({ recipeId, tag });
   };
 
-  const removeRecipe = (id: string) => {
-    dispatch(removeRecipeAction(id));
+  const unsaveRecipe = (recipeId: string) => {
+    unsaveRecipeMutation.mutate(recipeId);
   };
 
-  const updateRecipe = (id: string, updates: Partial<SavedRecipe>) => {
-    dispatch(updateRecipeAction({ id, updates }));
+  const markAsCooked = (savedId: string, isCooked: boolean) => {
+    updateMutation.mutate({ savedId, updates: { isCooked } });
   };
 
-  const markAsCooked = (id: string, cooked: boolean) => {
-    dispatch(markAsCookedAction({ id, cooked }));
+  const isRecipeSaved = (recipeId: string) => {
+    return savedRecipes.some((s) => s.recipeId === recipeId);
   };
 
-  return { savedRecipes, addRecipe, removeRecipe, updateRecipe, markAsCooked };
+  return {
+    savedRecipes,
+    isLoading,
+    saveRecipe,
+    unsaveRecipe,
+    markAsCooked,
+    isRecipeSaved,
+    isSaving: saveRecipeMutation.isPending,
+  };
 }

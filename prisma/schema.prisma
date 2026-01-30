@@ -20,6 +20,7 @@ model User {
   settings      UserSettings?
   refreshTokens RefreshToken[]
   recipes       Recipe[]
+  savedRecipes  SavedRecipe[]
 
   @@map("users")
 }
@@ -85,6 +86,7 @@ model Recipe {
 
   ingredients    RecipeIngredient[]
   steps          RecipeStep[]
+  savedBy        SavedRecipe[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -114,4 +116,22 @@ model RecipeStep {
 
   @@index([recipeId])
   @@map("recipe_steps")
+}
+
+// ─── COOK LATER (SAVED RECIPES) ─────────────────────
+
+model SavedRecipe {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  tag       String?
+  isCooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@map("saved_recipes")
 }

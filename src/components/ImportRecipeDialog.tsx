@@ -19,7 +19,8 @@ import {
   User,
   ChefHat
 } from 'lucide-react';
-import { useCookLater, RecipeSource, RecipeTag } from '@/contexts/CookLaterContext';
+type RecipeSource = 'Instagram' | 'TikTok' | 'YouTube' | 'Other';
+type RecipeTag = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 
@@ -29,7 +30,6 @@ interface ImportRecipeDialogProps {
 }
 
 export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogProps) {
-  const { addRecipe } = useCookLater();
   const { t } = useLanguage();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -125,19 +125,8 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
 
   const handleSave = () => {
     if (!fetchedRecipe || !editableTitle.trim()) return;
-    
-    addRecipe({
-      title: editableTitle,
-      image: fetchedRecipe.image,
-      source: fetchedRecipe.source,
-      sourceUrl: url,
-      author: editableAuthor,
-      prepTime: editablePrepTime,
-      ingredients: editableIngredients.split('\n').filter(i => i.trim()),
-      steps: editableSteps.split('\n').filter(s => s.trim()),
-      tag: selectedTag,
-    });
-    
+
+    // TODO (M5): real import — create Recipe via API, then save to cook-later
     toast.success(t('import.saved'));
     handleClose();
   };

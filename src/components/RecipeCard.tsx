@@ -2,8 +2,9 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, Users, Sparkles } from 'lucide-react';
+import { Clock, Users, Sparkles, Bookmark } from 'lucide-react';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { useCookLater } from '@/contexts/CookLaterContext';
 
 export interface Recipe {
   id: string;
@@ -37,6 +38,18 @@ const goalLabels: Record<string, string> = {
 };
 
 export function RecipeCard({ recipe, onViewRecipe }: RecipeCardProps) {
+  const { isRecipeSaved, saveRecipe, unsaveRecipe, isSaving } = useCookLater();
+  const saved = isRecipeSaved(recipe.id);
+
+  const handleToggleSave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (saved) {
+      unsaveRecipe(recipe.id);
+    } else {
+      saveRecipe(recipe.id);
+    }
+  };
+
   return (
     <div className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg">
       <div className="relative aspect-video overflow-hidden bg-secondary">
@@ -45,14 +58,23 @@ export function RecipeCard({ recipe, onViewRecipe }: RecipeCardProps) {
           alt={recipe.title}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        {recipe.aiRecommended && (
-          <div className="absolute right-3 top-3">
+        <div className="absolute right-3 top-3 flex items-center gap-2">
+          {recipe.aiRecommended && (
             <Badge className="bg-primary text-primary-foreground shadow-lg">
               <Sparkles className="mr-1 h-3 w-3" />
               AI Recommended
             </Badge>
-          </div>
-        )}
+          )}
+          <button
+            onClick={handleToggleSave}
+            disabled={isSaving}
+            className="rounded-full bg-white/80 p-1.5 shadow-md backdrop-blur-sm transition-colors hover:bg-white"
+          >
+            <Bookmark
+              className={`h-4 w-4 ${saved ? 'fill-primary text-primary' : 'text-muted-foreground'}`}
+            />
+          </button>
+        </div>
       </div>
 
       <div className="p-5 space-y-4">

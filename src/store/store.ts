@@ -1,12 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import languageReducer from './slices/languageSlice';
-import cookLaterReducer from './slices/cookLaterSlice';
 import authReducer from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
     language: languageReducer,
-    cookLater: cookLaterReducer,
     auth: authReducer,
   },
 });
