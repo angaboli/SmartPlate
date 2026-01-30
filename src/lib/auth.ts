@@ -1,8 +1,12 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { NextRequest } from 'next/server';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
-const JWT_REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET);
+if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+  console.error('FATAL: JWT_SECRET and JWT_REFRESH_SECRET must be set in environment variables');
+}
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || '');
+const JWT_REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || '');
 
 export interface JwtPayload {
   sub: string;
