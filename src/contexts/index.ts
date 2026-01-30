@@ -1,3 +1,4 @@
-export { LanguageProvider, useLanguage } from './LanguageContext';
-export { CookLaterProvider, useCookLater } from './CookLaterContext';
+export { useLanguage } from './LanguageContext';
+export type { Language } from './LanguageContext';
+export { useCookLater } from './CookLaterContext';
 export type { SavedRecipe, RecipeSource, RecipeTag } from './CookLaterContext';

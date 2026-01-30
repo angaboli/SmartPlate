@@ -1,78 +1,38 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+'use client';
 
-export type RecipeSource = 'Instagram' | 'TikTok' | 'YouTube' | 'Other';
-export type RecipeTag = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  addRecipe as addRecipeAction,
+  removeRecipe as removeRecipeAction,
+  updateRecipe as updateRecipeAction,
+  markAsCooked as markAsCookedAction,
+  selectSavedRecipes,
+  type SavedRecipe,
+  type RecipeSource,
+  type RecipeTag,
+} from '@/store/slices/cookLaterSlice';
 
-export interface SavedRecipe {
-  id: string;
-  title: string;
-  image?: string;
-  source: RecipeSource;
-  sourceUrl: string;
-  author?: string;
-  prepTime?: string;
-  ingredients?: string[];
-  steps?: string[];
-  dateAdded: Date;
-  tag?: RecipeTag;
-  isCooked?: boolean;
-}
+export type { SavedRecipe, RecipeSource, RecipeTag };
 
-interface CookLaterContextType {
-  savedRecipes: SavedRecipe[];
-  addRecipe: (recipe: Omit<SavedRecipe, 'id' | 'dateAdded'>) => void;
-  removeRecipe: (id: string) => void;
-  updateRecipe: (id: string, updates: Partial<SavedRecipe>) => void;
-  markAsCooked: (id: string, cooked: boolean) => void;
-}
-
-const CookLaterContext = createContext<CookLaterContextType | undefined>(undefined);
-
-export function CookLaterProvider({ children }: { children: ReactNode }) {
-  const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
+export function useCookLater() {
+  const dispatch = useAppDispatch();
+  const savedRecipes = useAppSelector(selectSavedRecipes);
 
   const addRecipe = (recipe: Omit<SavedRecipe, 'id' | 'dateAdded'>) => {
-    const newRecipe: SavedRecipe = {
-      ...recipe,
-      id: `recipe-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      dateAdded: new Date(),
-    };
-    setSavedRecipes((prev) => [newRecipe, ...prev]);
+    dispatch(addRecipeAction(recipe));
   };
 
   const removeRecipe = (id: string) => {
-    setSavedRecipes((prev) => prev.filter((recipe) => recipe.id !== id));
+    dispatch(removeRecipeAction(id));
   };
 
   const updateRecipe = (id: string, updates: Partial<SavedRecipe>) => {
-    setSavedRecipes((prev) =>
-      prev.map((recipe) => (recipe.id === id ? { ...recipe, ...updates } : recipe))
-    );
+    dispatch(updateRecipeAction({ id, updates }));
   };
 
   const markAsCooked = (id: string, cooked: boolean) => {
-    updateRecipe(id, { isCooked: cooked });
+    dispatch(markAsCookedAction({ id, cooked }));
   };
 
-  return (
-    <CookLaterContext.Provider
-      value={{
-        savedRecipes,
-        addRecipe,
-        removeRecipe,
-        updateRecipe,
-        markAsCooked,
-      }}
-    >
-      {children}
-    </CookLaterContext.Provider>
-  );
-}
-
-export function useCookLater() {
-  const context = useContext(CookLaterContext);
-  if (context === undefined) {
-    throw new Error('useCookLater must be used within a CookLaterProvider');
-  }
-  return context;
+  return { savedRecipes, addRecipe, removeRecipe, updateRecipe, markAsCooked };
 }

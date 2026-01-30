@@ -24,6 +24,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Docs
+docs/
+
 # debug
 npm-debug.log*
 pnpm-debug.log*
@@ -37,3 +40,11 @@ coverage/
 
 # misc
 *.pem
+
+/src/generated/prisma
+
+# claude code local settings
+.claude/
+
+# windows artifacts
+nul

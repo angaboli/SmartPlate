@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── USERS ───────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  settings      UserSettings?
+  refreshTokens RefreshToken[]
+  recipes       Recipe[]
+
+  @@map("users")
+}
+
+model UserSettings {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  language       String  @default("en")
+  goal           String  @default("maintain")
+  age            Int?
+  weightKg       Float?
+  heightCm       Float?
+  activityLevel  String?
+  calorieTarget  Int     @default(2000)
+  proteinTargetG Int     @default(60)
+
+  vegetarian     Boolean @default(false)
+  vegan          Boolean @default(false)
+  glutenFree     Boolean @default(false)
+  dairyFree      Boolean @default(false)
+  allergies      String[] @default([])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── RECIPES ─────────────────────────────────────────
+
+model Recipe {
+  id             String   @id @default(cuid())
+  authorId       String?
+  author         User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  title          String
+  description    String?
+  imageUrl       String?
+  prepTimeMin    Int?
+  cookTimeMin    Int?
+  servings       Int?
+  calories       Int?
+  category       String   @default("Regular")
+  goal           String?
+  aiRecommended  Boolean  @default(false)
+  isImported     Boolean  @default(false)
+  sourceUrl      String?
+  sourceProvider String?
+
+  ingredients    RecipeIngredient[]
+  steps          RecipeStep[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([category])
+  @@index([goal])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id        String @id @default(cuid())
+  recipeId  String
+  recipe    Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  text      String
+  sortOrder Int    @default(0)
+
+  @@index([recipeId])
+  @@map("recipe_ingredients")
+}
+
+model RecipeStep {
+  id        String @id @default(cuid())
+  recipeId  String
+  recipe    Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  text      String
+  sortOrder Int    @default(0)
+
+  @@index([recipeId])
+  @@map("recipe_steps")
+}
