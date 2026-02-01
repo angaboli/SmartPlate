@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { Moon, Sun, Menu, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
@@ -23,6 +24,7 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -100,7 +102,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenu>
           ) : (
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">
+              <Link href={pathname && pathname !== '/' ? `/login?from=${encodeURIComponent(pathname)}` : '/login'}>
                 <LogIn className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Sign In</span>
               </Link>
