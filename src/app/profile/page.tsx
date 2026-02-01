@@ -1,24 +1,65 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat } from 'lucide-react';
+import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CookLaterList } from '@/components/CookLaterList';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
+import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const { t } = useLanguage();
+  const { data: profile, isLoading } = useProfile();
+  const updateProfile = useUpdateProfile();
+
+  // ─── Profile tab state
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [activityLevel, setActivityLevel] = useState('moderate');
+
+  // ─── Goals tab state
+  const [selectedGoal, setSelectedGoal] = useState('maintain');
+
+  // ─── Preferences tab state
   const [preferences, setPreferences] = useState({
     vegetarian: false,
     vegan: false,
     glutenFree: false,
     dairyFree: false,
   });
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+
+  // ─── Nutrition targets state
+  const [calorieTarget, setCalorieTarget] = useState('2000');
+  const [proteinTarget, setProteinTarget] = useState('60');
+
+  // Initialize form state when profile loads
+  useEffect(() => {
+    if (!profile) return;
+    setName(profile.name ?? '');
+    setAge(profile.settings.age?.toString() ?? '');
+    setWeight(profile.settings.weightKg?.toString() ?? '');
+    setHeight(profile.settings.heightCm?.toString() ?? '');
+    setActivityLevel(profile.settings.activityLevel ?? 'moderate');
+    setSelectedGoal(profile.settings.goal);
+    setCalorieTarget(profile.settings.calorieTarget.toString());
+    setProteinTarget(profile.settings.proteinTargetG.toString());
+    setPreferences({
+      vegetarian: profile.settings.vegetarian,
+      vegan: profile.settings.vegan,
+      glutenFree: profile.settings.glutenFree,
+      dairyFree: profile.settings.dairyFree,
+    });
+    setSelectedAllergies(profile.settings.allergies);
+  }, [profile]);
 
   const goals = [
     { id: 'weight-loss', label: 'Weight Loss', icon: '📉' },
@@ -27,26 +68,68 @@ export default function ProfilePage() {
     { id: 'energy', label: 'Boost Energy', icon: '⚡' },
   ];
 
-  const [selectedGoal, setSelectedGoal] = useState('maintain');
-
-  const allergies = [
-    'Nuts',
-    'Shellfish',
-    'Eggs',
-    'Soy',
-    'Wheat',
-    'Fish',
-  ];
-
-  const [selectedAllergies, setSelectedAllergies] = useState<string[]>(['Nuts']);
+  const allergies = ['Nuts', 'Shellfish', 'Eggs', 'Soy', 'Wheat', 'Fish'];
 
   const toggleAllergy = (allergy: string) => {
     setSelectedAllergies((prev) =>
       prev.includes(allergy)
         ? prev.filter((a) => a !== allergy)
-        : [...prev, allergy]
+        : [...prev, allergy],
     );
   };
+
+  function handleSaveProfile() {
+    updateProfile.mutate(
+      {
+        name,
+        settings: {
+          age: age ? parseInt(age, 10) : null,
+          weightKg: weight ? parseFloat(weight) : null,
+          heightCm: height ? parseFloat(height) : null,
+          activityLevel: activityLevel || null,
+          calorieTarget: parseInt(calorieTarget, 10) || 2000,
+          proteinTargetG: parseInt(proteinTarget, 10) || 60,
+        },
+      },
+      {
+        onSuccess: () => toast.success('Profile saved'),
+        onError: () => toast.error('Failed to save profile'),
+      },
+    );
+  }
+
+  function handleSaveGoals() {
+    updateProfile.mutate(
+      { settings: { goal: selectedGoal } },
+      {
+        onSuccess: () => toast.success('Goals saved'),
+        onError: () => toast.error('Failed to save goals'),
+      },
+    );
+  }
+
+  function handleSavePreferences() {
+    updateProfile.mutate(
+      {
+        settings: {
+          ...preferences,
+          allergies: selectedAllergies,
+        },
+      },
+      {
+        onSuccess: () => toast.success('Preferences saved'),
+        onError: () => toast.error('Failed to save preferences'),
+      },
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-20">
@@ -88,7 +171,8 @@ export default function ProfilePage() {
                   <Input
                     id="name"
                     placeholder="John Doe"
-                    defaultValue="Alex Johnson"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className="bg-input-background"
                   />
                 </div>
@@ -97,8 +181,8 @@ export default function ProfilePage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="email@example.com"
-                    defaultValue="alex@example.com"
+                    value={profile?.email ?? ''}
+                    disabled
                     className="bg-input-background"
                   />
                 </div>
@@ -111,7 +195,8 @@ export default function ProfilePage() {
                     id="age"
                     type="number"
                     placeholder="30"
-                    defaultValue="28"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
                     className="bg-input-background"
                   />
                 </div>
@@ -121,7 +206,8 @@ export default function ProfilePage() {
                     id="weight"
                     type="number"
                     placeholder="70"
-                    defaultValue="72"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
                     className="bg-input-background"
                   />
                 </div>
@@ -131,7 +217,8 @@ export default function ProfilePage() {
                     id="height"
                     type="number"
                     placeholder="170"
-                    defaultValue="175"
+                    value={height}
+                    onChange={(e) => setHeight(e.target.value)}
                     className="bg-input-background"
                   />
                 </div>
@@ -142,7 +229,8 @@ export default function ProfilePage() {
                 <select
                   id="activity"
                   className="flex h-10 w-full rounded-md border border-input bg-input-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  defaultValue="moderate"
+                  value={activityLevel}
+                  onChange={(e) => setActivityLevel(e.target.value)}
                 >
                   <option value="sedentary">Sedentary (little or no exercise)</option>
                   <option value="light">Light (exercise 1-3 days/week)</option>
@@ -152,7 +240,13 @@ export default function ProfilePage() {
                 </select>
               </div>
 
-              <Button className="bg-primary">Save Changes</Button>
+              <Button
+                className="bg-primary"
+                onClick={handleSaveProfile}
+                disabled={updateProfile.isPending}
+              >
+                {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
             </div>
           </div>
 
@@ -160,20 +254,25 @@ export default function ProfilePage() {
           <div className="rounded-xl border bg-card p-6 shadow-sm">
             <h3 className="mb-4 font-semibold">Daily Nutrition Targets</h3>
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Calories</p>
-                <p className="text-2xl font-bold">2,000</p>
-                <p className="text-xs text-muted-foreground">kcal/day</p>
+              <div className="space-y-2">
+                <Label htmlFor="calorieTarget">Calories (kcal/day)</Label>
+                <Input
+                  id="calorieTarget"
+                  type="number"
+                  value={calorieTarget}
+                  onChange={(e) => setCalorieTarget(e.target.value)}
+                  className="bg-input-background"
+                />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Protein</p>
-                <p className="text-2xl font-bold">60g</p>
-                <p className="text-xs text-muted-foreground">per day</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Hydration</p>
-                <p className="text-2xl font-bold">2.5L</p>
-                <p className="text-xs text-muted-foreground">per day</p>
+              <div className="space-y-2">
+                <Label htmlFor="proteinTarget">Protein (g/day)</Label>
+                <Input
+                  id="proteinTarget"
+                  type="number"
+                  value={proteinTarget}
+                  onChange={(e) => setProteinTarget(e.target.value)}
+                  className="bg-input-background"
+                />
               </div>
             </div>
           </div>
@@ -215,6 +314,14 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
+
+            <Button
+              className="mt-6 bg-primary"
+              onClick={handleSaveGoals}
+              disabled={updateProfile.isPending}
+            >
+              {updateProfile.isPending ? 'Saving...' : 'Save Goals'}
+            </Button>
           </div>
 
           {/* Progress Tracking */}
@@ -301,7 +408,13 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <Button className="w-full bg-primary">Save Preferences</Button>
+          <Button
+            className="w-full bg-primary"
+            onClick={handleSavePreferences}
+            disabled={updateProfile.isPending}
+          >
+            {updateProfile.isPending ? 'Saving...' : 'Save Preferences'}
+          </Button>
         </TabsContent>
 
         {/* Cook Later Tab */}
