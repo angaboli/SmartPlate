@@ -52,6 +52,7 @@ model User {
   savedRecipes  SavedRecipe[]
   imports       Import[]
   mealLogs      MealLog[]
+  mealPlans     MealPlan[]
 
   @@map("users")
 }
@@ -207,4 +208,35 @@ model MealLog {
   @@index([userId])
   @@index([userId, createdAt])
   @@map("meal_logs")
+}
+
+// ─── MEAL PLANS ──────────────────────────────────
+
+model MealPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items MealPlanItem[]
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+  @@map("meal_plans")
+}
+
+model MealPlanItem {
+  id         String   @id @default(cuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  dayIndex   Int      // 0=Monday, 6=Sunday
+  mealType   MealType
+  name       String
+  calories   Int
+  sortOrder  Int      @default(0)
+
+  @@index([mealPlanId])
+  @@map("meal_plan_items")
 }
