@@ -19,7 +19,7 @@ export async function signAccessToken(payload: JwtPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('2h')
+    .setExpirationTime('24h')
     .sign(JWT_SECRET);
 }
 
