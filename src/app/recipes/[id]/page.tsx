@@ -20,6 +20,8 @@ import {
   Send,
 } from 'lucide-react';
 import { useCookLater } from '@/contexts/CookLaterContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { bi } from '@/lib/bilingual';
 import { toast } from 'sonner';
 
 const goalColors: Record<string, string> = {
@@ -29,11 +31,11 @@ const goalColors: Record<string, string> = {
   'energy-boost': 'bg-[#E9C46A]/10 text-[#8A6A4F] border-[#8A6A4F]/20',
 };
 
-const goalLabels: Record<string, string> = {
-  balanced: 'Balanced',
-  'high-protein': 'High Protein',
-  light: 'Light',
-  'energy-boost': 'Energy Boost',
+const goalLabelKeys: Record<string, string> = {
+  balanced: 'recipes.goal.balanced',
+  'high-protein': 'recipes.goal.highProtein',
+  light: 'recipes.goal.light',
+  'energy-boost': 'recipes.goal.energyBoost',
 };
 
 const statusBadge: Record<string, string> = {
@@ -46,11 +48,11 @@ const statusBadge: Record<string, string> = {
     'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const statusLabels: Record<string, string> = {
-  draft: 'Draft',
-  pending_review: 'Pending Review',
-  published: 'Published',
-  rejected: 'Rejected',
+const statusLabelKeys: Record<string, string> = {
+  draft: 'recipes.status.draft',
+  pending_review: 'recipes.status.pendingReview',
+  published: 'recipes.status.published',
+  rejected: 'recipes.status.rejected',
 };
 
 export default function RecipeDetailPage({
@@ -62,6 +64,7 @@ export default function RecipeDetailPage({
   const { data: recipe, isLoading, error } = useRecipe(id);
   const { user } = useAuth();
   const { isRecipeSaved, saveRecipe, unsaveRecipe, isSaving } = useCookLater();
+  const { t, language } = useLanguage();
   const submitForReview = useSubmitForReview();
 
   if (isLoading) {
@@ -75,11 +78,11 @@ export default function RecipeDetailPage({
   if (error || !recipe) {
     return (
       <div className="space-y-4 py-12 text-center">
-        <p className="text-destructive">Recipe not found.</p>
+        <p className="text-destructive">{t('recipes.notFound')}</p>
         <Button variant="outline" asChild>
           <Link href="/recipes">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to recipes
+            {t('recipes.backToRecipes')}
           </Link>
         </Button>
       </div>
@@ -103,7 +106,7 @@ export default function RecipeDetailPage({
       <Button variant="ghost" size="sm" asChild>
         <Link href="/recipes">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to recipes
+          {t('recipes.backToRecipes')}
         </Link>
       </Button>
 
@@ -111,24 +114,24 @@ export default function RecipeDetailPage({
       <div className="relative aspect-video overflow-hidden rounded-xl bg-secondary">
         <ImageWithFallback
           src={recipe.imageUrl || ''}
-          alt={recipe.title}
+          alt={bi(recipe.title, recipe.titleFr, language)}
           className="h-full w-full object-cover"
         />
         {recipe.aiRecommended && (
           <Badge className="absolute right-3 top-3 bg-primary text-primary-foreground shadow-lg">
             <Sparkles className="mr-1 h-3 w-3" />
-            AI Recommended
+            {t('recipes.aiRecommended')}
           </Badge>
         )}
       </div>
 
       {/* Title + badges */}
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold tracking-tight">{recipe.title}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{bi(recipe.title, recipe.titleFr, language)}</h1>
         <div className="flex flex-wrap gap-2">
           {recipe.status !== 'published' && (
             <Badge className={statusBadge[recipe.status] || ''}>
-              {statusLabels[recipe.status] || recipe.status}
+              {t(statusLabelKeys[recipe.status] || '') || recipe.status}
             </Badge>
           )}
           {recipe.category === 'SafariTaste' && (
@@ -138,18 +141,18 @@ export default function RecipeDetailPage({
           )}
           {recipe.goal && goalColors[recipe.goal] && (
             <Badge variant="outline" className={goalColors[recipe.goal]}>
-              {goalLabels[recipe.goal] || recipe.goal}
+              {t(goalLabelKeys[recipe.goal] || '') || recipe.goal}
             </Badge>
           )}
         </div>
-        {recipe.description && (
+        {(recipe.description || recipe.descriptionFr) && (
           <p className="text-muted-foreground leading-relaxed">
-            {recipe.description}
+            {bi(recipe.description, recipe.descriptionFr, language)}
           </p>
         )}
         {recipe.reviewNote && recipe.status === 'rejected' && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-400">
-            <strong>Review note:</strong> {recipe.reviewNote}
+            <strong>{t('recipes.reviewNote')}</strong> {recipe.reviewNote}
           </div>
         )}
       </div>
@@ -160,7 +163,7 @@ export default function RecipeDetailPage({
           <Button variant="outline" asChild>
             <Link href={`/dashboard/recipes/${recipe.id}/edit`}>
               <Pencil className="mr-2 h-4 w-4" />
-              Edit
+              {t('common.edit')}
             </Link>
           </Button>
           <DeleteRecipeDialog
@@ -172,14 +175,14 @@ export default function RecipeDetailPage({
               variant="outline"
               onClick={() =>
                 submitForReview.mutate(recipe.id, {
-                  onSuccess: () => toast.success('Submitted for review'),
+                  onSuccess: () => toast.success(t('recipes.submittedReview')),
                   onError: (err) => toast.error(err.message),
                 })
               }
               disabled={submitForReview.isPending}
             >
               <Send className="mr-2 h-4 w-4" />
-              {submitForReview.isPending ? 'Submitting...' : 'Submit for Review'}
+              {submitForReview.isPending ? t('recipes.submitting') : t('recipes.submitForReview')}
             </Button>
           )}
         </div>
@@ -191,8 +194,8 @@ export default function RecipeDetailPage({
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Prep</p>
-              <p className="font-medium">{recipe.prepTimeMin} min</p>
+              <p className="text-muted-foreground">{t('recipes.prep')}</p>
+              <p className="font-medium">{recipe.prepTimeMin} {t('common.min')}</p>
             </div>
           </div>
         )}
@@ -200,8 +203,8 @@ export default function RecipeDetailPage({
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Cook</p>
-              <p className="font-medium">{recipe.cookTimeMin} min</p>
+              <p className="text-muted-foreground">{t('recipes.cook')}</p>
+              <p className="font-medium">{recipe.cookTimeMin} {t('common.min')}</p>
             </div>
           </div>
         )}
@@ -209,8 +212,8 @@ export default function RecipeDetailPage({
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Total</p>
-              <p className="font-medium">{totalTime} min</p>
+              <p className="text-muted-foreground">{t('recipes.total')}</p>
+              <p className="font-medium">{totalTime} {t('common.min')}</p>
             </div>
           </div>
         )}
@@ -218,7 +221,7 @@ export default function RecipeDetailPage({
           <div className="flex items-center gap-2 text-sm">
             <Users className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Servings</p>
+              <p className="text-muted-foreground">{t('recipeForm.servings')}</p>
               <p className="font-medium">{recipe.servings}</p>
             </div>
           </div>
@@ -227,7 +230,7 @@ export default function RecipeDetailPage({
           <div className="flex items-center gap-2 text-sm">
             <Flame className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Calories</p>
+              <p className="text-muted-foreground">{t('recipeForm.calories')}</p>
               <p className="font-medium">{recipe.calories} kcal</p>
             </div>
           </div>
@@ -244,13 +247,13 @@ export default function RecipeDetailPage({
         <Bookmark
           className={`mr-2 h-4 w-4 ${saved ? 'fill-current' : ''}`}
         />
-        {saved ? 'Saved to Cook Later' : 'Save for Later'}
+        {saved ? t('recipes.savedCookLater') : t('recipes.saveForLater')}
       </Button>
 
       {/* Ingredients */}
       {recipe.ingredients.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Ingredients</h2>
+          <h2 className="text-xl font-semibold">{t('recipes.ingredients')}</h2>
           <ul className="space-y-2">
             {recipe.ingredients.map((ing) => (
               <li
@@ -258,7 +261,7 @@ export default function RecipeDetailPage({
                 className="flex items-start gap-3 rounded-lg border bg-card px-4 py-3 text-sm"
               >
                 <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                {ing.text}
+                {bi(ing.text, ing.textFr, language)}
               </li>
             ))}
           </ul>
@@ -268,14 +271,14 @@ export default function RecipeDetailPage({
       {/* Steps */}
       {recipe.steps.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Instructions</h2>
+          <h2 className="text-xl font-semibold">{t('recipes.instructions')}</h2>
           <ol className="space-y-4">
             {recipe.steps.map((step, i) => (
               <li key={step.id} className="flex gap-4 rounded-lg border bg-card px-4 py-4">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                   {i + 1}
                 </span>
-                <p className="text-sm leading-relaxed pt-0.5">{step.text}</p>
+                <p className="text-sm leading-relaxed pt-0.5">{bi(step.text, step.textFr, language)}</p>
               </li>
             ))}
           </ol>
@@ -286,7 +289,7 @@ export default function RecipeDetailPage({
       {recipe.isImported && recipe.sourceUrl && (
         <div className="rounded-lg border bg-muted/50 p-4 text-sm text-muted-foreground">
           <p>
-            Imported from{' '}
+            {t('recipes.importedFrom')}{' '}
             {recipe.sourceProvider && (
               <span className="font-medium">{recipe.sourceProvider} — </span>
             )}
@@ -296,7 +299,7 @@ export default function RecipeDetailPage({
               rel="noopener noreferrer"
               className="text-primary underline"
             >
-              View original
+              {t('recipes.viewOriginal')}
             </a>
           </p>
         </div>

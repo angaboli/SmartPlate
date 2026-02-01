@@ -103,7 +103,9 @@ model Recipe {
   author         User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   title          String
+  titleFr        String?
   description    String?
+  descriptionFr  String?
   imageUrl       String?
   prepTimeMin    Int?
   cookTimeMin    Int?
@@ -135,22 +137,24 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   recipeId  String
-  recipe    Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   text      String
-  sortOrder Int    @default(0)
+  textFr    String?
+  sortOrder Int     @default(0)
 
   @@index([recipeId])
   @@map("recipe_ingredients")
 }
 
 model RecipeStep {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   recipeId  String
-  recipe    Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   text      String
-  sortOrder Int    @default(0)
+  textFr    String?
+  sortOrder Int     @default(0)
 
   @@index([recipeId])
   @@map("recipe_steps")

@@ -12,7 +12,9 @@ export interface SavedRecipeDTO {
   recipe: {
     id: string;
     title: string;
+    titleFr: string | null;
     description: string | null;
+    descriptionFr: string | null;
     imageUrl: string | null;
     prepTimeMin: number | null;
     cookTimeMin: number | null;
@@ -24,8 +26,8 @@ export interface SavedRecipeDTO {
     isImported: boolean;
     sourceUrl: string | null;
     sourceProvider: string | null;
-    ingredients: { id: string; text: string; sortOrder: number }[];
-    steps: { id: string; text: string; sortOrder: number }[];
+    ingredients: { id: string; text: string; textFr: string | null; sortOrder: number }[];
+    steps: { id: string; text: string; textFr: string | null; sortOrder: number }[];
   };
 }
 

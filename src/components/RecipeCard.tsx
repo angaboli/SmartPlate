@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Clock, Users, Sparkles, Bookmark } from 'lucide-react';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 import { useCookLater } from '@/contexts/CookLaterContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { bi } from '@/lib/bilingual';
 
 export interface Recipe {
   id: string;
   title: string;
+  titleFr?: string | null;
   imageUrl: string | null;
   prepTimeMin: number | null;
   servings: number | null;
@@ -31,11 +34,11 @@ const goalColors: Record<string, string> = {
   'energy-boost': 'bg-[#E9C46A]/10 text-[#8A6A4F] border-[#8A6A4F]/20',
 };
 
-const goalLabels: Record<string, string> = {
-  balanced: 'Balanced',
-  'high-protein': 'High Protein',
-  light: 'Light',
-  'energy-boost': 'Energy Boost',
+const goalLabelKeys: Record<string, string> = {
+  balanced: 'recipes.goal.balanced',
+  'high-protein': 'recipes.goal.highProtein',
+  light: 'recipes.goal.light',
+  'energy-boost': 'recipes.goal.energyBoost',
 };
 
 const statusStyles: Record<string, string> = {
@@ -45,15 +48,17 @@ const statusStyles: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const statusLabels: Record<string, string> = {
-  draft: 'Draft',
-  pending_review: 'Pending Review',
-  published: 'Published',
-  rejected: 'Rejected',
+const statusLabelKeys: Record<string, string> = {
+  draft: 'recipes.status.draft',
+  pending_review: 'recipes.status.pendingReview',
+  published: 'recipes.status.published',
+  rejected: 'recipes.status.rejected',
 };
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
   const { isRecipeSaved, saveRecipe, unsaveRecipe, isSaving } = useCookLater();
+  const { t, language } = useLanguage();
+  const displayTitle = bi(recipe.title, recipe.titleFr, language);
   const saved = isRecipeSaved(recipe.id);
 
   const handleToggleSave = (e: React.MouseEvent) => {
@@ -70,14 +75,14 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       <div className="relative aspect-video overflow-hidden bg-secondary">
         <ImageWithFallback
           src={recipe.imageUrl || ''}
-          alt={recipe.title}
+          alt={displayTitle}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         <div className="absolute right-3 top-3 flex items-center gap-2">
           {recipe.aiRecommended && (
             <Badge className="bg-primary text-primary-foreground shadow-lg">
               <Sparkles className="mr-1 h-3 w-3" />
-              AI Recommended
+              {t('recipes.aiRecommended')}
             </Badge>
           )}
           <button
@@ -95,7 +100,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       <div className="p-5 space-y-4">
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold leading-tight line-clamp-2">{recipe.title}</h3>
+            <h3 className="font-semibold leading-tight line-clamp-2">{displayTitle}</h3>
           </div>
 
           {recipe.category === 'SafariTaste' && (
@@ -105,7 +110,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           )}
           {recipe.status && recipe.status !== 'published' && statusStyles[recipe.status] && (
             <Badge className={statusStyles[recipe.status]}>
-              {statusLabels[recipe.status] || recipe.status}
+              {t(statusLabelKeys[recipe.status] || '') || recipe.status}
             </Badge>
           )}
         </div>
@@ -114,30 +119,30 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           {recipe.prepTimeMin != null && (
             <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />
-              <span>{recipe.prepTimeMin} min</span>
+              <span>{recipe.prepTimeMin} {t('common.min')}</span>
             </div>
           )}
           {recipe.servings != null && (
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              <span>{recipe.servings} servings</span>
+              <span>{recipe.servings} {t('common.servings')}</span>
             </div>
           )}
           {recipe.calories != null && (
             <div className="font-medium text-foreground">
-              {recipe.calories} cal
+              {recipe.calories} {t('common.cal')}
             </div>
           )}
         </div>
 
         {recipe.goal && goalColors[recipe.goal] && (
           <Badge variant="outline" className={goalColors[recipe.goal]}>
-            {goalLabels[recipe.goal] || recipe.goal}
+            {t(goalLabelKeys[recipe.goal] || '') || recipe.goal}
           </Badge>
         )}
 
         <Button variant="outline" className="w-full" asChild>
-          <Link href={`/recipes/${recipe.id}`}>View Recipe</Link>
+          <Link href={`/recipes/${recipe.id}`}>{t('recipes.viewRecipe')}</Link>
         </Button>
       </div>
     </div>

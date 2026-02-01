@@ -24,10 +24,14 @@ import {
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDeleteRecipe, useChangeRecipeStatus } from '@/hooks/useRecipes';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { bi } from '@/lib/bilingual';
+import { formatDate } from '@/lib/date-locale';
 
 interface RecipeRow {
   id: string;
   title: string;
+  titleFr: string | null;
   status: string;
   authorId: string | null;
   createdAt: string;
@@ -42,16 +46,17 @@ const statusBadge: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const statusLabels: Record<string, string> = {
-  draft: 'Draft',
-  pending_review: 'Pending',
-  published: 'Published',
-  rejected: 'Rejected',
+const statusLabelKeys: Record<string, string> = {
+  draft: 'recipes.status.draft',
+  pending_review: 'recipes.status.pendingReview',
+  published: 'recipes.status.published',
+  rejected: 'recipes.status.rejected',
 };
 
 export default function RecipeManagePage() {
   const { user, accessToken } = useAuth();
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -78,11 +83,11 @@ export default function RecipeManagePage() {
       if (!res.ok) throw new Error('Failed');
       setRecipes(await res.json());
     } catch {
-      toast.error('Failed to load recipes');
+      toast.error(t('manage.failedLoad'));
     } finally {
       setLoading(false);
     }
-  }, [accessToken, statusFilter]);
+  }, [accessToken, statusFilter, t]);
 
   useEffect(() => {
     fetchRecipes();
@@ -93,7 +98,7 @@ export default function RecipeManagePage() {
       { id: recipeId, status: newStatus },
       {
         onSuccess: () => {
-          toast.success(`Status changed to ${statusLabels[newStatus] || newStatus}`);
+          toast.success(t('manage.statusChanged') + ' ' + (t(statusLabelKeys[newStatus] || '') || newStatus));
           fetchRecipes();
         },
         onError: (err) => toast.error(err.message),
@@ -102,10 +107,10 @@ export default function RecipeManagePage() {
   }
 
   function handleDelete(recipeId: string) {
-    if (!window.confirm('Are you sure you want to delete this recipe?')) return;
+    if (!window.confirm(t('manage.confirmDelete'))) return;
     deleteRecipe.mutate(recipeId, {
       onSuccess: () => {
-        toast.success('Recipe deleted');
+        toast.success(t('deleteRecipe.deleted'));
         fetchRecipes();
       },
       onError: (err) => toast.error(err.message),
@@ -119,46 +124,46 @@ export default function RecipeManagePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <BookOpen className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Recipe Management</h1>
+          <h1 className="text-2xl font-bold">{t('manage.title')}</h1>
         </div>
 
         <div className="flex items-center gap-3">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Filter status" />
+              <SelectValue placeholder={t('manage.filterStatus')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="pending_review">Pending Review</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="all">{t('manage.allStatuses')}</SelectItem>
+              <SelectItem value="draft">{t('recipes.status.draft')}</SelectItem>
+              <SelectItem value="pending_review">{t('recipes.status.pendingReview')}</SelectItem>
+              <SelectItem value="published">{t('recipes.status.published')}</SelectItem>
+              <SelectItem value="rejected">{t('recipes.status.rejected')}</SelectItem>
             </SelectContent>
           </Select>
 
           <Button asChild>
             <Link href="/dashboard/recipes/create">
               <Plus className="mr-2 h-4 w-4" />
-              Create Recipe
+              {t('manage.createRecipe')}
             </Link>
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Loading recipes...</p>
+        <p className="text-muted-foreground">{t('manage.loadingRecipes')}</p>
       ) : recipes.length === 0 ? (
-        <p className="text-muted-foreground">No recipes found.</p>
+        <p className="text-muted-foreground">{t('manage.noRecipes')}</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('manage.tableTitle')}</TableHead>
+                <TableHead>{t('manage.tableStatus')}</TableHead>
+                <TableHead>{t('manage.tableCreated')}</TableHead>
+                <TableHead>{t('manage.tableNote')}</TableHead>
+                <TableHead>{t('manage.tableActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,7 +174,7 @@ export default function RecipeManagePage() {
                       href={`/recipes/${r.id}`}
                       className="hover:underline"
                     >
-                      {r.title}
+                      {bi(r.title, r.titleFr, language)}
                     </Link>
                   </TableCell>
                   <TableCell>
@@ -180,19 +185,19 @@ export default function RecipeManagePage() {
                     >
                       <SelectTrigger className="h-7 w-36">
                         <Badge className={`${statusBadge[r.status] || ''} pointer-events-none`}>
-                          {statusLabels[r.status] || r.status}
+                          {t(statusLabelKeys[r.status] || '') || r.status}
                         </Badge>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="pending_review">Pending Review</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="draft">{t('recipes.status.draft')}</SelectItem>
+                        <SelectItem value="pending_review">{t('recipes.status.pendingReview')}</SelectItem>
+                        <SelectItem value="published">{t('recipes.status.published')}</SelectItem>
+                        <SelectItem value="rejected">{t('recipes.status.rejected')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(r.createdAt).toLocaleDateString()}
+                    {formatDate(r.createdAt, 'PP', language)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                     {r.reviewNote || '—'}

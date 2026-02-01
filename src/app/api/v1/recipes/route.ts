@@ -41,8 +41,14 @@ export async function POST(request: NextRequest) {
     requireRole(user, 'editor', 'admin');
 
     const body = await request.json();
-    if (!body.title || typeof body.title !== 'string') {
-      throw new ValidationError('title is required');
+    const hasTitle = body.title && typeof body.title === 'string' && body.title.trim();
+    const hasTitleFr = body.titleFr && typeof body.titleFr === 'string' && body.titleFr.trim();
+    if (!hasTitle && !hasTitleFr) {
+      throw new ValidationError('title or titleFr is required');
+    }
+    // DB column "title" is non-nullable — fall back to FR if EN is empty
+    if (!hasTitle) {
+      body.title = body.titleFr.trim();
     }
 
     const recipe = await createRecipe(body, user.sub);

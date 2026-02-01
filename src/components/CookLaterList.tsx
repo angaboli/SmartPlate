@@ -13,12 +13,13 @@ import {
   ChefHat,
   Loader2,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/date-locale';
+import { bi } from '@/lib/bilingual';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 
 export function CookLaterList() {
   const { savedRecipes, isLoading, unsaveRecipe, markAsCooked } = useCookLater();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   if (isLoading) {
     return (
@@ -60,7 +61,7 @@ export function CookLaterList() {
               <div className="relative h-48 w-full flex-shrink-0 overflow-hidden rounded-lg bg-secondary sm:h-32 sm:w-48">
                 <ImageWithFallback
                   src={recipe.imageUrl || ''}
-                  alt={recipe.title}
+                  alt={bi(recipe.title, recipe.titleFr, language)}
                   className="h-full w-full object-cover"
                 />
                 {saved.isCooked && (
@@ -74,7 +75,7 @@ export function CookLaterList() {
               <div className="flex flex-1 flex-col gap-3">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h3 className="font-semibold text-lg">{recipe.title}</h3>
+                    <h3 className="font-semibold text-lg">{bi(recipe.title, recipe.titleFr, language)}</h3>
                     {recipe.category === 'SafariTaste' && (
                       <Badge variant="outline" className="border-[#8A6A4F] text-[#8A6A4F]">
                         SafariTaste
@@ -86,24 +87,24 @@ export function CookLaterList() {
                     {recipe.prepTimeMin != null && (
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" />
-                        {recipe.prepTimeMin} min
+                        {recipe.prepTimeMin} {t('common.min')}
                       </div>
                     )}
                     {recipe.servings != null && (
                       <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" />
-                        {recipe.servings} servings
+                        {recipe.servings} {t('common.servings')}
                       </div>
                     )}
                     {recipe.calories != null && (
                       <span className="font-medium text-foreground">
-                        {recipe.calories} cal
+                        {recipe.calories} {t('common.cal')}
                       </span>
                     )}
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" />
                       {t('cookLater.addedOn')}{' '}
-                      {format(new Date(saved.createdAt), 'MMM dd, yyyy')}
+                      {formatDate(saved.createdAt, 'PPP', language)}
                     </div>
                   </div>
 
@@ -132,7 +133,7 @@ export function CookLaterList() {
                     onClick={() => markAsCooked(saved.id, !saved.isCooked)}
                   >
                     <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                    {saved.isCooked ? 'Cooked' : t('cookLater.markCooked')}
+                    {saved.isCooked ? t('cookLater.cooked') : t('cookLater.markCooked')}
                   </Button>
                   <Button
                     variant="ghost"

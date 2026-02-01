@@ -6,7 +6,9 @@ import type { RecipeFilters } from '@/services/recipes.service';
 export interface RecipeDTO {
   id: string;
   title: string;
+  titleFr: string | null;
   description: string | null;
+  descriptionFr: string | null;
   imageUrl: string | null;
   prepTimeMin: number | null;
   cookTimeMin: number | null;
@@ -22,8 +24,8 @@ export interface RecipeDTO {
   authorId: string | null;
   reviewNote: string | null;
   publishedAt: string | null;
-  ingredients: { id: string; text: string; sortOrder: number }[];
-  steps: { id: string; text: string; sortOrder: number }[];
+  ingredients: { id: string; text: string; textFr: string | null; sortOrder: number }[];
+  steps: { id: string; text: string; textFr: string | null; sortOrder: number }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -82,7 +84,9 @@ export function useRecipe(id: string) {
 
 export interface RecipeInput {
   title: string;
+  titleFr?: string;
   description?: string;
+  descriptionFr?: string;
   imageUrl?: string;
   prepTimeMin?: number;
   cookTimeMin?: number;
@@ -91,7 +95,9 @@ export interface RecipeInput {
   category?: string;
   goal?: string;
   ingredients?: string[];
+  ingredientsFr?: string[];
   steps?: string[];
+  stepsFr?: string[];
 }
 
 export function useCreateRecipe() {

@@ -30,7 +30,10 @@ export async function listRecipes(
   const where: Prisma.RecipeWhereInput = {};
 
   if (filters.search) {
-    where.title = { contains: filters.search, mode: 'insensitive' };
+    where.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { titleFr: { contains: filters.search, mode: 'insensitive' } },
+    ];
   }
 
   if (filters.category) {
@@ -92,7 +95,9 @@ export async function getRecipeById(id: string, user?: JwtPayload | null) {
 
 export interface CreateRecipeInput {
   title: string;
+  titleFr?: string;
   description?: string;
+  descriptionFr?: string;
   imageUrl?: string;
   prepTimeMin?: number;
   cookTimeMin?: number;
@@ -101,11 +106,13 @@ export interface CreateRecipeInput {
   category?: string;
   goal?: string;
   ingredients?: string[];
+  ingredientsFr?: string[];
   steps?: string[];
+  stepsFr?: string[];
 }
 
 export async function createRecipe(data: CreateRecipeInput, authorId: string) {
-  const { ingredients, steps, ...recipeData } = data;
+  const { ingredients, ingredientsFr, steps, stepsFr, ...recipeData } = data;
 
   return db.recipe.create({
     data: {
@@ -116,6 +123,7 @@ export async function createRecipe(data: CreateRecipeInput, authorId: string) {
         ? {
             create: ingredients.map((text, i) => ({
               text,
+              textFr: ingredientsFr?.[i] || null,
               sortOrder: i,
             })),
           }
@@ -124,6 +132,7 @@ export async function createRecipe(data: CreateRecipeInput, authorId: string) {
         ? {
             create: steps.map((text, i) => ({
               text,
+              textFr: stepsFr?.[i] || null,
               sortOrder: i,
             })),
           }
@@ -137,7 +146,9 @@ export async function createRecipe(data: CreateRecipeInput, authorId: string) {
 
 export interface UpdateRecipeInput {
   title?: string;
+  titleFr?: string;
   description?: string;
+  descriptionFr?: string;
   imageUrl?: string;
   prepTimeMin?: number;
   cookTimeMin?: number;
@@ -146,7 +157,9 @@ export interface UpdateRecipeInput {
   category?: string;
   goal?: string;
   ingredients?: string[];
+  ingredientsFr?: string[];
   steps?: string[];
+  stepsFr?: string[];
 }
 
 export async function updateRecipe(
@@ -161,7 +174,7 @@ export async function updateRecipe(
     throw new ForbiddenError('You do not have permission to edit this recipe');
   }
 
-  const { ingredients, steps, ...recipeData } = data;
+  const { ingredients, ingredientsFr, steps, stepsFr, ...recipeData } = data;
 
   // If recipe was rejected, editing resets it to draft
   const status = recipe.status === 'rejected' ? 'draft' : recipe.status;
@@ -184,6 +197,7 @@ export async function updateRecipe(
         ? {
             create: ingredients.map((text, i) => ({
               text,
+              textFr: ingredientsFr?.[i] || null,
               sortOrder: i,
             })),
           }
@@ -192,6 +206,7 @@ export async function updateRecipe(
         ? {
             create: steps.map((text, i) => ({
               text,
+              textFr: stepsFr?.[i] || null,
               sortOrder: i,
             })),
           }
