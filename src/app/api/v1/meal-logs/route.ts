@@ -5,22 +5,14 @@ import {
   createMealLog,
   listMealLogs,
 } from '@/services/meal-log.service';
-import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
+import { handleApiError, AuthError } from '@/lib/errors';
+import { createMealLogSchema } from '@/lib/validations/meal-log';
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request);
     const body = await request.json();
-
-    const { mealText, mealType } = body;
-
-    if (!mealText || typeof mealText !== 'string') {
-      throw new ValidationError('mealText is required');
-    }
-
-    if (!mealType || typeof mealType !== 'string') {
-      throw new ValidationError('mealType is required');
-    }
+    const { mealText, mealType } = createMealLogSchema.parse(body);
 
     // Rate limit check
     await checkAnalysisRateLimit(user.sub);

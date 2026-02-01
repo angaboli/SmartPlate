@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { reviewRecipe } from '@/services/recipes.service';
-import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
+import { handleApiError, AuthError } from '@/lib/errors';
+import { reviewRecipeSchema } from '@/lib/validations/recipe';
 
 export async function POST(
   request: NextRequest,
@@ -15,13 +16,7 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-
-    const { status, reviewNote } = body;
-    if (status !== 'published' && status !== 'rejected') {
-      throw new ValidationError(
-        'status must be "published" or "rejected"',
-      );
-    }
+    const { status, reviewNote } = reviewRecipeSchema.parse(body);
 
     const recipe = await reviewRecipe(id, status, reviewNote, user);
     return NextResponse.json(recipe);

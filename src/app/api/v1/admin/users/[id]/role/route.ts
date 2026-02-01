@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
 import { changeUserRole } from '@/services/user.service';
-import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
+import { handleApiError, AuthError } from '@/lib/errors';
+import { changeUserRoleSchema } from '@/lib/validations/admin';
 
 export async function PATCH(
   request: NextRequest,
@@ -18,14 +19,9 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    const { role } = changeUserRoleSchema.parse(body);
 
-    if (!body.role || !['user', 'editor', 'admin'].includes(body.role)) {
-      throw new ValidationError(
-        'role must be "user", "editor", or "admin"',
-      );
-    }
-
-    const updated = await changeUserRole(id, body.role, user.sub);
+    const updated = await changeUserRole(id, role, user.sub);
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error);

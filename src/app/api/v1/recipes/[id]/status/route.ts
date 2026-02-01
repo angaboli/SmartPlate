@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { changeRecipeStatus } from '@/services/recipes.service';
-import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
-import type { RecipeStatus } from '@prisma/client';
-
-const validStatuses: RecipeStatus[] = ['draft', 'pending_review', 'published', 'rejected'];
+import { handleApiError, AuthError } from '@/lib/errors';
+import { changeRecipeStatusSchema } from '@/lib/validations/recipe';
 
 export async function PATCH(
   request: NextRequest,
@@ -18,14 +16,9 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    const { status } = changeRecipeStatusSchema.parse(body);
 
-    if (!body.status || !validStatuses.includes(body.status)) {
-      throw new ValidationError(
-        `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
-      );
-    }
-
-    const recipe = await changeRecipeStatus(id, body.status, user);
+    const recipe = await changeRecipeStatus(id, status, user);
     return NextResponse.json(recipe);
   } catch (error) {
     return handleApiError(error);

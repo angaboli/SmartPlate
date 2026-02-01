@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
 import { listRecipes, createRecipe } from '@/services/recipes.service';
-import { handleApiError, ValidationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/errors';
+import { createRecipeSchema } from '@/lib/validations/recipe';
 import type { RecipeStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
@@ -41,17 +42,12 @@ export async function POST(request: NextRequest) {
     requireRole(user, 'editor', 'admin');
 
     const body = await request.json();
-    const hasTitle = body.title && typeof body.title === 'string' && body.title.trim();
-    const hasTitleFr = body.titleFr && typeof body.titleFr === 'string' && body.titleFr.trim();
-    if (!hasTitle && !hasTitleFr) {
-      throw new ValidationError('title or titleFr is required');
-    }
-    // DB column "title" is non-nullable — fall back to FR if EN is empty
-    if (!hasTitle) {
-      body.title = body.titleFr.trim();
-    }
+    const data = createRecipeSchema.parse(body);
 
-    const recipe = await createRecipe(body, user.sub);
+    // DB column "title" is non-nullable — fall back to FR if EN is empty
+    const title = data.title?.trim() || data.titleFr!.trim();
+
+    const recipe = await createRecipe({ ...data, title }, user.sub);
     return NextResponse.json(recipe, { status: 201 });
   } catch (error) {
     return handleApiError(error);

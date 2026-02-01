@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getProfile, updateProfile } from '@/services/user.service';
 import { handleApiError } from '@/lib/errors';
+import { updateProfileSchema } from '@/lib/validations/profile';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const body = await request.json();
-    const profile = await updateProfile(user.sub, body);
+    const data = updateProfileSchema.parse(body);
+    const profile = await updateProfile(user.sub, data);
     return NextResponse.json(profile);
   } catch (error) {
     return handleApiError(error);

@@ -1,24 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { extractFromUrl, checkRateLimit } from '@/services/import.service';
-import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
+import { handleApiError, AuthError } from '@/lib/errors';
+import { extractImportSchema } from '@/lib/validations/import';
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request);
     const body = await request.json();
-    const { url } = body;
-
-    if (!url || typeof url !== 'string') {
-      throw new ValidationError('url is required');
-    }
-
-    // Validate URL format
-    try {
-      new URL(url);
-    } catch {
-      throw new ValidationError('Invalid URL format');
-    }
+    const { url } = extractImportSchema.parse(body);
 
     // Rate limit check
     await checkRateLimit(user.sub);

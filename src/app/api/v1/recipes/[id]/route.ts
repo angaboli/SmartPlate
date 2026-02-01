@@ -6,6 +6,7 @@ import {
   deleteRecipe,
 } from '@/services/recipes.service';
 import { handleApiError, AuthError } from '@/lib/errors';
+import { updateRecipeSchema } from '@/lib/validations/recipe';
 
 export async function GET(
   request: NextRequest,
@@ -41,8 +42,9 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
+    const data = updateRecipeSchema.parse(body);
 
-    const updated = await updateRecipe(id, body, user);
+    const updated = await updateRecipe(id, data, user);
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

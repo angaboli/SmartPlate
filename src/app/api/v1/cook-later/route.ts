@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { listSavedRecipes, saveRecipe } from '@/services/cook-later.service';
-import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
+import { handleApiError, AuthError } from '@/lib/errors';
+import { saveCookLaterSchema } from '@/lib/validations/cook-later';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,11 +21,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request);
     const body = await request.json();
-    const { recipeId, tag } = body;
-
-    if (!recipeId || typeof recipeId !== 'string') {
-      throw new ValidationError('recipeId is required');
-    }
+    const { recipeId, tag } = saveCookLaterSchema.parse(body);
 
     const saved = await saveRecipe(user.sub, recipeId, tag);
     return NextResponse.json(saved, { status: 201 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { unsaveRecipe, updateSavedRecipe } from '@/services/cook-later.service';
 import { handleApiError, AuthError } from '@/lib/errors';
+import { updateCookLaterSchema } from '@/lib/validations/cook-later';
 
 export async function PATCH(
   request: NextRequest,
@@ -11,9 +12,9 @@ export async function PATCH(
     const user = await requireAuth(request);
     const { id } = await params;
     const body = await request.json();
-    const { tag, isCooked } = body;
+    const data = updateCookLaterSchema.parse(body);
 
-    const updated = await updateSavedRecipe(user.sub, id, { tag, isCooked });
+    const updated = await updateSavedRecipe(user.sub, id, data);
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
