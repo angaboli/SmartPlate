@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { LogIn } from 'lucide-react';
+import { LogIn, Loader2 } from 'lucide-react';
 
 function LoginForm() {
   const router = useRouter();
@@ -17,6 +17,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +25,19 @@ function LoginForm() {
     if (result.meta.requestStatus === 'fulfilled') {
       const tokens = (result.payload as any).tokens;
       document.cookie = `accessToken=${tokens.accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+      setIsRedirecting(true);
       router.push(from);
     }
   };
 
   return (
+    <>
+      {isRedirecting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm bg-background/60">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-3 text-sm text-muted-foreground">Redirecting...</p>
+        </div>
+      )}
     <div className="mx-auto max-w-md space-y-8 py-12">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -108,6 +117,7 @@ function LoginForm() {
         </Link>
       </p>
     </div>
+    </>
   );
 }
 
