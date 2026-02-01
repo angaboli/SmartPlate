@@ -6,9 +6,11 @@ import { Header } from '@/components/Header';
 import { Navigation } from '@/components/Navigation';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Toaster } from '@/components/ui/sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile Navigation Sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0">
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
           <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
           <Navigation
             onClose={() => setMobileMenuOpen(false)}
@@ -52,66 +54,66 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <h3 className="font-semibold">SmartPlate</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Smarter meals, powered by AI. Your companion for better nutrition.
+                {t('footer.tagline')}
               </p>
             </div>
 
             <div className="space-y-3">
-              <h4 className="font-semibold">Product</h4>
+              <h4 className="font-semibold">{t('footer.product')}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/dashboard" className="hover:text-primary">
-                    AI Coach
+                    {t('footer.aiCoach')}
                   </Link>
                 </li>
                 <li>
                   <Link href="/recipes" className="hover:text-primary">
-                    Recipes
+                    {t('footer.recipes')}
                   </Link>
                 </li>
                 <li>
                   <Link href="/dashboard" className="hover:text-primary">
-                    Meal Planner
+                    {t('footer.mealPlanner')}
                   </Link>
                 </li>
               </ul>
             </div>
 
             <div className="space-y-3">
-              <h4 className="font-semibold">SafariTaste</h4>
+              <h4 className="font-semibold">{t('footer.safariTaste')}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/recipes" className="hover:text-primary">
-                    Global Recipes
+                    {t('footer.globalRecipes')}
                   </Link>
                 </li>
                 <li>
-                  <button className="hover:text-primary">Food Discovery</button>
+                  <button className="hover:text-primary">{t('footer.foodDiscovery')}</button>
                 </li>
                 <li>
-                  <button className="hover:text-primary">Flavor Profiles</button>
+                  <button className="hover:text-primary">{t('footer.flavorProfiles')}</button>
                 </li>
               </ul>
             </div>
 
             <div className="space-y-3">
-              <h4 className="font-semibold">Company</h4>
+              <h4 className="font-semibold">{t('footer.company')}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <button className="hover:text-primary">About</button>
+                  <button className="hover:text-primary">{t('footer.about')}</button>
                 </li>
                 <li>
-                  <button className="hover:text-primary">Privacy</button>
+                  <button className="hover:text-primary">{t('footer.privacy')}</button>
                 </li>
                 <li>
-                  <button className="hover:text-primary">Terms</button>
+                  <button className="hover:text-primary">{t('footer.terms')}</button>
                 </li>
               </ul>
             </div>
           </div>
 
           <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 SmartPlate. All rights reserved.</p>
+            <p>&copy; {t('footer.copyright')}</p>
           </div>
         </div>
       </footer>

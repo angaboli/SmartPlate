@@ -20,23 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import type { Meal } from '@/hooks/usePlanner';
-
-const DAY_OPTIONS = [
-  { value: '0', label: 'Monday' },
-  { value: '1', label: 'Tuesday' },
-  { value: '2', label: 'Wednesday' },
-  { value: '3', label: 'Thursday' },
-  { value: '4', label: 'Friday' },
-  { value: '5', label: 'Saturday' },
-  { value: '6', label: 'Sunday' },
-];
-
-const MEAL_TYPE_OPTIONS = [
-  { value: 'breakfast', label: 'Breakfast' },
-  { value: 'lunch', label: 'Lunch' },
-  { value: 'dinner', label: 'Dinner' },
-  { value: 'snack', label: 'Snack' },
-];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AddEditMealDialogProps {
   open: boolean;
@@ -62,10 +46,28 @@ export function AddEditMealDialog({
   defaultMealType = 'breakfast',
   isLoading,
 }: AddEditMealDialogProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
   const [mealType, setMealType] = useState<string>(defaultMealType);
   const [dayIndex, setDayIndex] = useState<string>(String(defaultDayIndex));
+
+  const DAY_OPTIONS = [
+    { value: '0', label: t('planner.day.monday') },
+    { value: '1', label: t('planner.day.tuesday') },
+    { value: '2', label: t('planner.day.wednesday') },
+    { value: '3', label: t('planner.day.thursday') },
+    { value: '4', label: t('planner.day.friday') },
+    { value: '5', label: t('planner.day.saturday') },
+    { value: '6', label: t('planner.day.sunday') },
+  ];
+
+  const MEAL_TYPE_OPTIONS = [
+    { value: 'breakfast', label: t('tag.breakfast') },
+    { value: 'lunch', label: t('tag.lunch') },
+    { value: 'dinner', label: t('tag.dinner') },
+    { value: 'snack', label: t('tag.snack') },
+  ];
 
   useEffect(() => {
     if (open) {
@@ -103,14 +105,14 @@ export function AddEditMealDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Meal' : 'Add Meal'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('planner.editMeal') : t('planner.addMeal')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="meal-name">Meal Name</Label>
+            <Label htmlFor="meal-name">{t('planner.mealName')}</Label>
             <Input
               id="meal-name"
-              placeholder="e.g. Grilled chicken with rice"
+              placeholder={t('planner.mealNamePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -118,11 +120,11 @@ export function AddEditMealDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="meal-calories">Calories <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Label htmlFor="meal-calories">{t('planner.calories')} <span className="text-muted-foreground font-normal">{t('planner.caloriesOptional')}</span></Label>
             <Input
               id="meal-calories"
               type="number"
-              placeholder="Leave empty — AI will estimate"
+              placeholder={t('planner.caloriesPlaceholder')}
               min={0}
               max={10000}
               value={calories}
@@ -131,7 +133,7 @@ export function AddEditMealDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Meal Type</Label>
+            <Label>{t('planner.mealType')}</Label>
             <Select value={mealType} onValueChange={setMealType}>
               <SelectTrigger>
                 <SelectValue />
@@ -148,7 +150,7 @@ export function AddEditMealDialog({
 
           {!isEditing && (
             <div className="space-y-2">
-              <Label>Day</Label>
+              <Label>{t('planner.day')}</Label>
               <Select value={dayIndex} onValueChange={setDayIndex}>
                 <SelectTrigger>
                   <SelectValue />
@@ -166,18 +168,18 @@ export function AddEditMealDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t('common.saving')}
                 </>
               ) : isEditing ? (
-                'Update Meal'
+                t('planner.updateMeal')
               ) : (
-                'Add Meal'
+                t('planner.addMeal')
               )}
             </Button>
           </DialogFooter>

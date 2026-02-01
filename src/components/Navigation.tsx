@@ -22,8 +22,8 @@ export function Navigation({ onClose, isMobile }: NavigationProps) {
     { id: 'home', href: '/', icon: Home, label: t('nav.home'), show: true },
     { id: 'dashboard', href: '/dashboard', icon: Brain, label: t('nav.aiCoach'), show: true },
     { id: 'recipes', href: '/recipes', icon: Utensils, label: t('nav.recipes'), show: true },
-    { id: 'manage', href: '/dashboard/recipes/manage', icon: BookOpen, label: 'My Recipes', show: role === 'editor' || role === 'admin' },
-    { id: 'admin', href: '/dashboard/admin', icon: Shield, label: 'Admin', show: role === 'admin' },
+    { id: 'manage', href: '/dashboard/recipes/manage', icon: BookOpen, label: t('nav.myRecipes'), show: role === 'editor' || role === 'admin' },
+    { id: 'admin', href: '/dashboard/admin', icon: Shield, label: t('nav.admin'), show: role === 'admin' },
     { id: 'profile', href: '/profile', icon: User, label: t('nav.profile'), show: true },
   ];
 

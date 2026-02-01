@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { UserPlus } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, loading, error, clearError } = useAuth();
+  const { t } = useLanguage();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -24,12 +26,12 @@ export default function RegisterPage() {
     setLocalError('');
 
     if (password !== confirmPassword) {
-      setLocalError('Passwords do not match');
+      setLocalError(t('auth.passwordsMismatch'));
       return;
     }
 
     if (password.length < 8) {
-      setLocalError('Password must be at least 8 characters');
+      setLocalError(t('auth.passwordTooShort'));
       return;
     }
 
@@ -52,9 +54,9 @@ export default function RegisterPage() {
           </div>
           <h1 className="text-2xl font-bold">SmartPlate</h1>
         </div>
-        <h2 className="text-xl font-semibold">Create your account</h2>
+        <h2 className="text-xl font-semibold">{t('auth.createAccount')}</h2>
         <p className="text-muted-foreground">
-          Start your nutrition journey today
+          {t('auth.startJourney')}
         </p>
       </div>
 
@@ -70,13 +72,13 @@ export default function RegisterPage() {
               }}
               className="ml-2 underline"
             >
-              Dismiss
+              {t('common.dismiss')}
             </button>
           </div>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
+          <Label htmlFor="name">{t('auth.fullName')}</Label>
           <Input
             id="name"
             type="text"
@@ -90,7 +92,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('auth.email')}</Label>
           <Input
             id="email"
             type="email"
@@ -104,7 +106,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
             id="password"
             type="password"
@@ -118,7 +120,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
           <Input
             id="confirmPassword"
             type="password"
@@ -137,20 +139,20 @@ export default function RegisterPage() {
           disabled={loading}
         >
           {loading ? (
-            'Creating account...'
+            t('auth.creatingAccount')
           ) : (
             <>
               <UserPlus className="mr-2 h-4 w-4" />
-              Create Account
+              {t('auth.createAccountBtn')}
             </>
           )}
         </Button>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{' '}
+        {t('auth.haveAccount')}{' '}
         <Link href="/login" className="text-primary hover:underline">
-          Sign in
+          {t('auth.signIn')}
         </Link>
       </p>
     </div>

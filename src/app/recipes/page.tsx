@@ -23,10 +23,10 @@ export default function RecipesPage() {
   });
 
   const goals = [
-    { id: 'balanced', label: 'Balanced', icon: '⚖️' },
-    { id: 'high-protein', label: 'High Protein', icon: '💪' },
-    { id: 'light', label: 'Light', icon: '🌿' },
-    { id: 'energy-boost', label: 'Energy Boost', icon: '⚡' },
+    { id: 'balanced', label: t('recipes.goal.balanced'), icon: '⚖️' },
+    { id: 'high-protein', label: t('recipes.goal.highProtein'), icon: '💪' },
+    { id: 'light', label: t('recipes.goal.light'), icon: '🌿' },
+    { id: 'energy-boost', label: t('recipes.goal.energyBoost'), icon: '⚡' },
   ];
 
   return (
@@ -110,7 +110,7 @@ export default function RecipesPage() {
       {/* Error State */}
       {error && (
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-8 text-center">
-          <p className="text-destructive">Failed to load recipes. Please try again.</p>
+          <p className="text-destructive">{t('recipes.failedLoad')}</p>
         </div>
       )}
 

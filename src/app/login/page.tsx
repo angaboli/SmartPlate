@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { LogIn, Loader2 } from 'lucide-react';
 
 function LoginForm() {
@@ -14,6 +15,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const from = searchParams.get('from') || '/dashboard';
   const { login, loading, error, clearError } = useAuth();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,7 @@ function LoginForm() {
       {isRedirecting && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm bg-background/60">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="mt-3 text-sm text-muted-foreground">Redirecting...</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t('auth.redirecting')}</p>
         </div>
       )}
     <div className="mx-auto max-w-md space-y-8 py-12">
@@ -46,9 +48,9 @@ function LoginForm() {
           </div>
           <h1 className="text-2xl font-bold">SmartPlate</h1>
         </div>
-        <h2 className="text-xl font-semibold">Welcome back</h2>
+        <h2 className="text-xl font-semibold">{t('auth.welcomeBack')}</h2>
         <p className="text-muted-foreground">
-          Sign in to your account to continue
+          {t('auth.signInSubtitle')}
         </p>
       </div>
 
@@ -61,13 +63,13 @@ function LoginForm() {
               onClick={clearError}
               className="ml-2 underline"
             >
-              Dismiss
+              {t('common.dismiss')}
             </button>
           </div>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('auth.email')}</Label>
           <Input
             id="email"
             type="email"
@@ -81,7 +83,7 @@ function LoginForm() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
             id="password"
             type="password"
@@ -100,20 +102,20 @@ function LoginForm() {
           disabled={loading}
         >
           {loading ? (
-            'Signing in...'
+            t('auth.signingIn')
           ) : (
             <>
               <LogIn className="mr-2 h-4 w-4" />
-              Sign In
+              {t('auth.signIn')}
             </>
           )}
         </Button>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <Link href="/register" className="text-primary hover:underline">
-          Create one
+          {t('auth.createOne')}
         </Link>
       </p>
     </div>

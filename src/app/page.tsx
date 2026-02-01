@@ -16,34 +16,27 @@ export default function HomePage() {
   const features = [
     {
       icon: Brain,
-      title: 'AI-Powered Analysis',
-      description: 'Get instant feedback on your meals with advanced nutrition AI',
+      title: t('home.feature1Title'),
+      description: t('home.feature1Desc'),
     },
     {
       icon: Calendar,
-      title: 'Weekly Meal Planning',
-      description: 'Auto-generate balanced meal plans tailored to your goals',
+      title: t('home.feature2Title'),
+      description: t('home.feature2Desc'),
     },
     {
       icon: Utensils,
-      title: 'SafariTaste Recipes',
-      description: 'Discover global flavors with health-conscious recipes',
+      title: t('home.feature3Title'),
+      description: t('home.feature3Desc'),
     },
     {
       icon: TrendingUp,
-      title: 'Smart Suggestions',
-      description: 'Receive personalized recommendations to improve nutrition',
+      title: t('home.feature4Title'),
+      description: t('home.feature4Desc'),
     },
   ];
 
-  const benefits = [
-    'Track meals effortlessly',
-    'AI-driven insights',
-    'Personalized meal plans',
-    'Global recipe discovery',
-    'Nutrition goal tracking',
-    'Smart food swaps',
-  ];
+  const benefits = [t('home.benefit1'), t('home.benefit2'), t('home.benefit3'), t('home.benefit4'), t('home.benefit5'), t('home.benefit6')];
 
   return (
     <div className="space-y-20 pb-20">
@@ -55,13 +48,13 @@ export default function HomePage() {
               <div className="space-y-4">
                 <Badge className="bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="mr-1 h-3 w-3" />
-                  AI-Powered Nutrition
+                  {t('home.badge')}
                 </Badge>
                 <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-                  Smarter meals, powered by AI
+                  {t('home.headline')}
                 </h1>
                 <p className="text-lg text-muted-foreground md:text-xl">
-                  Track, analyze and improve your nutrition effortlessly with SmartPlate
+                  {t('home.subheadline')}
                 </p>
               </div>
 
@@ -73,7 +66,7 @@ export default function HomePage() {
                 >
                   <Link href="/dashboard">
                     <Brain className="mr-2 h-5 w-5" />
-                    Analyze my meals
+                    {t('home.analyzeMeals')}
                   </Link>
                 </Button>
                 <Button
@@ -106,10 +99,10 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6">
                   <Badge className="mb-2 bg-primary text-primary-foreground">
-                    AI Analysis Ready
+                    {t('home.analysisReady')}
                   </Badge>
                   <p className="text-sm text-foreground/90">
-                    Instant nutrition insights for every meal
+                    {t('home.instantInsights')}
                   </p>
                 </div>
               </div>
@@ -122,10 +115,10 @@ export default function HomePage() {
       <section className="container px-4 md:px-6">
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Everything you need for better nutrition
+            {t('home.featuresTitle')}
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Comprehensive tools powered by artificial intelligence
+            {t('home.featuresSubtitle')}
           </p>
         </div>
 
@@ -154,14 +147,13 @@ export default function HomePage() {
           <div className="grid gap-8 p-8 md:grid-cols-2 md:p-12 lg:gap-12">
             <div className="space-y-6">
               <Badge variant="outline" className="border-[#8A6A4F] text-[#8A6A4F]">
-                SafariTaste Universe
+                {t('home.safariTitle')}
               </Badge>
               <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                Discover global flavors
+                {t('home.safariHeadline')}
               </h2>
               <p className="text-muted-foreground">
-                Explore curated recipes from around the world, optimized for nutrition and taste.
-                SafariTaste brings you the best of international cuisine, powered by AI recommendations.
+                {t('home.safariDesc')}
               </p>
               <Button
                 asChild
@@ -169,7 +161,7 @@ export default function HomePage() {
               >
                 <Link href="/recipes">
                   <Utensils className="mr-2 h-5 w-5" />
-                  Explore Recipes
+                  {t('home.exploreRecipes')}
                 </Link>
               </Button>
             </div>
@@ -204,10 +196,10 @@ export default function HomePage() {
       <section className="container px-4 md:px-6">
         <div className="rounded-2xl border bg-primary p-8 text-center text-primary-foreground md:p-12">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Start your nutrition journey today
+            {t('home.ctaTitle')}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-primary-foreground/90">
-            Join thousands of users who are improving their health with AI-powered nutrition insights
+            {t('home.ctaDesc')}
           </p>
           <Button
             size="lg"
@@ -215,7 +207,7 @@ export default function HomePage() {
             asChild
             className="mt-8"
           >
-            <Link href="/dashboard">Get Started Now</Link>
+            <Link href="/dashboard">{t('home.getStarted')}</Link>
           </Button>
         </div>
       </section>

@@ -16,6 +16,7 @@ import { Trash2 } from 'lucide-react';
 import { useDeleteRecipe } from '@/hooks/useRecipes';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface DeleteRecipeDialogProps {
   recipeId: string;
@@ -30,11 +31,12 @@ export function DeleteRecipeDialog({
 }: DeleteRecipeDialogProps) {
   const deleteRecipe = useDeleteRecipe();
   const router = useRouter();
+  const { t } = useLanguage();
 
   function handleDelete() {
     deleteRecipe.mutate(recipeId, {
       onSuccess: () => {
-        toast.success('Recipe deleted');
+        toast.success(t('deleteRecipe.deleted'));
         router.push(redirectTo);
       },
       onError: (err) => {
@@ -48,25 +50,24 @@ export function DeleteRecipeDialog({
       <AlertDialogTrigger asChild>
         <Button variant="outline" className="text-destructive">
           <Trash2 className="mr-2 h-4 w-4" />
-          Delete
+          {t('common.delete')}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Recipe</AlertDialogTitle>
+          <AlertDialogTitle>{t('deleteRecipe.title')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &quot;{recipeTitle}&quot;? This action
-            cannot be undone.
+            {t('deleteRecipe.confirm').replace('{title}', recipeTitle)}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={deleteRecipe.isPending}
           >
-            {deleteRecipe.isPending ? 'Deleting...' : 'Delete'}
+            {deleteRecipe.isPending ? t('deleteRecipe.deleting') : t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

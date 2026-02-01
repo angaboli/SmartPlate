@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Download, Share2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useGroceryList } from '@/hooks/usePlanner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface GroceryListDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ interface GroceryListDialogProps {
 }
 
 export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDialogProps) {
+  const { t } = useLanguage();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const { data, isLoading, error } = useGroceryList(open ? planId : null);
 
@@ -45,10 +47,10 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-primary" />
-            Weekly Grocery List
+            {t('grocery.title')}
           </DialogTitle>
           <DialogDescription>
-            AI-generated shopping list for your weekly meal plan
+            {t('grocery.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -56,7 +58,7 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">
-              Generating your grocery list...
+              {t('grocery.generating')}
             </p>
           </div>
         )}
@@ -64,7 +66,7 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
         {error && (
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
             <p className="text-sm text-destructive">
-              {error.message || 'Failed to load grocery list'}
+              {error.message || t('grocery.failedLoad')}
             </p>
           </div>
         )}
@@ -72,7 +74,7 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
         {!isLoading && !error && items.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-sm text-muted-foreground">
-              No grocery items to display. Generate a meal plan first.
+              {t('grocery.noItems')}
             </p>
           </div>
         )}
@@ -123,16 +125,16 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
             <div className="flex gap-2 border-t pt-4">
               <Button variant="outline" className="flex-1">
                 <Download className="h-4 w-4 mr-2" />
-                Download PDF
+                {t('grocery.downloadPDF')}
               </Button>
               <Button variant="outline" className="flex-1">
                 <Share2 className="h-4 w-4 mr-2" />
-                Share List
+                {t('grocery.shareList')}
               </Button>
             </div>
 
             <div className="flex items-center justify-between rounded-lg bg-secondary p-3 text-sm">
-              <span className="text-muted-foreground">Items checked:</span>
+              <span className="text-muted-foreground">{t('grocery.itemsChecked')}</span>
               <Badge variant="secondary">
                 {checkedItems.size} / {items.length}
               </Badge>

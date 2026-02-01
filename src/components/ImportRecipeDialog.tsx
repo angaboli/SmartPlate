@@ -237,7 +237,7 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
               {/* Editable Fields */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-title">Title</Label>
+                  <Label htmlFor="edit-title">{t('recipeForm.title')}</Label>
                   <Input
                     id="edit-title"
                     value={editableTitle}
@@ -275,7 +275,7 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
 
                 {/* Meal Tag Selection */}
                 <div className="space-y-2">
-                  <Label>Meal Type (Optional)</Label>
+                  <Label>{t('import.mealTypeOptional')}</Label>
                   <div className="flex flex-wrap gap-2">
                     {(['breakfast', 'lunch', 'dinner', 'snack'] as RecipeTag[]).map((tag) => (
                       <Badge
@@ -323,7 +323,7 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
                   {saveMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      {t('common.saving')}
                     </>
                   ) : (
                     <>

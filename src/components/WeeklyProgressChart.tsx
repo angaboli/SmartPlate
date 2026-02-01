@@ -1,4 +1,7 @@
+'use client';
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface WeeklyDataPoint {
   day: string;
@@ -21,11 +24,13 @@ const mockData: WeeklyDataPoint[] = [
 ];
 
 export function WeeklyProgressChart({ data }: WeeklyProgressChartProps) {
+  const { t } = useLanguage();
+
   const chartData = data ?? mockData;
 
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <h3 className="mb-4 font-semibold">Weekly Calorie Tracking</h3>
+      <h3 className="mb-4 font-semibold">{t('chart.title')}</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -39,8 +44,8 @@ export function WeeklyProgressChart({ data }: WeeklyProgressChartProps) {
             }}
           />
           <Legend />
-          <Bar dataKey="calories" fill="#2F7F6D" name="Actual" radius={[8, 8, 0, 0]} />
-          <Bar dataKey="target" fill="#E8F4F1" name="Target" radius={[8, 8, 0, 0]} />
+          <Bar dataKey="calories" fill="#2F7F6D" name={t('chart.actual')} radius={[8, 8, 0, 0]} />
+          <Bar dataKey="target" fill="#E8F4F1" name={t('chart.target')} radius={[8, 8, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

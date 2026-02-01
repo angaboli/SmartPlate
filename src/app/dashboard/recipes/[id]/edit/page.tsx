@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function EditRecipePage({
   params,
@@ -18,6 +19,7 @@ export default function EditRecipePage({
   const router = useRouter();
   const { data: recipe, isLoading, error } = useRecipe(id);
   const updateRecipe = useUpdateRecipe();
+  const { t } = useLanguage();
 
   if (isLoading) {
     return (
@@ -30,11 +32,11 @@ export default function EditRecipePage({
   if (error || !recipe) {
     return (
       <div className="space-y-4 py-12 text-center">
-        <p className="text-destructive">Recipe not found.</p>
+        <p className="text-destructive">{t('recipes.notFound')}</p>
         <Button variant="outline" asChild>
           <Link href="/dashboard/recipes/manage">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to management
+            {t('manage.backToManagement')}
           </Link>
         </Button>
       </div>
@@ -46,14 +48,14 @@ export default function EditRecipePage({
       <Button variant="ghost" size="sm" asChild>
         <Link href={`/recipes/${id}`}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to recipe
+          {t('manage.backToRecipe')}
         </Link>
       </Button>
 
       <div>
-        <h1 className="text-2xl font-bold">Edit Recipe</h1>
+        <h1 className="text-2xl font-bold">{t('manage.editTitle')}</h1>
         <p className="text-muted-foreground">
-          Update the recipe details below.
+          {t('manage.editDesc')}
         </p>
       </div>
 
@@ -65,7 +67,7 @@ export default function EditRecipePage({
               { id, data },
               {
                 onSuccess: () => {
-                  toast.success('Recipe updated');
+                  toast.success(t('manage.recipeUpdated'));
                   router.push(`/recipes/${id}`);
                 },
                 onError: (err) => {
@@ -75,7 +77,7 @@ export default function EditRecipePage({
             );
           }}
           isPending={updateRecipe.isPending}
-          submitLabel="Save Changes"
+          submitLabel={t('manage.saveChanges')}
         />
       </div>
     </div>

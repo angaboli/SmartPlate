@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Meal {
   id: string;
@@ -41,6 +42,7 @@ export function WeeklyPlanner({
   onOptimizeWithAI,
   isOptimizing,
 }: WeeklyPlannerProps) {
+  const { t } = useLanguage();
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
   const mealTypeColors = {
@@ -62,7 +64,7 @@ export function WeeklyPlanner({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Weekly Meal Planner</h2>
+          <h2 className="text-xl font-semibold">{t('planner.title')}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           {onOptimizeWithAI && (
@@ -70,23 +72,23 @@ export function WeeklyPlanner({
               {isOptimizing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Optimizing...
+                  {t('planner.optimizing')}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Optimize with AI
+                  {t('planner.optimizeAI')}
                 </>
               )}
             </Button>
           )}
           <Button variant="outline" onClick={onRegenerateWeek} disabled={isRegenerating || isOptimizing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
-            {isRegenerating ? 'Generating...' : 'Regenerate Week'}
+            {isRegenerating ? t('planner.regenerating') : t('planner.regenerateWeek')}
           </Button>
           <Button onClick={onGenerateGroceryList} className="bg-primary">
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Grocery List
+            {t('planner.groceryList')}
           </Button>
         </div>
       </div>
@@ -105,7 +107,7 @@ export function WeeklyPlanner({
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Total Calories</p>
+                    <p className="text-sm text-muted-foreground">{t('planner.totalCalories')}</p>
                     <p className="font-semibold">
                       {day.meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
                     </p>
@@ -168,14 +170,14 @@ export function WeeklyPlanner({
               ))}
               {day.meals.length === 0 && (
                 <div className="col-span-full py-4 text-center text-sm text-muted-foreground">
-                  No meals yet.{' '}
+                  {t('planner.noMeals')}{' '}
                   {onAddMeal && (
                     <button
                       type="button"
                       onClick={() => onAddMeal(day.dayIndex)}
                       className="text-primary underline"
                     >
-                      Add one
+                      {t('planner.addOne')}
                     </button>
                   )}
                 </div>

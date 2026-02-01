@@ -28,8 +28,12 @@ import {
   useAdjustPlan,
   type Meal,
 } from '@/hooks/usePlanner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function DashboardPage() {
+  const { t, language } = useLanguage();
+  const nf = new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US');
+
   const [latestLog, setLatestLog] = useState<MealLogDTO | null>(null);
   const [groceryListOpen, setGroceryListOpen] = useState(false);
   const [addMealDialogOpen, setAddMealDialogOpen] = useState(false);
@@ -63,7 +67,7 @@ export default function DashboardPage() {
           setLatestLog(data);
         },
         onError: (error) => {
-          toast.error(error.message || 'Failed to analyze meal');
+          toast.error(error.message || t('dashboard.failedAnalyze'));
         },
       },
     );
@@ -72,10 +76,10 @@ export default function DashboardPage() {
   const handleGeneratePlan = () => {
     generatePlanMutation.mutate(undefined, {
       onSuccess: () => {
-        toast.success('Weekly meal plan generated!');
+        toast.success(t('dashboard.planGenerated'));
       },
       onError: (error) => {
-        toast.error(error.message || 'Failed to generate plan');
+        toast.error(error.message || t('dashboard.failedGenerate'));
       },
     });
   };
@@ -99,10 +103,10 @@ export default function DashboardPage() {
   const handleDeleteMeal = (mealId: string) => {
     deleteMealMutation.mutate(mealId, {
       onSuccess: () => {
-        toast.success('Meal removed');
+        toast.success(t('dashboard.mealRemoved'));
       },
       onError: (error) => {
-        toast.error(error.message || 'Failed to delete meal');
+        toast.error(error.message || t('dashboard.failedDelete'));
       },
     });
   };
@@ -122,10 +126,10 @@ export default function DashboardPage() {
         {
           onSuccess: () => {
             setAddMealDialogOpen(false);
-            toast.success('Meal updated');
+            toast.success(t('dashboard.mealUpdated'));
           },
           onError: (error) => {
-            toast.error(error.message || 'Failed to update meal');
+            toast.error(error.message || t('dashboard.failedUpdate'));
           },
         },
       );
@@ -133,10 +137,10 @@ export default function DashboardPage() {
       addMealMutation.mutate(data, {
         onSuccess: () => {
           setAddMealDialogOpen(false);
-          toast.success('Meal added');
+          toast.success(t('dashboard.mealAdded'));
         },
         onError: (error) => {
-          toast.error(error.message || 'Failed to add meal');
+          toast.error(error.message || t('dashboard.failedAdd'));
         },
       });
     }
@@ -145,10 +149,10 @@ export default function DashboardPage() {
   const handleOptimizePlan = () => {
     adjustPlanMutation.mutate(undefined, {
       onSuccess: () => {
-        toast.success('Plan optimized with AI!');
+        toast.success(t('dashboard.planOptimized'));
       },
       onError: (error) => {
-        toast.error(error.message || 'Failed to optimize plan');
+        toast.error(error.message || t('dashboard.failedOptimize'));
       },
     });
   };
@@ -163,10 +167,10 @@ export default function DashboardPage() {
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Daily Goal</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.dailyGoal')}</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">{todayCalories.toLocaleString()}</span>
-                <span className="text-sm text-muted-foreground">/ {calorieTarget.toLocaleString()} kcal</span>
+                <span className="text-2xl font-bold">{nf.format(todayCalories)}</span>
+                <span className="text-sm text-muted-foreground">/ {nf.format(calorieTarget)} kcal</span>
               </div>
             </div>
             <div className="rounded-lg bg-primary/10 p-3">
@@ -179,10 +183,10 @@ export default function DashboardPage() {
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Weekly Progress</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.weeklyProgress')}</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold">{weekDaysLogged}</span>
-                <span className="text-sm text-muted-foreground">/ 7 days</span>
+                <span className="text-sm text-muted-foreground">{'/ 7 ' + t('dashboard.days')}</span>
               </div>
             </div>
             <div className="rounded-lg bg-[#E9C46A]/20 p-3">
@@ -195,22 +199,22 @@ export default function DashboardPage() {
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">This Week</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.thisWeek')}</p>
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
                 <span className="text-2xl font-bold">
-                  {summary?.today.mealCount ?? 0} meals
+                  {(summary?.today.mealCount ?? 0) + ' ' + t('dashboard.meals')}
                 </span>
               </div>
             </div>
             <Badge className="bg-primary/10 text-primary border-primary/20">
-              {weekDaysLogged >= 5 ? 'Excellent' : weekDaysLogged >= 3 ? 'Good' : 'Getting started'}
+              {weekDaysLogged >= 5 ? t('dashboard.excellent') : weekDaysLogged >= 3 ? t('dashboard.good') : t('dashboard.gettingStarted')}
             </Badge>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
             {weekDaysLogged >= 5
-              ? 'Great consistency this week!'
-              : 'Log more meals to track your progress.'}
+              ? t('dashboard.greatConsistency')
+              : t('dashboard.logMore')}
           </p>
         </div>
       </div>
@@ -221,16 +225,16 @@ export default function DashboardPage() {
       {/* Main Content Tabs */}
       <Tabs defaultValue="analyze" className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="analyze">AI Meal Analysis</TabsTrigger>
-          <TabsTrigger value="planner">Weekly Planner</TabsTrigger>
+          <TabsTrigger value="analyze">{t('dashboard.tabAnalyze')}</TabsTrigger>
+          <TabsTrigger value="planner">{t('dashboard.tabPlanner')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analyze" className="space-y-8">
           <div className="rounded-xl border bg-card p-6 shadow-sm">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold">Track Your Meal</h2>
+              <h2 className="text-xl font-semibold">{t('dashboard.trackMeal')}</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Enter what you ate and get instant AI-powered nutrition insights
+                {t('dashboard.trackMealDesc')}
               </p>
             </div>
             <MealInput onAnalyze={handleAnalyze} loading={analyzeMutation.isPending} />
@@ -240,9 +244,9 @@ export default function DashboardPage() {
             <>
               <div>
                 <div className="mb-4">
-                  <h2 className="text-xl font-semibold">AI Analysis</h2>
+                  <h2 className="text-xl font-semibold">{t('dashboard.aiAnalysis')}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Analysis for: {latestLog.mealText.length > 80
+                    {t('dashboard.analysisFor')} {latestLog.mealText.length > 80
                       ? latestLog.mealText.slice(0, 80) + '...'
                       : latestLog.mealText}
                     {' '}({latestLog.totalCalories} kcal)
@@ -260,9 +264,9 @@ export default function DashboardPage() {
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                   <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold">No meal analyzed yet</h3>
+                <h3 className="font-semibold">{t('dashboard.noAnalysis')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Enter your meal above to get AI-powered nutrition insights and personalized suggestions
+                  {t('dashboard.noAnalysisDesc')}
                 </p>
               </div>
             </div>
@@ -273,7 +277,7 @@ export default function DashboardPage() {
           {planLoading && (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading your meal plan...</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.loadingPlan')}</p>
             </div>
           )}
 
@@ -283,9 +287,9 @@ export default function DashboardPage() {
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold">No meal plan yet</h3>
+                <h3 className="font-semibold">{t('dashboard.noPlan')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Generate a personalized weekly meal plan with AI, or start building one manually.
+                  {t('dashboard.noPlanDesc')}
                 </p>
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
                   <Button
@@ -295,12 +299,12 @@ export default function DashboardPage() {
                     {generatePlanMutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
+                        {t('dashboard.generating')}
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4 mr-2" />
-                        Generate with AI
+                        {t('dashboard.generateAI')}
                       </>
                     )}
                   </Button>
@@ -309,7 +313,7 @@ export default function DashboardPage() {
                     onClick={() => handleAddMeal(0)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Manually
+                    {t('dashboard.createManually')}
                   </Button>
                 </div>
               </div>

@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     setMounted(true);
@@ -85,7 +87,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                 <DropdownMenuItem asChild>
                   <Link href="/profile">
                     <User className="mr-2 h-4 w-4" />
-                    Profile
+                    {t('header.profile')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -96,7 +98,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                   }}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
+                  {t('auth.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -104,7 +106,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Button variant="ghost" size="sm" asChild>
               <Link href={pathname && pathname !== '/' ? `/login?from=${encodeURIComponent(pathname)}` : '/login'}>
                 <LogIn className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Sign In</span>
+                <span className="hidden sm:inline">{t('auth.signIn')}</span>
               </Link>
             </Button>
           )}

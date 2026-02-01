@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/table';
 import { Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { formatDate } from '@/lib/date-locale';
 
 interface UserRow {
   id: string;
@@ -40,6 +42,7 @@ const roleBadgeStyle: Record<string, string> = {
 export default function AdminPage() {
   const { user, accessToken } = useAuth();
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,9 +63,9 @@ export default function AdminPage() {
         return res.json();
       })
       .then(setUsers)
-      .catch(() => toast.error('Failed to load users'))
+      .catch(() => toast.error(t('admin.failedLoadUsers')))
       .finally(() => setLoading(false));
-  }, [accessToken]);
+  }, [accessToken, t]);
 
   async function handleRoleChange(userId: string, newRole: string) {
     try {
@@ -77,7 +80,7 @@ export default function AdminPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || 'Failed to update role');
+        toast.error(data.error || t('admin.failedUpdateRole'));
         return;
       }
 
@@ -85,9 +88,9 @@ export default function AdminPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role: updated.role } : u)),
       );
-      toast.success(`Role updated to ${updated.role}`);
+      toast.success(t('admin.roleUpdated') + ' ' + updated.role);
     } catch {
-      toast.error('Failed to update role');
+      toast.error(t('admin.failedUpdateRole'));
     }
   }
 
@@ -97,21 +100,21 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Shield className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <h1 className="text-2xl font-bold">{t('admin.title')}</h1>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Loading users...</p>
+        <p className="text-muted-foreground">{t('admin.loadingUsers')}</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('admin.tableName')}</TableHead>
+                <TableHead>{t('admin.tableEmail')}</TableHead>
+                <TableHead>{t('admin.tableRole')}</TableHead>
+                <TableHead>{t('admin.tableJoined')}</TableHead>
+                <TableHead>{t('admin.tableActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,12 +130,12 @@ export default function AdminPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(u.createdAt).toLocaleDateString()}
+                    {formatDate(u.createdAt, 'PP', language)}
                   </TableCell>
                   <TableCell>
                     {u.id === user.id ? (
                       <span className="text-xs text-muted-foreground">
-                        (you)
+                        {t('common.you')}
                       </span>
                     ) : (
                       <Select

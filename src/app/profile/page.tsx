@@ -62,10 +62,10 @@ export default function ProfilePage() {
   }, [profile]);
 
   const goals = [
-    { id: 'weight-loss', label: 'Weight Loss', icon: '📉' },
-    { id: 'muscle-gain', label: 'Muscle Gain', icon: '💪' },
-    { id: 'maintain', label: 'Maintain Health', icon: '⚖️' },
-    { id: 'energy', label: 'Boost Energy', icon: '⚡' },
+    { id: 'weight-loss', label: t('profile.goal.weightLoss'), icon: '📉' },
+    { id: 'muscle-gain', label: t('profile.goal.muscleGain'), icon: '💪' },
+    { id: 'maintain', label: t('profile.goal.maintain'), icon: '⚖️' },
+    { id: 'energy', label: t('profile.goal.energy'), icon: '⚡' },
   ];
 
   const allergies = ['Nuts', 'Shellfish', 'Eggs', 'Soy', 'Wheat', 'Fish'];
@@ -92,8 +92,8 @@ export default function ProfilePage() {
         },
       },
       {
-        onSuccess: () => toast.success('Profile saved'),
-        onError: () => toast.error('Failed to save profile'),
+        onSuccess: () => toast.success(t('profile.profileSaved')),
+        onError: () => toast.error(t('profile.failedSaveProfile')),
       },
     );
   }
@@ -102,8 +102,8 @@ export default function ProfilePage() {
     updateProfile.mutate(
       { settings: { goal: selectedGoal } },
       {
-        onSuccess: () => toast.success('Goals saved'),
-        onError: () => toast.error('Failed to save goals'),
+        onSuccess: () => toast.success(t('profile.goalsSaved')),
+        onError: () => toast.error(t('profile.failedSaveGoals')),
       },
     );
   }
@@ -117,8 +117,8 @@ export default function ProfilePage() {
         },
       },
       {
-        onSuccess: () => toast.success('Preferences saved'),
-        onError: () => toast.error('Failed to save preferences'),
+        onSuccess: () => toast.success(t('profile.preferencesSaved')),
+        onError: () => toast.error(t('profile.failedSavePreferences')),
       },
     );
   }
@@ -143,10 +143,10 @@ export default function ProfilePage() {
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          <TabsTrigger value="profile">{t('profile.tabProfile')}</TabsTrigger>
-          <TabsTrigger value="goals">{t('profile.tabGoals')}</TabsTrigger>
-          <TabsTrigger value="preferences">{t('profile.tabPreferences')}</TabsTrigger>
-          <TabsTrigger value="cook-later">{t('profile.tabCookLater')}</TabsTrigger>
+          <TabsTrigger value="profile" className="text-xs sm:text-sm">{t('profile.tabProfile')}</TabsTrigger>
+          <TabsTrigger value="goals" className="text-xs sm:text-sm">{t('profile.tabGoals')}</TabsTrigger>
+          <TabsTrigger value="preferences" className="text-xs sm:text-sm">{t('profile.tabPreferences')}</TabsTrigger>
+          <TabsTrigger value="cook-later" className="text-xs sm:text-sm">{t('profile.tabCookLater')}</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -157,9 +157,9 @@ export default function ProfilePage() {
                 <User className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Your Profile</h2>
+                <h2 className="text-xl font-semibold">{t('profile.yourProfile')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Personal information and metrics
+                  {t('profile.personalInfo')}
                 </p>
               </div>
             </div>
@@ -167,7 +167,7 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">{t('profile.fullName')}</Label>
                   <Input
                     id="name"
                     placeholder="John Doe"
@@ -177,7 +177,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('profile.email')}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -190,7 +190,7 @@ export default function ProfilePage() {
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="age">Age</Label>
+                  <Label htmlFor="age">{t('profile.age')}</Label>
                   <Input
                     id="age"
                     type="number"
@@ -201,7 +201,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Label htmlFor="weight">{t('profile.weight')}</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -212,7 +212,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="height">Height (cm)</Label>
+                  <Label htmlFor="height">{t('profile.height')}</Label>
                   <Input
                     id="height"
                     type="number"
@@ -225,18 +225,18 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="activity">Activity Level</Label>
+                <Label htmlFor="activity">{t('profile.activityLevel')}</Label>
                 <select
                   id="activity"
                   className="flex h-10 w-full rounded-md border border-input bg-input-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={activityLevel}
                   onChange={(e) => setActivityLevel(e.target.value)}
                 >
-                  <option value="sedentary">Sedentary (little or no exercise)</option>
-                  <option value="light">Light (exercise 1-3 days/week)</option>
-                  <option value="moderate">Moderate (exercise 3-5 days/week)</option>
-                  <option value="active">Active (exercise 6-7 days/week)</option>
-                  <option value="very-active">Very Active (intense exercise daily)</option>
+                  <option value="sedentary">{t('profile.sedentary')}</option>
+                  <option value="light">{t('profile.light')}</option>
+                  <option value="moderate">{t('profile.moderate')}</option>
+                  <option value="active">{t('profile.active')}</option>
+                  <option value="very-active">{t('profile.veryActive')}</option>
                 </select>
               </div>
 
@@ -245,17 +245,17 @@ export default function ProfilePage() {
                 onClick={handleSaveProfile}
                 disabled={updateProfile.isPending}
               >
-                {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
+                {updateProfile.isPending ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </div>
           </div>
 
           {/* Daily Metrics */}
           <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h3 className="mb-4 font-semibold">Daily Nutrition Targets</h3>
+            <h3 className="mb-4 font-semibold">{t('profile.dailyTargets')}</h3>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="calorieTarget">Calories (kcal/day)</Label>
+                <Label htmlFor="calorieTarget">{t('profile.caloriesPerDay')}</Label>
                 <Input
                   id="calorieTarget"
                   type="number"
@@ -265,7 +265,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="proteinTarget">Protein (g/day)</Label>
+                <Label htmlFor="proteinTarget">{t('profile.proteinPerDay')}</Label>
                 <Input
                   id="proteinTarget"
                   type="number"
@@ -286,9 +286,9 @@ export default function ProfilePage() {
                 <Target className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Health Goals</h2>
+                <h2 className="text-xl font-semibold">{t('profile.healthGoals')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Select your primary nutrition goal
+                  {t('profile.selectGoal')}
                 </p>
               </div>
             </div>
@@ -309,7 +309,7 @@ export default function ProfilePage() {
                     <h3 className="font-semibold">{goal.label}</h3>
                   </div>
                   {selectedGoal === goal.id && (
-                    <Badge className="bg-primary text-primary-foreground">Active</Badge>
+                    <Badge className="bg-primary text-primary-foreground">{t('profile.active.label')}</Badge>
                   )}
                 </button>
               ))}
@@ -320,7 +320,7 @@ export default function ProfilePage() {
               onClick={handleSaveGoals}
               disabled={updateProfile.isPending}
             >
-              {updateProfile.isPending ? 'Saving...' : 'Save Goals'}
+              {updateProfile.isPending ? t('common.saving') : t('profile.saveGoals')}
             </Button>
           </div>
 
@@ -328,19 +328,19 @@ export default function ProfilePage() {
           <div className="rounded-xl border bg-card p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Progress Tracking</h3>
+              <h3 className="font-semibold">{t('profile.progressTracking')}</h3>
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Track daily meals</span>
+                <span className="text-sm">{t('profile.trackDailyMeals')}</span>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">Weekly progress emails</span>
+                <span className="text-sm">{t('profile.weeklyProgressEmails')}</span>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">AI suggestions notifications</span>
+                <span className="text-sm">{t('profile.aiSuggestionsNotifications')}</span>
                 <Switch />
               </div>
             </div>
@@ -355,9 +355,9 @@ export default function ProfilePage() {
                 <Heart className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Dietary Preferences</h2>
+                <h2 className="text-xl font-semibold">{t('profile.dietaryPreferences')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Customize your dietary restrictions
+                  {t('profile.customizeDietary')}
                 </p>
               </div>
             </div>
@@ -385,10 +385,10 @@ export default function ProfilePage() {
           <div className="rounded-xl border bg-card p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-[#F4A261]" />
-              <h3 className="font-semibold">Allergies & Intolerances</h3>
+              <h3 className="font-semibold">{t('profile.allergies')}</h3>
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
-              Select ingredients you want to avoid in recipes
+              {t('profile.allergiesDesc')}
             </p>
             <div className="flex flex-wrap gap-2">
               {allergies.map((allergy) => (
@@ -413,7 +413,7 @@ export default function ProfilePage() {
             onClick={handleSavePreferences}
             disabled={updateProfile.isPending}
           >
-            {updateProfile.isPending ? 'Saving...' : 'Save Preferences'}
+            {updateProfile.isPending ? t('common.saving') : t('profile.savePreferences')}
           </Button>
         </TabsContent>
 

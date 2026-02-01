@@ -1,5 +1,6 @@
 import { CheckCircle2, AlertCircle, TrendingUp, Droplets } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface NutrientData {
   name: string;
@@ -20,6 +21,8 @@ interface AIAnalysisCardProps {
 }
 
 export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
+  const { t } = useLanguage();
+
   const getBalanceColor = (balance: string) => {
     switch (balance) {
       case 'excellent':
@@ -43,7 +46,7 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Meal Balance</p>
+            <p className="text-sm text-muted-foreground">{t('analysis.mealBalance')}</p>
             <div className="flex items-center gap-2">
               <BalanceIcon className={`h-5 w-5 ${getBalanceColor(data.balance)}`} />
               <span className="text-lg font-semibold capitalize">{data.balance}</span>
@@ -54,7 +57,7 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
           </div>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Your meal composition looks {data.balance}. Keep up the good work!
+          {t('analysis.compositionLooks')} {data.balance}. {t('analysis.keepUp')}
         </p>
       </div>
 
@@ -62,7 +65,7 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Hydration</p>
+            <p className="text-sm text-muted-foreground">{t('analysis.hydration')}</p>
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold">1.5L / 2.5L</span>
             </div>
@@ -73,13 +76,13 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
         </div>
         <Progress value={60} className="mt-3" />
         <p className="mt-2 text-sm text-muted-foreground">
-          Drink 1 more liter to reach your goal
+          {t('analysis.drinkMore')}
         </p>
       </div>
 
       {/* Macronutrients */}
       <div className="rounded-xl border bg-card p-6 shadow-sm md:col-span-2">
-        <h3 className="mb-4 font-semibold">Macronutrients</h3>
+        <h3 className="mb-4 font-semibold">{t('analysis.macronutrients')}</h3>
         <div className="space-y-4">
           {data.nutrients.map((nutrient) => (
             <div key={nutrient.name}>
@@ -98,7 +101,7 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
       {/* Missing Nutrients */}
       {data.missing.length > 0 && (
         <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <h3 className="mb-3 font-semibold text-[#F4A261]">Add More</h3>
+          <h3 className="mb-3 font-semibold text-[#F4A261]">{t('analysis.addMore')}</h3>
           <ul className="space-y-2">
             {data.missing.map((item, index) => (
               <li key={index} className="flex items-start gap-2 text-sm">
@@ -113,7 +116,7 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
       {/* Overconsumption */}
       {data.overconsumption.length > 0 && (
         <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <h3 className="mb-3 font-semibold text-destructive">Reduce</h3>
+          <h3 className="mb-3 font-semibold text-destructive">{t('analysis.reduce')}</h3>
           <ul className="space-y-2">
             {data.overconsumption.map((item, index) => (
               <li key={index} className="flex items-start gap-2 text-sm">

@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb, ArrowRightLeft, TrendingUp } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Suggestion {
   type: 'improve' | 'swap' | 'add';
@@ -12,6 +13,8 @@ interface SmartSuggestionsProps {
 }
 
 export function SmartSuggestions({ suggestions }: SmartSuggestionsProps) {
+  const { t } = useLanguage();
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'improve':
@@ -38,7 +41,7 @@ export function SmartSuggestions({ suggestions }: SmartSuggestionsProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Lightbulb className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-semibold">Smart AI Suggestions</h2>
+        <h2 className="text-xl font-semibold">{t('suggestions.title')}</h2>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

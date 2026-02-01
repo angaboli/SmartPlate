@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Plus, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MealInputProps {
   onAnalyze: (meal: string, mealType: string) => void;
@@ -12,14 +13,16 @@ interface MealInputProps {
 }
 
 export function MealInput({ onAnalyze, loading }: MealInputProps) {
+  const { t } = useLanguage();
+
   const [mealText, setMealText] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('lunch');
 
   const mealTypes = [
-    { id: 'breakfast', label: 'Breakfast', icon: '🌅' },
-    { id: 'lunch', label: 'Lunch', icon: '☀️' },
-    { id: 'dinner', label: 'Dinner', icon: '🌙' },
-    { id: 'snacks', label: 'Snacks', icon: '🍎' },
+    { id: 'breakfast', label: t('mealInput.breakfast'), icon: '🌅' },
+    { id: 'lunch', label: t('mealInput.lunch'), icon: '☀️' },
+    { id: 'dinner', label: t('mealInput.dinner'), icon: '🌙' },
+    { id: 'snacks', label: t('mealInput.snacks'), icon: '🍎' },
   ];
 
   const quickAddItems = [
@@ -47,7 +50,7 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Meal Type</label>
+          <label className="text-sm font-medium">{t('mealInput.mealType')}</label>
           <div className="flex flex-wrap gap-2">
             {mealTypes.map((type) => (
               <Button
@@ -64,9 +67,9 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">What did you eat today?</label>
+          <label className="text-sm font-medium">{t('mealInput.whatDidYouEat')}</label>
           <Textarea
-            placeholder="E.g., Grilled chicken with quinoa, steamed broccoli, and olive oil..."
+            placeholder={t('mealInput.placeholder')}
             value={mealText}
             onChange={(e) => setMealText(e.target.value)}
             className="min-h-[120px] resize-none bg-input-background"
@@ -75,7 +78,7 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Quick Add</label>
+          <label className="text-sm font-medium">{t('mealInput.quickAdd')}</label>
           <div className="flex flex-wrap gap-2">
             {quickAddItems.map((item) => (
               <Badge
@@ -102,7 +105,7 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
           ) : (
             <Sparkles className="h-5 w-5 mr-2" />
           )}
-          {loading ? 'Analyzing...' : 'Analyze with AI'}
+          {loading ? t('mealInput.analyzing') : t('mealInput.analyzeAI')}
         </Button>
       </div>
     </div>

@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CreateRecipePage() {
   const { user } = useAuth();
   const router = useRouter();
   const createRecipe = useCreateRecipe();
+  const { t } = useLanguage();
 
   const role = user?.role;
 
@@ -30,14 +32,14 @@ export default function CreateRecipePage() {
       <Button variant="ghost" size="sm" asChild>
         <Link href="/dashboard/recipes/manage">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to management
+          {t('manage.backToManagement')}
         </Link>
       </Button>
 
       <div>
-        <h1 className="text-2xl font-bold">Create Recipe</h1>
+        <h1 className="text-2xl font-bold">{t('manage.createTitle')}</h1>
         <p className="text-muted-foreground">
-          Fill in the details below. The recipe will be saved as a draft.
+          {t('manage.createDesc')}
         </p>
       </div>
 
@@ -46,7 +48,7 @@ export default function CreateRecipePage() {
           onSubmit={(data) => {
             createRecipe.mutate(data, {
               onSuccess: (recipe) => {
-                toast.success('Recipe created');
+                toast.success(t('manage.recipeCreated'));
                 router.push(`/recipes/${recipe.id}`);
               },
               onError: (err) => {
@@ -55,7 +57,7 @@ export default function CreateRecipePage() {
             });
           }}
           isPending={createRecipe.isPending}
-          submitLabel="Create Recipe"
+          submitLabel={t('manage.createRecipe')}
         />
       </div>
     </div>
