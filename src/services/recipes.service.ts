@@ -149,11 +149,11 @@ export interface UpdateRecipeInput {
   titleFr?: string;
   description?: string;
   descriptionFr?: string;
-  imageUrl?: string;
-  prepTimeMin?: number;
-  cookTimeMin?: number;
-  servings?: number;
-  calories?: number;
+  imageUrl?: string | null;
+  prepTimeMin?: number | null;
+  cookTimeMin?: number | null;
+  servings?: number | null;
+  calories?: number | null;
   category?: string;
   goal?: string;
   ingredients?: string[];
