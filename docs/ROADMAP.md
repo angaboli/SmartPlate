@@ -1,7 +1,7 @@
 # SmartPlate — Implementation Roadmap
 
-> **Version**: 2.1
-> **Last updated**: 2026-01-31
+> **Version**: 2.2
+> **Last updated**: 2026-02-01
 
 ---
 
@@ -18,7 +18,7 @@ M2  Auth (JWT) + Login/Register UI               ✅
  │
  ├─────────────────────────────┐
  v                             v
-M3  Recipes read-only         M6  AI Coach (LLM)
+M3  Recipes read-only         M6  AI Coach (LLM)  ✅
  │                             │
  v                             v
 M4  Cook Later (saved)  ✅    M7  Planner + groceries
@@ -364,27 +364,41 @@ Social media/recipe link import with synchronous processing. Users paste a URL, 
 
 ---
 
-## M6: AI Coach Integration
+## M6: AI Coach Integration (Meal Analysis)
 
 ### Goal
-Meal analysis powered by actual LLM calls.
+Meal analysis powered by actual LLM calls (GPT-4o-mini).
 
-### Tasks (ordered)
+### Tasks (completed)
 
-1. **Configure LLM** — add `OPENAI_API_KEY` to `.env`
-2. **Create AI service** — `src/services/ai.service.ts` (prompt management)
-3. **Create prompt templates** — meal analysis, suggestions
-4. **Create MealLog service + Route Handlers**
-5. **Create AI analysis worker** — `workers/ai-analysis.worker.ts`
-6. **Implement Zod validation** for LLM output
-7. **Connect DashboardPage** to API
-8. **Add safety guardrails** — validate, sanitize, fallback
+1. **Install OpenAI SDK** — `pnpm add openai`, added `OPENAI_API_KEY` to `.env.example`
+2. **Prisma schema** — `MealType` enum (breakfast/lunch/dinner/snack), `MealLog` model with JSON analysis field, `mealLogs` relation on User + migration
+3. **AI service** — `src/services/ai.service.ts` with OpenAI client (gpt-4o-mini, temperature 0.3, JSON mode), system prompt built from `UserNutritionContext` (calorie target, protein target, dietary restrictions), Zod schemas matching existing component interfaces (`AnalysisDataSchema`, `SuggestionSchema`, `MealAnalysisResultSchema`)
+4. **Meal log service** — `src/services/meal-log.service.ts` with `checkAnalysisRateLimit()` (20/day via DB count), `validateMealInput()` (trim, max 2000 chars, normalize 'snacks' → 'snack'), `createMealLog()` (fetch settings → call AI → save), `listMealLogs()` (optional date filter), `getDailySummary()` (today's calories/count/target, weekDaysLogged, weekly chart data)
+5. **API routes** — `POST /api/v1/meal-logs` (analyze + persist), `GET /api/v1/meal-logs` (list with date filter), `GET /api/v1/meal-logs/summary` (daily + weekly stats)
+6. **Frontend hook** — `src/hooks/useMealLog.ts` with TanStack Query: `useAnalyzeMeal()` mutation, `useMealLogs()` query, `useDailySummary()` query (5-min refetch)
+7. **Updated MealInput** — added `loading` prop, disabled state, spinner on button
+8. **Updated Dashboard** — replaced all mock data: stats cards show live calories/target, weekly progress from API, meal analysis calls real AI, error toasts on failure
+9. **Updated WeeklyProgressChart** — accepts optional `data` prop, falls back to mock
+10. **Updated OpenAPI spec** — new `MealType`, `AnalysisData`, `Suggestion`, `MealLog`, `DailySummary` schemas and 3 endpoint paths
+
+### New Files
+- `src/services/ai.service.ts` — OpenAI + Zod validation
+- `src/services/meal-log.service.ts` — CRUD + rate limit + summary
+- `src/app/api/v1/meal-logs/route.ts` — POST + GET
+- `src/app/api/v1/meal-logs/summary/route.ts` — GET summary
+- `src/hooks/useMealLog.ts` — TanStack Query hooks
+- `prisma/migrations/..._add_meal_logs/` — MealLog table migration
 
 ### Acceptance Criteria
-- [ ] Real AI analysis for meals
-- [ ] Suggestions are contextual
-- [ ] Loading/error states
-- [ ] Analysis saved in DB
+- [x] Real AI analysis for meals (GPT-4o-mini)
+- [x] Suggestions are contextual to user's dietary settings
+- [x] Loading/error states with toast notifications
+- [x] Analysis saved in DB (MealLog table)
+- [x] Stats cards show live today's calories and weekly progress
+- [x] Rate limiting: 20 analyses/day per user
+- [x] Zod validation of LLM output
+- [x] Weekly Planner tab still works (mock data unchanged)
 
 ### Tests
 - AI service tests (mocked LLM)

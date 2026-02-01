@@ -11,54 +11,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Target, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  useAnalyzeMeal,
+  useDailySummary,
+  type MealLogDTO,
+} from '@/hooks/useMealLog';
 
 export default function DashboardPage() {
-  const [analyzed, setAnalyzed] = useState(false);
+  const [latestLog, setLatestLog] = useState<MealLogDTO | null>(null);
   const [groceryListOpen, setGroceryListOpen] = useState(false);
 
-  // Mock data
-  const analysisData = {
-    balance: 'good' as const,
-    nutrients: [
-      { name: 'Protein', value: 45, target: 60, unit: 'g' },
-      { name: 'Carbohydrates', value: 180, target: 200, unit: 'g' },
-      { name: 'Fats', value: 50, target: 70, unit: 'g' },
-      { name: 'Fiber', value: 18, target: 25, unit: 'g' },
-    ],
-    missing: [
-      'More vegetables for better fiber intake',
-      'Omega-3 fatty acids from fish or seeds',
-      'Vitamin D sources like fortified foods',
-    ],
-    overconsumption: [
-      'Refined carbohydrates - consider whole grains',
-      'Sodium levels slightly elevated',
-    ],
-  };
+  const analyzeMutation = useAnalyzeMeal();
+  const { data: summary } = useDailySummary();
 
-  const suggestions = [
-    {
-      type: 'improve' as const,
-      title: 'Add more vegetables',
-      description: 'Include 2 cups of leafy greens for better nutrient balance',
-    },
-    {
-      type: 'swap' as const,
-      title: 'Swap refined carbs',
-      description: 'Replace white rice with quinoa or brown rice',
-    },
-    {
-      type: 'add' as const,
-      title: 'Include healthy fats',
-      description: 'Add avocado or nuts for omega-3 fatty acids',
-    },
-    {
-      type: 'improve' as const,
-      title: 'Increase protein',
-      description: 'Add 15g more protein through lean meat or legumes',
-    },
-  ];
+  // Stats from live summary
+  const todayCalories = summary?.today.totalCalories ?? 0;
+  const calorieTarget = summary?.today.calorieTarget ?? 2000;
+  const weekDaysLogged = summary?.weekDaysLogged ?? 0;
+  const calorieProgress = calorieTarget > 0 ? Math.min((todayCalories / calorieTarget) * 100, 100) : 0;
+  const weekProgress = (weekDaysLogged / 7) * 100;
 
+  // Weekly Planner mock data (stays mocked for M7)
   const weekData = [
     {
       date: 'Jan 23, 2026',
@@ -93,8 +67,17 @@ export default function DashboardPage() {
   ];
 
   const handleAnalyze = (meal: string, mealType: string) => {
-    console.log('Analyzing meal:', meal, mealType);
-    setAnalyzed(true);
+    analyzeMutation.mutate(
+      { mealText: meal, mealType },
+      {
+        onSuccess: (data) => {
+          setLatestLog(data);
+        },
+        onError: (error) => {
+          toast.error(error.message || 'Failed to analyze meal');
+        },
+      },
+    );
   };
 
   const handleRegenerateWeek = () => {
@@ -105,6 +88,8 @@ export default function DashboardPage() {
     setGroceryListOpen(true);
   };
 
+  const analyzed = latestLog !== null;
+
   return (
     <div className="space-y-8 pb-20">
       {/* Stats Overview */}
@@ -114,15 +99,15 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Daily Goal</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">1,850</span>
-                <span className="text-sm text-muted-foreground">/ 2,000 kcal</span>
+                <span className="text-2xl font-bold">{todayCalories.toLocaleString()}</span>
+                <span className="text-sm text-muted-foreground">/ {calorieTarget.toLocaleString()} kcal</span>
               </div>
             </div>
             <div className="rounded-lg bg-primary/10 p-3">
               <Target className="h-5 w-5 text-primary" />
             </div>
           </div>
-          <Progress value={92.5} className="mt-4" />
+          <Progress value={calorieProgress} className="mt-4" />
         </div>
 
         <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -130,7 +115,7 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Weekly Progress</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">5</span>
+                <span className="text-2xl font-bold">{weekDaysLogged}</span>
                 <span className="text-sm text-muted-foreground">/ 7 days</span>
               </div>
             </div>
@@ -138,7 +123,7 @@ export default function DashboardPage() {
               <Calendar className="h-5 w-5 text-[#8A6A4F]" />
             </div>
           </div>
-          <Progress value={71.4} className="mt-4" />
+          <Progress value={weekProgress} className="mt-4" />
         </div>
 
         <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -147,18 +132,25 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground">This Week</p>
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">+12%</span>
+                <span className="text-2xl font-bold">
+                  {summary?.today.mealCount ?? 0} meals
+                </span>
               </div>
             </div>
             <Badge className="bg-primary/10 text-primary border-primary/20">
-              Excellent
+              {weekDaysLogged >= 5 ? 'Excellent' : weekDaysLogged >= 3 ? 'Good' : 'Getting started'}
             </Badge>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Great choice — here&apos;s how to improve it.
+            {weekDaysLogged >= 5
+              ? 'Great consistency this week!'
+              : 'Log more meals to track your progress.'}
           </p>
         </div>
       </div>
+
+      {/* Weekly Progress Chart */}
+      <WeeklyProgressChart data={summary?.weeklyData} />
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="analyze" className="space-y-6">
@@ -175,21 +167,24 @@ export default function DashboardPage() {
                 Enter what you ate and get instant AI-powered nutrition insights
               </p>
             </div>
-            <MealInput onAnalyze={handleAnalyze} />
+            <MealInput onAnalyze={handleAnalyze} loading={analyzeMutation.isPending} />
           </div>
 
-          {analyzed && (
+          {analyzed && latestLog && (
             <>
               <div>
                 <div className="mb-4">
                   <h2 className="text-xl font-semibold">AI Analysis</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Your meal composition looks good. Keep up the good work!
+                    Analysis for: {latestLog.mealText.length > 80
+                      ? latestLog.mealText.slice(0, 80) + '...'
+                      : latestLog.mealText}
+                    {' '}({latestLog.totalCalories} kcal)
                   </p>
                 </div>
-                <AIAnalysisCard data={analysisData} />
+                <AIAnalysisCard data={latestLog.analysis.analysisData} />
               </div>
-              <SmartSuggestions suggestions={suggestions} />
+              <SmartSuggestions suggestions={latestLog.analysis.suggestions} />
             </>
           )}
 

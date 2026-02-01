@@ -2,7 +2,7 @@ export const openApiSpec = {
   openapi: '3.0.3',
   info: {
     title: 'SmartPlate API',
-    version: '0.2.0',
+    version: '0.3.0',
     description:
       'REST API for SmartPlate — AI-powered nutrition tracking, recipe discovery, and meal planning. Includes RBAC (user/editor/admin) and recipe publication workflow.',
     contact: {
@@ -433,6 +433,85 @@ export const openApiSpec = {
         },
       },
     },
+    '/meal-logs': {
+      post: {
+        tags: ['Meal Logs'],
+        summary: 'Analyze a meal with AI',
+        description: 'Submits a meal for AI-powered nutrition analysis. The backend calls GPT-4o-mini, validates the structured JSON, and persists the result. Rate limited to 20 analyses/day per user.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['mealText', 'mealType'],
+                properties: {
+                  mealText: { type: 'string', example: 'Grilled chicken with quinoa and steamed broccoli', maxLength: 2000 },
+                  mealType: { $ref: '#/components/schemas/MealType' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Meal analyzed and saved',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MealLog' },
+              },
+            },
+          },
+          '400': { description: 'Validation error (invalid meal type, text too long)' },
+          '401': { description: 'Unauthorized' },
+          '429': { description: 'Daily analysis limit reached (20/day)' },
+          '500': { description: 'AI analysis failed' },
+        },
+      },
+      get: {
+        tags: ['Meal Logs'],
+        summary: 'List meal logs',
+        description: 'Returns the authenticated user\'s meal logs, optionally filtered by date.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'date', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Filter by date (YYYY-MM-DD)' },
+        ],
+        responses: {
+          '200': {
+            description: 'List of meal logs',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/MealLog' },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/meal-logs/summary': {
+      get: {
+        tags: ['Meal Logs'],
+        summary: 'Get daily summary and weekly stats',
+        description: 'Returns today\'s calorie total, meal count, calorie target, number of days logged this week, and weekly chart data (Mon-Sun).',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Daily summary with weekly stats',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/DailySummary' },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
     '/admin/users': {
       get: {
         tags: ['Admin'],
@@ -680,6 +759,82 @@ export const openApiSpec = {
           ingredients: { type: 'array', items: { type: 'string' } },
           steps: { type: 'array', items: { type: 'string' } },
           tag: { type: 'string', nullable: true, description: 'Meal type tag (breakfast, lunch, dinner, snack)' },
+        },
+      },
+      MealType: {
+        type: 'string',
+        enum: ['breakfast', 'lunch', 'dinner', 'snack'],
+        description: 'Type of meal',
+      },
+      AnalysisData: {
+        type: 'object',
+        properties: {
+          balance: { type: 'string', enum: ['excellent', 'good', 'needs-improvement'] },
+          nutrients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', example: 'Protein' },
+                value: { type: 'number', example: 45 },
+                target: { type: 'number', example: 60 },
+                unit: { type: 'string', example: 'g' },
+              },
+            },
+          },
+          missing: { type: 'array', items: { type: 'string' } },
+          overconsumption: { type: 'array', items: { type: 'string' } },
+        },
+      },
+      Suggestion: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['improve', 'swap', 'add'] },
+          title: { type: 'string', example: 'Add more vegetables' },
+          description: { type: 'string', example: 'Include 2 cups of leafy greens for better nutrient balance' },
+        },
+      },
+      MealLog: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          userId: { type: 'string' },
+          mealText: { type: 'string', example: 'Grilled chicken with quinoa and steamed broccoli' },
+          mealType: { $ref: '#/components/schemas/MealType' },
+          analysis: {
+            type: 'object',
+            properties: {
+              analysisData: { $ref: '#/components/schemas/AnalysisData' },
+              suggestions: { type: 'array', items: { $ref: '#/components/schemas/Suggestion' } },
+            },
+          },
+          totalCalories: { type: 'integer', example: 520 },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      DailySummary: {
+        type: 'object',
+        properties: {
+          today: {
+            type: 'object',
+            properties: {
+              totalCalories: { type: 'integer', example: 1450 },
+              mealCount: { type: 'integer', example: 3 },
+              calorieTarget: { type: 'integer', example: 2000 },
+            },
+          },
+          weekDaysLogged: { type: 'integer', example: 5 },
+          weeklyData: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                day: { type: 'string', example: 'Mon' },
+                calories: { type: 'integer', example: 1850 },
+                target: { type: 'integer', example: 2000 },
+              },
+            },
+          },
         },
       },
       UserSummary: {

@@ -27,6 +27,13 @@ enum ImportStatus {
   failed
 }
 
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
 // ─── USERS ───────────────────────────────────────────
 
 model User {
@@ -44,6 +51,7 @@ model User {
   recipes       Recipe[]
   savedRecipes  SavedRecipe[]
   imports       Import[]
+  mealLogs      MealLog[]
 
   @@map("users")
 }
@@ -182,4 +190,21 @@ model Import {
 
   @@index([userId])
   @@map("imports")
+}
+
+// ─── MEAL LOGS ─────────────────────────────────────
+
+model MealLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealText      String
+  mealType      MealType
+  analysis      Json
+  totalCalories Int
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("meal_logs")
 }

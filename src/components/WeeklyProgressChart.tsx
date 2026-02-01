@@ -1,6 +1,16 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-const data = [
+interface WeeklyDataPoint {
+  day: string;
+  calories: number;
+  target: number;
+}
+
+interface WeeklyProgressChartProps {
+  data?: WeeklyDataPoint[];
+}
+
+const mockData: WeeklyDataPoint[] = [
   { day: 'Mon', calories: 1850, target: 2000 },
   { day: 'Tue', calories: 1920, target: 2000 },
   { day: 'Wed', calories: 2100, target: 2000 },
@@ -10,12 +20,14 @@ const data = [
   { day: 'Sun', calories: 1890, target: 2000 },
 ];
 
-export function WeeklyProgressChart() {
+export function WeeklyProgressChart({ data }: WeeklyProgressChartProps) {
+  const chartData = data ?? mockData;
+
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
       <h3 className="mb-4 font-semibold">Weekly Calorie Tracking</h3>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data}>
+        <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="day" className="text-sm" />
           <YAxis className="text-sm" />

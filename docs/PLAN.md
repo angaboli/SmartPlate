@@ -1,8 +1,8 @@
 # SmartPlate — Master Project Plan
 
-> **Version**: 2.1
-> **Last updated**: 2026-01-31
-> **Status**: In progress — M5 (Import Feature) completed
+> **Version**: 2.2
+> **Last updated**: 2026-02-01
+> **Status**: In progress — M6 (AI Coach - Meal Analysis) completed
 
 ---
 
@@ -252,7 +252,7 @@ See [ROADMAP.md](./ROADMAP.md) for detailed milestones and tasks.
 | **M4** | Cook Later (saved recipes) | Done |
 | **M4.5** | RBAC + Recipe publication workflow | Done |
 | **M5** | Import from social link (DB-backed, no Redis) | Done |
-| **M6** | AI Coach (LLM analysis + suggestions) | |
+| **M6** | AI Coach (LLM meal analysis + suggestions) | Done |
 | **M7** | Planner + grocery list | |
 | **M8** | i18n EN/FR complete | |
 | **M9** | Security, rate limits, monitoring, tests | |

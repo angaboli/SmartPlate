@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Plus } from 'lucide-react';
+import { Sparkles, Plus, Loader2 } from 'lucide-react';
 
 interface MealInputProps {
   onAnalyze: (meal: string, mealType: string) => void;
+  loading?: boolean;
 }
 
-export function MealInput({ onAnalyze }: MealInputProps) {
+export function MealInput({ onAnalyze, loading }: MealInputProps) {
   const [mealText, setMealText] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('lunch');
 
@@ -69,6 +70,7 @@ export function MealInput({ onAnalyze }: MealInputProps) {
             value={mealText}
             onChange={(e) => setMealText(e.target.value)}
             className="min-h-[120px] resize-none bg-input-background"
+            disabled={loading}
           />
         </div>
 
@@ -93,10 +95,14 @@ export function MealInput({ onAnalyze }: MealInputProps) {
           onClick={handleAnalyze}
           size="lg"
           className="w-full bg-primary hover:bg-primary/90"
-          disabled={!mealText.trim()}
+          disabled={!mealText.trim() || loading}
         >
-          <Sparkles className="h-5 w-5 mr-2" />
-          Analyze with AI
+          {loading ? (
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+          ) : (
+            <Sparkles className="h-5 w-5 mr-2" />
+          )}
+          {loading ? 'Analyzing...' : 'Analyze with AI'}
         </Button>
       </div>
     </div>
