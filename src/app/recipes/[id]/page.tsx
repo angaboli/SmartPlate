@@ -2,8 +2,10 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useRecipe } from '@/hooks/useRecipes';
+import { useRecipe, useSubmitForReview } from '@/hooks/useRecipes';
+import { useAuth } from '@/hooks/useAuth';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { DeleteRecipeDialog } from '@/components/DeleteRecipeDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,8 +16,11 @@ import {
   Sparkles,
   Bookmark,
   Loader2,
+  Pencil,
+  Send,
 } from 'lucide-react';
 import { useCookLater } from '@/contexts/CookLaterContext';
+import { toast } from 'sonner';
 
 const goalColors: Record<string, string> = {
   balanced: 'bg-primary/10 text-primary border-primary/20',
@@ -31,6 +36,23 @@ const goalLabels: Record<string, string> = {
   'energy-boost': 'Energy Boost',
 };
 
+const statusBadge: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  pending_review:
+    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  published:
+    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  rejected:
+    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+};
+
+const statusLabels: Record<string, string> = {
+  draft: 'Draft',
+  pending_review: 'Pending Review',
+  published: 'Published',
+  rejected: 'Rejected',
+};
+
 export default function RecipeDetailPage({
   params,
 }: {
@@ -38,7 +60,9 @@ export default function RecipeDetailPage({
 }) {
   const { id } = use(params);
   const { data: recipe, isLoading, error } = useRecipe(id);
+  const { user } = useAuth();
   const { isRecipeSaved, saveRecipe, unsaveRecipe, isSaving } = useCookLater();
+  const submitForReview = useSubmitForReview();
 
   if (isLoading) {
     return (
@@ -65,6 +89,13 @@ export default function RecipeDetailPage({
   const saved = isRecipeSaved(recipe.id);
   const totalTime =
     (recipe.prepTimeMin ?? 0) + (recipe.cookTimeMin ?? 0) || null;
+
+  const isAuthor = user && recipe.authorId === user.id;
+  const isAdmin = user?.role === 'admin';
+  const canEdit = isAuthor || isAdmin;
+  const canSubmit =
+    isAuthor &&
+    (recipe.status === 'draft' || recipe.status === 'rejected');
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 pb-20">
@@ -95,6 +126,11 @@ export default function RecipeDetailPage({
       <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">{recipe.title}</h1>
         <div className="flex flex-wrap gap-2">
+          {recipe.status !== 'published' && (
+            <Badge className={statusBadge[recipe.status] || ''}>
+              {statusLabels[recipe.status] || recipe.status}
+            </Badge>
+          )}
           {recipe.category === 'SafariTaste' && (
             <Badge variant="outline" className="border-[#8A6A4F] text-[#8A6A4F]">
               SafariTaste
@@ -111,7 +147,43 @@ export default function RecipeDetailPage({
             {recipe.description}
           </p>
         )}
+        {recipe.reviewNote && recipe.status === 'rejected' && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-400">
+            <strong>Review note:</strong> {recipe.reviewNote}
+          </div>
+        )}
       </div>
+
+      {/* Author action buttons */}
+      {canEdit && (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/dashboard/recipes/${recipe.id}/edit`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
+          <DeleteRecipeDialog
+            recipeId={recipe.id}
+            recipeTitle={recipe.title}
+          />
+          {canSubmit && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                submitForReview.mutate(recipe.id, {
+                  onSuccess: () => toast.success('Submitted for review'),
+                  onError: (err) => toast.error(err.message),
+                })
+              }
+              disabled={submitForReview.isPending}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {submitForReview.isPending ? 'Submitting...' : 'Submit for Review'}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Metadata bar */}
       <div className="flex flex-wrap gap-6 rounded-xl border bg-card p-4">
