@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { AppError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 
 export function getClientIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -31,6 +32,7 @@ export async function checkRateLimit({
   });
 
   if (count >= maxAttempts) {
+    logger.warn({ identifier, action, count, maxAttempts }, 'Rate limit exceeded');
     throw new AppError('Too many requests. Please try again later.', 429);
   }
 }

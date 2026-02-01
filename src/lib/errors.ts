@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // ─── Base error ────────────────────────────────────
 
@@ -92,7 +93,7 @@ export function handleApiError(error: unknown) {
   }
 
   // Generic
-  console.error('[API Error]', error);
+  logger.error({ err: error }, 'Unhandled API error');
   return NextResponse.json(
     { error: 'Internal server error' },
     { status: 500 },
