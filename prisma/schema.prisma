@@ -214,6 +214,18 @@ model MealLog {
   @@map("meal_logs")
 }
 
+// ─── RATE LIMITING ──────────────────────────────────
+
+model RateLimitAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  action     String
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, action, createdAt])
+  @@map("rate_limit_attempts")
+}
+
 // ─── MEAL PLANS ──────────────────────────────────
 
 model MealPlan {
