@@ -118,7 +118,7 @@ export default function ProfilePage() {
       },
       {
         onSuccess: () => toast.success(t('profile.preferencesSaved')),
-        onError: () => toast.error(t('profile.failedSavePreferences')),
+        onError: () => toast.error(t('profile.failedSavePrefs')),
       },
     );
   }
