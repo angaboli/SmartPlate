@@ -256,6 +256,31 @@ export async function reviewRecipe(
   });
 }
 
+// ─── Change recipe status (editor/admin) ────────────
+
+export async function changeRecipeStatus(
+  id: string,
+  newStatus: RecipeStatus,
+  user: JwtPayload,
+) {
+  if (!canManagePublicationStatus(user)) {
+    throw new ForbiddenError('Only editors and admins can change recipe status');
+  }
+
+  const recipe = await db.recipe.findUnique({ where: { id } });
+  if (!recipe) throw new NotFoundError('Recipe not found');
+
+  return db.recipe.update({
+    where: { id },
+    data: {
+      status: newStatus,
+      publishedAt: newStatus === 'published' ? (recipe.publishedAt ?? new Date()) : null,
+      reviewNote: newStatus === 'rejected' ? recipe.reviewNote : null,
+    },
+    include: recipeInclude,
+  });
+}
+
 // ─── Delete recipe ───────────────────────────────────
 
 export async function deleteRecipe(id: string, user: JwtPayload) {

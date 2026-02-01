@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,8 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { BookOpen, Check, X } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDeleteRecipe, useChangeRecipeStatus } from '@/hooks/useRecipes';
 
 interface RecipeRow {
   id: string;
@@ -53,6 +55,8 @@ export default function RecipeManagePage() {
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const deleteRecipe = useDeleteRecipe();
+  const changeStatus = useChangeRecipeStatus();
 
   const role = user?.role;
 
@@ -84,33 +88,28 @@ export default function RecipeManagePage() {
     fetchRecipes();
   }, [fetchRecipes]);
 
-  async function handleReview(recipeId: string, decision: 'published' | 'rejected') {
-    const reviewNote =
-      decision === 'rejected'
-        ? window.prompt('Rejection reason (optional):') ?? undefined
-        : undefined;
-
-    try {
-      const res = await fetch(`/api/v1/recipes/${recipeId}/review`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+  function handleStatusChange(recipeId: string, newStatus: string) {
+    changeStatus.mutate(
+      { id: recipeId, status: newStatus },
+      {
+        onSuccess: () => {
+          toast.success(`Status changed to ${statusLabels[newStatus] || newStatus}`);
+          fetchRecipes();
         },
-        body: JSON.stringify({ status: decision, reviewNote }),
-      });
+        onError: (err) => toast.error(err.message),
+      },
+    );
+  }
 
-      if (!res.ok) {
-        const data = await res.json();
-        toast.error(data.error || 'Review failed');
-        return;
-      }
-
-      toast.success(decision === 'published' ? 'Recipe published' : 'Recipe rejected');
-      fetchRecipes();
-    } catch {
-      toast.error('Review failed');
-    }
+  function handleDelete(recipeId: string) {
+    if (!window.confirm('Are you sure you want to delete this recipe?')) return;
+    deleteRecipe.mutate(recipeId, {
+      onSuccess: () => {
+        toast.success('Recipe deleted');
+        fetchRecipes();
+      },
+      onError: (err) => toast.error(err.message),
+    });
   }
 
   if (!user || (role !== 'editor' && role !== 'admin')) return null;
@@ -123,18 +122,27 @@ export default function RecipeManagePage() {
           <h1 className="text-2xl font-bold">Recipe Management</h1>
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="pending_review">Pending Review</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending_review">Pending Review</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button asChild>
+            <Link href="/dashboard/recipes/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Recipe
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -157,12 +165,31 @@ export default function RecipeManagePage() {
               {recipes.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium max-w-[200px] truncate">
-                    {r.title}
+                    <Link
+                      href={`/recipes/${r.id}`}
+                      className="hover:underline"
+                    >
+                      {r.title}
+                    </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge className={statusBadge[r.status] || ''}>
-                      {statusLabels[r.status] || r.status}
-                    </Badge>
+                    <Select
+                      value={r.status}
+                      onValueChange={(val) => handleStatusChange(r.id, val)}
+                      disabled={changeStatus.isPending}
+                    >
+                      <SelectTrigger className="h-7 w-36">
+                        <Badge className={`${statusBadge[r.status] || ''} pointer-events-none`}>
+                          {statusLabels[r.status] || r.status}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="pending_review">Pending Review</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(r.createdAt).toLocaleDateString()}
@@ -171,28 +198,27 @@ export default function RecipeManagePage() {
                     {r.reviewNote || '—'}
                   </TableCell>
                   <TableCell>
-                    {r.status === 'pending_review' && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-green-700"
-                          onClick={() => handleReview(r.id, 'published')}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Publish
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-red-700"
-                          onClick={() => handleReview(r.id, 'rejected')}
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7"
+                        asChild
+                      >
+                        <Link href={`/dashboard/recipes/${r.id}/edit`}>
+                          <Pencil className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-destructive"
+                        onClick={() => handleDelete(r.id)}
+                        disabled={deleteRecipe.isPending}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
