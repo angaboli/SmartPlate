@@ -53,18 +53,27 @@ export interface DailySummaryDTO {
   weeklyData: WeeklyDataPoint[];
 }
 
-// ─── Auth header helper ─────────────────────────────
+// ─── Auth helpers ───────────────────────────────────
 
-function getAuthHeader(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
+function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
   const tokens = localStorage.getItem('auth');
-  if (!tokens) return {};
+  if (!tokens) return null;
   try {
     const { accessToken } = JSON.parse(tokens);
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    return accessToken || null;
   } catch {
-    return {};
+    return null;
   }
+}
+
+function getAuthHeader(): Record<string, string> {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function isAuthenticated(): boolean {
+  return getAccessToken() !== null;
 }
 
 // ─── API functions ──────────────────────────────────
@@ -128,6 +137,7 @@ export function useMealLogs(date?: string) {
   return useQuery({
     queryKey: ['meal-logs', date],
     queryFn: () => fetchMealLogs(date),
+    enabled: isAuthenticated(),
   });
 }
 
@@ -136,5 +146,6 @@ export function useDailySummary() {
     queryKey: ['meal-summary'],
     queryFn: fetchDailySummary,
     refetchInterval: 5 * 60 * 1000, // refetch every 5 min
+    enabled: isAuthenticated(),
   });
 }
