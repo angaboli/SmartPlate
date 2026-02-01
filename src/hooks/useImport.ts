@@ -31,7 +31,7 @@ export interface SaveImportInput {
 
 function getAuthHeader(): Record<string, string> {
   if (typeof window === 'undefined') return {};
-  const tokens = localStorage.getItem('auth_tokens');
+  const tokens = localStorage.getItem('auth');
   if (!tokens) return {};
   try {
     const { accessToken } = JSON.parse(tokens);
