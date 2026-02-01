@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, RefreshCw, ShoppingCart } from 'lucide-react';
+import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2 } from 'lucide-react';
 
 interface Meal {
   id: string;
@@ -14,6 +14,7 @@ interface Meal {
 interface DayPlan {
   date: string;
   day: string;
+  dayIndex: number;
   meals: Meal[];
 }
 
@@ -21,9 +22,25 @@ interface WeeklyPlannerProps {
   weekData: DayPlan[];
   onRegenerateWeek?: () => void;
   onGenerateGroceryList?: () => void;
+  isRegenerating?: boolean;
+  onAddMeal?: (dayIndex: number) => void;
+  onEditMeal?: (meal: Meal, dayIndex: number) => void;
+  onDeleteMeal?: (mealId: string) => void;
+  onOptimizeWithAI?: () => void;
+  isOptimizing?: boolean;
 }
 
-export function WeeklyPlanner({ weekData, onRegenerateWeek, onGenerateGroceryList }: WeeklyPlannerProps) {
+export function WeeklyPlanner({
+  weekData,
+  onRegenerateWeek,
+  onGenerateGroceryList,
+  isRegenerating,
+  onAddMeal,
+  onEditMeal,
+  onDeleteMeal,
+  onOptimizeWithAI,
+  isOptimizing,
+}: WeeklyPlannerProps) {
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
   const mealTypeColors = {
@@ -45,12 +62,27 @@ export function WeeklyPlanner({ weekData, onRegenerateWeek, onGenerateGroceryLis
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Weekly AI Meal Planner</h2>
+          <h2 className="text-xl font-semibold">Weekly Meal Planner</h2>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onRegenerateWeek}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Regenerate Week
+        <div className="flex flex-wrap gap-2">
+          {onOptimizeWithAI && (
+            <Button variant="outline" onClick={onOptimizeWithAI} disabled={isOptimizing || isRegenerating}>
+              {isOptimizing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Optimizing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Optimize with AI
+                </>
+              )}
+            </Button>
+          )}
+          <Button variant="outline" onClick={onRegenerateWeek} disabled={isRegenerating || isOptimizing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
+            {isRegenerating ? 'Generating...' : 'Regenerate Week'}
           </Button>
           <Button onClick={onGenerateGroceryList} className="bg-primary">
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -71,11 +103,23 @@ export function WeeklyPlanner({ weekData, onRegenerateWeek, onGenerateGroceryLis
                   <h3 className="font-semibold">{day.day}</h3>
                   <p className="text-sm text-muted-foreground">{day.date}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Total Calories</p>
-                  <p className="font-semibold">
-                    {day.meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total Calories</p>
+                    <p className="font-semibold">
+                      {day.meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
+                    </p>
+                  </div>
+                  {onAddMeal && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => onAddMeal(day.dayIndex)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -84,10 +128,32 @@ export function WeeklyPlanner({ weekData, onRegenerateWeek, onGenerateGroceryLis
               {day.meals.map((meal) => (
                 <div
                   key={meal.id}
-                  className={`rounded-lg border p-3 transition-all hover:shadow-md ${
+                  className={`group relative rounded-lg border p-3 transition-all hover:shadow-md ${
                     mealTypeColors[meal.type]
                   }`}
                 >
+                  {(onEditMeal || onDeleteMeal) && (
+                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      {onEditMeal && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMeal(meal, day.dayIndex)}
+                          className="rounded p-1 hover:bg-black/10"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {onDeleteMeal && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteMeal(meal.id)}
+                          className="rounded p-1 hover:bg-black/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-start gap-2">
                     <span className="text-lg">{mealTypeIcons[meal.type]}</span>
                     <div className="flex-1 space-y-1">
@@ -95,11 +161,25 @@ export function WeeklyPlanner({ weekData, onRegenerateWeek, onGenerateGroceryLis
                         {meal.type}
                       </p>
                       <p className="font-medium leading-tight line-clamp-2">{meal.name}</p>
-                      <p className="text-sm opacity-70">{meal.calories} kcal</p>
+                      <p className="text-sm opacity-70">{meal.calories > 0 ? `${meal.calories} kcal` : '-- kcal'}</p>
                     </div>
                   </div>
                 </div>
               ))}
+              {day.meals.length === 0 && (
+                <div className="col-span-full py-4 text-center text-sm text-muted-foreground">
+                  No meals yet.{' '}
+                  {onAddMeal && (
+                    <button
+                      type="button"
+                      onClick={() => onAddMeal(day.dayIndex)}
+                      className="text-primary underline"
+                    >
+                      Add one
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}

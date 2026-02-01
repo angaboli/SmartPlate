@@ -6,24 +6,44 @@ import { AIAnalysisCard } from '@/components/AIAnalysisCard';
 import { SmartSuggestions } from '@/components/SmartSuggestions';
 import { WeeklyPlanner } from '@/components/WeeklyPlanner';
 import { GroceryListDialog } from '@/components/GroceryListDialog';
+import { AddEditMealDialog } from '@/components/AddEditMealDialog';
 import { WeeklyProgressChart } from '@/components/WeeklyProgressChart';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Target, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, Target, Calendar, Loader2, Sparkles, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useAnalyzeMeal,
   useDailySummary,
   type MealLogDTO,
 } from '@/hooks/useMealLog';
+import {
+  useMealPlan,
+  useGeneratePlan,
+  useAddMeal,
+  useUpdateMeal,
+  useDeleteMeal,
+  useAdjustPlan,
+  type Meal,
+} from '@/hooks/usePlanner';
 
 export default function DashboardPage() {
   const [latestLog, setLatestLog] = useState<MealLogDTO | null>(null);
   const [groceryListOpen, setGroceryListOpen] = useState(false);
+  const [addMealDialogOpen, setAddMealDialogOpen] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
   const analyzeMutation = useAnalyzeMeal();
   const { data: summary } = useDailySummary();
+  const { data: mealPlan, isLoading: planLoading } = useMealPlan();
+  const generatePlanMutation = useGeneratePlan();
+  const addMealMutation = useAddMeal();
+  const updateMealMutation = useUpdateMeal();
+  const deleteMealMutation = useDeleteMeal();
+  const adjustPlanMutation = useAdjustPlan();
 
   // Stats from live summary
   const todayCalories = summary?.today.totalCalories ?? 0;
@@ -32,39 +52,8 @@ export default function DashboardPage() {
   const calorieProgress = calorieTarget > 0 ? Math.min((todayCalories / calorieTarget) * 100, 100) : 0;
   const weekProgress = (weekDaysLogged / 7) * 100;
 
-  // Weekly Planner mock data (stays mocked for M7)
-  const weekData = [
-    {
-      date: 'Jan 23, 2026',
-      day: 'Monday',
-      meals: [
-        { id: '1', name: 'Oatmeal with berries and almonds', calories: 350, type: 'breakfast' as const },
-        { id: '2', name: 'Grilled chicken quinoa bowl', calories: 520, type: 'lunch' as const },
-        { id: '3', name: 'Salmon with roasted vegetables', calories: 480, type: 'dinner' as const },
-        { id: '4', name: 'Greek yogurt with honey', calories: 150, type: 'snack' as const },
-      ],
-    },
-    {
-      date: 'Jan 24, 2026',
-      day: 'Tuesday',
-      meals: [
-        { id: '5', name: 'Scrambled eggs with avocado toast', calories: 380, type: 'breakfast' as const },
-        { id: '6', name: 'Mediterranean chickpea salad', calories: 450, type: 'lunch' as const },
-        { id: '7', name: 'Stir-fried tofu with brown rice', calories: 500, type: 'dinner' as const },
-        { id: '8', name: 'Apple with almond butter', calories: 180, type: 'snack' as const },
-      ],
-    },
-    {
-      date: 'Jan 25, 2026',
-      day: 'Wednesday',
-      meals: [
-        { id: '9', name: 'Smoothie bowl with granola', calories: 320, type: 'breakfast' as const },
-        { id: '10', name: 'Turkey wrap with hummus', calories: 480, type: 'lunch' as const },
-        { id: '11', name: 'Grilled fish with sweet potato', calories: 520, type: 'dinner' as const },
-        { id: '12', name: 'Mixed nuts', calories: 170, type: 'snack' as const },
-      ],
-    },
-  ];
+  const weekData = mealPlan?.weekData ?? [];
+  const planId = mealPlan?.id ?? null;
 
   const handleAnalyze = (meal: string, mealType: string) => {
     analyzeMutation.mutate(
@@ -80,15 +69,92 @@ export default function DashboardPage() {
     );
   };
 
-  const handleRegenerateWeek = () => {
-    console.log('Regenerating weekly plan');
+  const handleGeneratePlan = () => {
+    generatePlanMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success('Weekly meal plan generated!');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to generate plan');
+      },
+    });
   };
 
   const handleGenerateGroceryList = () => {
     setGroceryListOpen(true);
   };
 
+  const handleAddMeal = (dayIndex: number) => {
+    setEditingMeal(null);
+    setSelectedDayIndex(dayIndex);
+    setAddMealDialogOpen(true);
+  };
+
+  const handleEditMeal = (meal: Meal, dayIndex: number) => {
+    setEditingMeal(meal);
+    setSelectedDayIndex(dayIndex);
+    setAddMealDialogOpen(true);
+  };
+
+  const handleDeleteMeal = (mealId: string) => {
+    deleteMealMutation.mutate(mealId, {
+      onSuccess: () => {
+        toast.success('Meal removed');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to delete meal');
+      },
+    });
+  };
+
+  const handleSaveMeal = (data: {
+    name: string;
+    calories?: number;
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    dayIndex: number;
+  }) => {
+    if (editingMeal) {
+      updateMealMutation.mutate(
+        {
+          itemId: editingMeal.id,
+          data: { name: data.name, ...(data.calories !== undefined && { calories: data.calories }), mealType: data.mealType },
+        },
+        {
+          onSuccess: () => {
+            setAddMealDialogOpen(false);
+            toast.success('Meal updated');
+          },
+          onError: (error) => {
+            toast.error(error.message || 'Failed to update meal');
+          },
+        },
+      );
+    } else {
+      addMealMutation.mutate(data, {
+        onSuccess: () => {
+          setAddMealDialogOpen(false);
+          toast.success('Meal added');
+        },
+        onError: (error) => {
+          toast.error(error.message || 'Failed to add meal');
+        },
+      });
+    }
+  };
+
+  const handleOptimizePlan = () => {
+    adjustPlanMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success('Plan optimized with AI!');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to optimize plan');
+      },
+    });
+  };
+
   const analyzed = latestLog !== null;
+  const isMealSaving = addMealMutation.isPending || updateMealMutation.isPending;
 
   return (
     <div className="space-y-8 pb-20">
@@ -204,17 +270,81 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="planner" className="space-y-6">
-          <WeeklyPlanner
-            weekData={weekData}
-            onRegenerateWeek={handleRegenerateWeek}
-            onGenerateGroceryList={handleGenerateGroceryList}
-          />
+          {planLoading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading your meal plan...</p>
+            </div>
+          )}
+
+          {!planLoading && weekData.length === 0 && (
+            <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">
+              <div className="mx-auto max-w-md space-y-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                  <Sparkles className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold">No meal plan yet</h3>
+                <p className="text-sm text-muted-foreground">
+                  Generate a personalized weekly meal plan with AI, or start building one manually.
+                </p>
+                <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+                  <Button
+                    onClick={handleGeneratePlan}
+                    disabled={generatePlanMutation.isPending}
+                  >
+                    {generatePlanMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Generate with AI
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleAddMeal(0)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Manually
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!planLoading && weekData.length > 0 && (
+            <WeeklyPlanner
+              weekData={weekData}
+              onRegenerateWeek={handleGeneratePlan}
+              onGenerateGroceryList={handleGenerateGroceryList}
+              isRegenerating={generatePlanMutation.isPending}
+              onAddMeal={handleAddMeal}
+              onEditMeal={handleEditMeal}
+              onDeleteMeal={handleDeleteMeal}
+              onOptimizeWithAI={handleOptimizePlan}
+              isOptimizing={adjustPlanMutation.isPending}
+            />
+          )}
         </TabsContent>
       </Tabs>
 
       <GroceryListDialog
         open={groceryListOpen}
         onOpenChange={setGroceryListOpen}
+        planId={planId}
+      />
+
+      <AddEditMealDialog
+        open={addMealDialogOpen}
+        onOpenChange={setAddMealDialogOpen}
+        onSave={handleSaveMeal}
+        editingMeal={editingMeal}
+        defaultDayIndex={selectedDayIndex}
+        isLoading={isMealSaving}
       />
     </div>
   );
