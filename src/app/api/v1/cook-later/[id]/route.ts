@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { unsaveRecipe, updateSavedRecipe } from '@/services/cook-later.service';
+import { handleApiError, AuthError } from '@/lib/errors';
 
 export async function PATCH(
   request: NextRequest,
@@ -16,19 +17,9 @@ export async function PATCH(
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return handleApiError(new AuthError('Unauthorized'));
     }
-    if (
-      error instanceof Error &&
-      error.message.includes('Record to update not found')
-    ) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-    console.error('[PATCH /api/v1/cook-later/[id]]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }
 
@@ -40,23 +31,12 @@ export async function DELETE(
     const user = await requireAuth(request);
     const { id } = await params;
 
-    // id here is the recipeId (not savedRecipe.id) for simpler client usage
     await unsaveRecipe(user.sub, id);
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return handleApiError(new AuthError('Unauthorized'));
     }
-    if (
-      error instanceof Error &&
-      error.message.includes('Record to delete does not exist')
-    ) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-    console.error('[DELETE /api/v1/cook-later/[id]]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

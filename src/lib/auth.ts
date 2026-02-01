@@ -12,6 +12,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   name?: string;
+  role: 'user' | 'editor' | 'admin';
 }
 
 export async function signAccessToken(payload: JwtPayload): Promise<string> {
@@ -32,12 +33,17 @@ export async function signRefreshToken(payload: JwtPayload): Promise<string> {
 
 export async function verifyAccessToken(token: string): Promise<JwtPayload> {
   const { payload } = await jwtVerify(token, JWT_SECRET);
-  return payload as unknown as JwtPayload;
+  const p = payload as unknown as JwtPayload;
+  // Backward-compatible: existing tokens without role are treated as 'user'
+  if (!p.role) p.role = 'user';
+  return p;
 }
 
 export async function verifyRefreshToken(token: string): Promise<JwtPayload> {
   const { payload } = await jwtVerify(token, JWT_REFRESH_SECRET);
-  return payload as unknown as JwtPayload;
+  const p = payload as unknown as JwtPayload;
+  if (!p.role) p.role = 'user';
+  return p;
 }
 
 export async function getCurrentUser(

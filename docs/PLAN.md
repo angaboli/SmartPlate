@@ -1,8 +1,8 @@
 # SmartPlate — Master Project Plan
 
-> **Version**: 2.0
-> **Last updated**: 2026-01-28
-> **Status**: Draft — awaiting milestone-by-milestone execution
+> **Version**: 2.1
+> **Last updated**: 2026-01-31
+> **Status**: In progress — M5 (Import Feature) completed
 
 ---
 
@@ -229,9 +229,9 @@ See [API_CONTRACT.md](./API_CONTRACT.md) for full endpoint specifications.
 | Group | Base Path | Auth Required |
 |---|---|---|
 | Auth | `/api/v1/auth/*` | No (except logout) |
-| Users | `/api/v1/users/*` | Yes |
-| Recipes | `/api/v1/recipes/*` | Yes (write), No (read) |
-| Saved Recipes | `/api/v1/saved-recipes/*` | Yes |
+| Admin | `/api/v1/admin/*` | Yes (admin only) |
+| Recipes | `/api/v1/recipes/*` | Yes (write), No (read published) |
+| Cook Later | `/api/v1/cook-later/*` | Yes |
 | Imports | `/api/v1/imports/*` | Yes |
 | Meal Logs | `/api/v1/meal-logs/*` | Yes |
 | Planner | `/api/v1/planner/*` | Yes |
@@ -243,18 +243,19 @@ See [API_CONTRACT.md](./API_CONTRACT.md) for full endpoint specifications.
 
 See [ROADMAP.md](./ROADMAP.md) for detailed milestones and tasks.
 
-| Milestone | Goal |
-|---|---|
-| **M0** | Repo cleanup, tooling, Next.js migration |
-| **M1** | Prisma + DB connection + health endpoint |
-| **M2** | Auth (JWT) + login/register UI |
-| **M3** | Recipes read-only from DB |
-| **M4** | Cook Later (saved recipes) |
-| **M5** | Import from social link (async jobs) |
-| **M6** | AI Coach (LLM analysis + suggestions) |
-| **M7** | Planner + grocery list |
-| **M8** | i18n EN/FR complete |
-| **M9** | Security, rate limits, monitoring, tests |
+| Milestone | Goal | Status |
+|---|---|---|
+| **M0** | Repo cleanup, tooling, Next.js migration | Done |
+| **M1** | Prisma + DB connection + health endpoint | Done |
+| **M2** | Auth (JWT) + login/register UI | Done |
+| **M3** | Recipes read-only from DB | Done |
+| **M4** | Cook Later (saved recipes) | Done |
+| **M4.5** | RBAC + Recipe publication workflow | Done |
+| **M5** | Import from social link (DB-backed, no Redis) | Done |
+| **M6** | AI Coach (LLM analysis + suggestions) | |
+| **M7** | Planner + grocery list | |
+| **M8** | i18n EN/FR complete | |
+| **M9** | Security, rate limits, monitoring, tests | |
 
 ---
 

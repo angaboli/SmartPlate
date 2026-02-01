@@ -6,6 +6,27 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── ENUMS ───────────────────────────────────────────
+
+enum Role {
+  user
+  editor
+  admin
+}
+
+enum RecipeStatus {
+  draft
+  pending_review
+  published
+  rejected
+}
+
+enum ImportStatus {
+  pending
+  completed
+  failed
+}
+
 // ─── USERS ───────────────────────────────────────────
 
 model User {
@@ -14,6 +35,7 @@ model User {
   passwordHash String
   name         String?
   avatarUrl    String?
+  role         Role     @default(user)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -21,6 +43,7 @@ model User {
   refreshTokens RefreshToken[]
   recipes       Recipe[]
   savedRecipes  SavedRecipe[]
+  imports       Import[]
 
   @@map("users")
 }
@@ -66,9 +89,9 @@ model RefreshToken {
 // ─── RECIPES ─────────────────────────────────────────
 
 model Recipe {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   authorId       String?
-  author         User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  author         User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   title          String
   description    String?
@@ -77,22 +100,28 @@ model Recipe {
   cookTimeMin    Int?
   servings       Int?
   calories       Int?
-  category       String   @default("Regular")
+  category       String       @default("Regular")
   goal           String?
-  aiRecommended  Boolean  @default(false)
-  isImported     Boolean  @default(false)
+  aiRecommended  Boolean      @default(false)
+  isImported     Boolean      @default(false)
   sourceUrl      String?
   sourceProvider String?
+
+  status         RecipeStatus @default(draft)
+  publishedAt    DateTime?
+  reviewNote     String?
 
   ingredients    RecipeIngredient[]
   steps          RecipeStep[]
   savedBy        SavedRecipe[]
+  import         Import?
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([category])
   @@index([goal])
+  @@index([status])
   @@map("recipes")
 }
 
@@ -134,4 +163,23 @@ model SavedRecipe {
   @@unique([userId, recipeId])
   @@index([userId])
   @@map("saved_recipes")
+}
+
+// ─── IMPORTS ────────────────────────────────────────
+
+model Import {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url           String
+  provider      String?
+  status        ImportStatus @default(completed)
+  extractedData Json?
+  recipeId      String?      @unique
+  recipe        Recipe?      @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  error         String?
+  createdAt     DateTime     @default(now())
+
+  @@index([userId])
+  @@map("imports")
 }

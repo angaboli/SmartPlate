@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Link as LinkIcon, 
-  Instagram, 
-  Youtube, 
-  Video, 
-  AlertCircle, 
+import {
+  Link as LinkIcon,
+  Instagram,
+  Youtube,
+  Video,
+  AlertCircle,
   CheckCircle2,
   Loader2,
   Clock,
@@ -23,6 +23,7 @@ type RecipeSource = 'Instagram' | 'TikTok' | 'YouTube' | 'Other';
 type RecipeTag = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
+import { useExtractRecipe, useSaveImport, type ExtractedRecipeDTO } from '@/hooks/useImport';
 
 interface ImportRecipeDialogProps {
   open: boolean;
@@ -32,11 +33,9 @@ interface ImportRecipeDialogProps {
 export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogProps) {
   const { t } = useLanguage();
   const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [fetchedRecipe, setFetchedRecipe] = useState<any>(null);
-  const [error, setError] = useState('');
+  const [fetchedRecipe, setFetchedRecipe] = useState<ExtractedRecipeDTO | null>(null);
   const [isPartial, setIsPartial] = useState(false);
-  
+
   // Editable fields
   const [editableTitle, setEditableTitle] = useState('');
   const [editableAuthor, setEditableAuthor] = useState('');
@@ -44,6 +43,9 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
   const [editableIngredients, setEditableIngredients] = useState('');
   const [editableSteps, setEditableSteps] = useState('');
   const [selectedTag, setSelectedTag] = useState<RecipeTag | undefined>(undefined);
+
+  const extractMutation = useExtractRecipe();
+  const saveMutation = useSaveImport();
 
   const detectSource = (url: string): RecipeSource => {
     if (url.includes('instagram.com')) return 'Instagram';
@@ -65,76 +67,78 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
     }
   };
 
+  const providerToSource = (provider: string): RecipeSource => {
+    switch (provider) {
+      case 'instagram': return 'Instagram';
+      case 'tiktok': return 'TikTok';
+      case 'youtube': return 'YouTube';
+      default: return 'Other';
+    }
+  };
+
   const fetchRecipe = async () => {
     if (!url.trim()) return;
-    
-    setLoading(true);
-    setError('');
-    setFetchedRecipe(null);
-    
-    // Simulate API call to extract recipe data
-    setTimeout(() => {
-      const source = detectSource(url);
-      
-      // Mock extracted data (in a real app, this would be from an API)
-      const mockRecipe = {
-        title: 'Spicy Thai Basil Chicken',
-        author: '@foodlover_chef',
-        prepTime: '25 min',
-        image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600&h=400&fit=crop',
-        ingredients: [
-          '500g chicken breast, sliced',
-          '2 cups Thai basil leaves',
-          '3 Thai chilies, chopped',
-          '4 cloves garlic, minced',
-          '2 tbsp soy sauce',
-          '1 tbsp oyster sauce',
-          '1 tsp sugar',
-        ],
-        steps: [
-          'Heat oil in a wok over high heat',
-          'Add garlic and chilies, stir-fry for 30 seconds',
-          'Add chicken and cook until no longer pink',
-          'Add soy sauce, oyster sauce, and sugar',
-          'Stir in Thai basil and cook until wilted',
-          'Serve hot with jasmine rice',
-        ],
-        source,
-      };
-      
-      // Randomly simulate partial detection
-      const isPartialDetection = Math.random() > 0.7;
-      
-      if (isPartialDetection) {
-        mockRecipe.ingredients = [];
-        mockRecipe.steps = [];
-        setIsPartial(true);
-      } else {
-        setIsPartial(false);
-      }
-      
-      setFetchedRecipe(mockRecipe);
-      setEditableTitle(mockRecipe.title);
-      setEditableAuthor(mockRecipe.author);
-      setEditablePrepTime(mockRecipe.prepTime);
-      setEditableIngredients(mockRecipe.ingredients.join('\n'));
-      setEditableSteps(mockRecipe.steps.join('\n'));
-      setLoading(false);
-    }, 1500);
+
+    extractMutation.mutate(url.trim(), {
+      onSuccess: (data) => {
+        setFetchedRecipe(data);
+        setIsPartial(data.isPartial);
+        setEditableTitle(data.title);
+        setEditableAuthor('');
+        setEditablePrepTime(data.prepTimeMin ? `${data.prepTimeMin} min` : '');
+        setEditableIngredients(data.ingredients.join('\n'));
+        setEditableSteps(data.steps.join('\n'));
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   };
 
   const handleSave = () => {
     if (!fetchedRecipe || !editableTitle.trim()) return;
 
-    // TODO (M5): real import — create Recipe via API, then save to cook-later
-    toast.success(t('import.saved'));
-    handleClose();
+    const ingredients = editableIngredients
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const steps = editableSteps
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    // Parse prep time from the editable field
+    const prepMatch = editablePrepTime.match(/(\d+)/);
+    const prepTimeMin = prepMatch ? parseInt(prepMatch[1], 10) : null;
+
+    saveMutation.mutate(
+      {
+        url: url.trim(),
+        title: editableTitle.trim(),
+        description: fetchedRecipe.description,
+        imageUrl: fetchedRecipe.imageUrl,
+        prepTimeMin,
+        cookTimeMin: fetchedRecipe.cookTimeMin,
+        servings: fetchedRecipe.servings,
+        ingredients,
+        steps,
+        tag: selectedTag || null,
+      },
+      {
+        onSuccess: () => {
+          toast.success(t('import.saved'));
+          handleClose();
+        },
+        onError: (error) => {
+          toast.error(error.message);
+        },
+      },
+    );
   };
 
   const handleClose = () => {
     setUrl('');
     setFetchedRecipe(null);
-    setError('');
     setIsPartial(false);
     setEditableTitle('');
     setEditableAuthor('');
@@ -142,8 +146,14 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
     setEditableIngredients('');
     setEditableSteps('');
     setSelectedTag(undefined);
+    extractMutation.reset();
+    saveMutation.reset();
     onOpenChange(false);
   };
+
+  const source = fetchedRecipe
+    ? providerToSource(fetchedRecipe.provider)
+    : detectSource(url);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -169,11 +179,11 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className="flex-1"
-                disabled={loading || !!fetchedRecipe}
+                disabled={extractMutation.isPending || !!fetchedRecipe}
               />
               {!fetchedRecipe && (
-                <Button onClick={fetchRecipe} disabled={loading || !url.trim()}>
-                  {loading ? (
+                <Button onClick={fetchRecipe} disabled={extractMutation.isPending || !url.trim()}>
+                  {extractMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {t('import.fetching')}
@@ -187,10 +197,10 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
           </div>
 
           {/* Error State */}
-          {error && (
+          {extractMutation.isError && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive">{extractMutation.error.message}</p>
             </div>
           )}
 
@@ -208,16 +218,16 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
               {/* Source Badge */}
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="flex items-center gap-1.5">
-                  {getSourceIcon(fetchedRecipe.source)}
-                  {fetchedRecipe.source}
+                  {getSourceIcon(source)}
+                  {source}
                 </Badge>
               </div>
 
               {/* Preview Image */}
-              {fetchedRecipe.image && (
+              {fetchedRecipe.imageUrl && (
                 <div className="relative aspect-video overflow-hidden rounded-lg border">
                   <img
-                    src={fetchedRecipe.image}
+                    src={fetchedRecipe.imageUrl}
                     alt={editableTitle}
                     className="h-full w-full object-cover"
                   />
@@ -308,10 +318,19 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
                 <Button
                   onClick={handleSave}
                   className="flex-1 bg-primary"
-                  disabled={!editableTitle.trim()}
+                  disabled={!editableTitle.trim() || saveMutation.isPending}
                 >
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  {t('import.addToCookLater')}
+                  {saveMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      {t('import.addToCookLater')}
+                    </>
+                  )}
                 </Button>
                 <Button onClick={handleClose} variant="outline">
                   {t('common.cancel')}

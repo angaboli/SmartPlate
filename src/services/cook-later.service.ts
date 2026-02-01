@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { NotFoundError } from '@/lib/errors';
 
 const savedRecipeInclude = {
   recipe: {
@@ -22,6 +23,16 @@ export async function saveRecipe(
   recipeId: string,
   tag?: string | null,
 ) {
+  // Only published recipes can be saved
+  const recipe = await db.recipe.findUnique({
+    where: { id: recipeId },
+    select: { status: true },
+  });
+
+  if (!recipe || recipe.status !== 'published') {
+    throw new NotFoundError('Recipe not found');
+  }
+
   return db.savedRecipe.create({
     data: { userId, recipeId, tag },
     include: savedRecipeInclude,

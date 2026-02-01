@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecipeById } from '@/services/recipes.service';
+import { getCurrentUser } from '@/lib/auth';
+import {
+  getRecipeById,
+  updateRecipe,
+  deleteRecipe,
+} from '@/services/recipes.service';
+import { handleApiError, AuthError } from '@/lib/errors';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    const recipe = await getRecipeById(id);
+    const user = await getCurrentUser(request);
+    const recipe = await getRecipeById(id, user);
 
     if (!recipe) {
       return NextResponse.json(
@@ -17,10 +24,51 @@ export async function GET(
     }
 
     return NextResponse.json(recipe);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch recipe' },
-      { status: 500 },
-    );
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return handleApiError(new AuthError('Unauthorized'));
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+
+    const updated = await updateRecipe(id, body, user);
+    return NextResponse.json(updated);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return handleApiError(new AuthError('Unauthorized'));
+    }
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return handleApiError(new AuthError('Unauthorized'));
+    }
+
+    const { id } = await params;
+    await deleteRecipe(id, user);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return handleApiError(new AuthError('Unauthorized'));
+    }
+    return handleApiError(error);
   }
 }

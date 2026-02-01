@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, Users, Sparkles, Bookmark } from 'lucide-react';
@@ -16,11 +17,11 @@ export interface Recipe {
   goal?: string | null;
   aiRecommended?: boolean;
   calories?: number | null;
+  status?: string;
 }
 
 interface RecipeCardProps {
   recipe: Recipe;
-  onViewRecipe?: (recipe: Recipe) => void;
 }
 
 const goalColors: Record<string, string> = {
@@ -37,7 +38,21 @@ const goalLabels: Record<string, string> = {
   'energy-boost': 'Energy Boost',
 };
 
-export function RecipeCard({ recipe, onViewRecipe }: RecipeCardProps) {
+const statusStyles: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  pending_review: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  published: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+};
+
+const statusLabels: Record<string, string> = {
+  draft: 'Draft',
+  pending_review: 'Pending Review',
+  published: 'Published',
+  rejected: 'Rejected',
+};
+
+export function RecipeCard({ recipe }: RecipeCardProps) {
   const { isRecipeSaved, saveRecipe, unsaveRecipe, isSaving } = useCookLater();
   const saved = isRecipeSaved(recipe.id);
 
@@ -88,6 +103,11 @@ export function RecipeCard({ recipe, onViewRecipe }: RecipeCardProps) {
               SafariTaste
             </Badge>
           )}
+          {recipe.status && recipe.status !== 'published' && statusStyles[recipe.status] && (
+            <Badge className={statusStyles[recipe.status]}>
+              {statusLabels[recipe.status] || recipe.status}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -116,12 +136,8 @@ export function RecipeCard({ recipe, onViewRecipe }: RecipeCardProps) {
           </Badge>
         )}
 
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => onViewRecipe?.(recipe)}
-        >
-          View Recipe
+        <Button variant="outline" className="w-full" asChild>
+          <Link href={`/recipes/${recipe.id}`}>View Recipe</Link>
         </Button>
       </div>
     </div>

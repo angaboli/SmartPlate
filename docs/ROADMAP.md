@@ -1,30 +1,33 @@
 # SmartPlate — Implementation Roadmap
 
-> **Version**: 2.0
-> **Last updated**: 2026-01-28
+> **Version**: 2.1
+> **Last updated**: 2026-01-31
 
 ---
 
 ## Milestone Overview
 
 ```
-M0  Repo cleanup + tooling + Next.js migration
+M0  Repo cleanup + tooling + Next.js migration   ✅
  │
  v
-M1  Prisma + DB + health endpoint
+M1  Prisma + DB + health endpoint                ✅
  │
  v
-M2  Auth (JWT) + Login/Register UI
+M2  Auth (JWT) + Login/Register UI               ✅
  │
  ├─────────────────────────────┐
  v                             v
 M3  Recipes read-only         M6  AI Coach (LLM)
  │                             │
  v                             v
-M4  Cook Later (saved)        M7  Planner + groceries
+M4  Cook Later (saved)  ✅    M7  Planner + groceries
  │                             │
  v                             │
-M5  Import feature (async)    │
+M4.5 RBAC + Publication  ✅   │
+ │                             │
+ v                             │
+M5  Import feature (DB)  ✅    │
  │                             │
  └─────────────┬───────────────┘
                v
@@ -271,39 +274,92 @@ Saved recipes persist in the database.
 
 ---
 
-## M5: Import Feature (Async Jobs)
+## M4.5: RBAC + Recipe Publication Workflow
 
 ### Goal
-Social media link import with async processing via BullMQ workers.
+Add role-based access control (user/editor/admin) and a recipe publication workflow (draft → pending_review → published / rejected).
 
-### Tasks (ordered)
+### Tasks (completed)
 
-1. **Set up Redis + BullMQ**
-   - `pnpm add bullmq ioredis`
-   - Add `REDIS_URL` to `.env`
-   - Create `src/lib/queue.ts` — queue connection
+1. **Prisma schema** — `Role` enum (user/editor/admin), `RecipeStatus` enum (draft/pending_review/published/rejected), `role` on User, `status`/`publishedAt`/`reviewNote` on Recipe + migration
+2. **Standardized API errors** — `AppError` hierarchy (`AuthError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `ValidationError`) + `handleApiError` helper. Refactored all route handlers.
+3. **JWT role claim** — `role` included in access/refresh tokens. Backward-compatible: missing role defaults to `user`.
+4. **RBAC utilities** — `requireRole()`, `canEditRecipe()`, `canManagePublicationStatus()`, `canManageUsers()` pure functions in `src/lib/rbac.ts`.
+5. **Recipe service** — `listRecipes` filters by status/role, `createRecipe`, `updateRecipe`, `submitForReview`, `reviewRecipe`, `deleteRecipe` with full RBAC checks.
+6. **Recipe API routes** — POST/PUT/DELETE on `/recipes`, POST `/recipes/[id]/submit`, POST `/recipes/[id]/review` with role guards.
+7. **Admin endpoints** — `GET /admin/users` (list), `PATCH /admin/users/[id]/role` (change role, cannot self-demote).
+8. **`withAuth` wrapper** — `src/lib/withAuth.ts` HOF for DRY route-level auth + role guards.
+9. **Frontend** — `role` in auth store, role-aware Navigation (My Recipes for editor+, Admin for admin), status badges on RecipeCard, admin user management page, recipe management page with review actions.
+10. **Seed** — `admin@smartplate.app` (Admin123!), `editor@smartplate.app` (Editor123!), all existing recipes set to `published`, 2 test recipes (draft + pending_review).
+11. **OpenAPI spec** — All new endpoints, `Role`/`RecipeStatus` schemas documented.
+12. **Cook Later guard** — `saveRecipe` rejects non-published recipes with 404.
 
-2. **Add Import model** to Prisma + migration
-3. **Create imports service** — create, getById, save
-4. **Create Import Route Handlers** — POST, GET, save
-5. **Create import worker** — `workers/import.worker.ts`
-   - URL validation, provider detection
-   - Open Graph / JSON-LD extraction
-   - Error handling (private/invalid/timeout)
-6. **Connect ImportRecipeDialog** to API (replace mock setTimeout)
-7. **Add polling** for status updates
-8. **Add rate limiting** — 10/hour per user
+### New Files
+- `src/lib/errors.ts` — Centralized error hierarchy
+- `src/lib/rbac.ts` — RBAC pure functions
+- `src/lib/withAuth.ts` — Auth wrapper HOF
+- `src/services/user.service.ts` — User management service
+- `src/app/api/v1/recipes/[id]/submit/route.ts`
+- `src/app/api/v1/recipes/[id]/review/route.ts`
+- `src/app/api/v1/admin/users/route.ts`
+- `src/app/api/v1/admin/users/[id]/role/route.ts`
+- `src/app/dashboard/admin/page.tsx`
+- `src/app/dashboard/recipes/manage/page.tsx`
 
 ### Acceptance Criteria
-- [ ] Pasting URL creates import job
-- [ ] Worker processes and extracts data
-- [ ] Partial/failed states handled
-- [ ] Save creates recipe + saved recipe
-- [ ] Rate limit returns 429
+- [x] Roles stored in DB, included in JWT
+- [x] Public users only see published recipes
+- [x] Editors/admins can create, review, manage recipes
+- [x] Admin can change user roles
+- [x] Cook Later rejects unpublished recipes
+- [x] All existing endpoints remain backward-compatible
+
+---
+
+## M5: Import Feature (DB-backed, No Redis)
+
+### Goal
+Social media/recipe link import with synchronous processing. Users paste a URL, the backend extracts recipe data via cheerio + JSON-LD/OG, and the user edits then saves as a personal imported recipe in Cook Later.
+
+### Tasks (completed)
+
+1. **Install cheerio** — `pnpm add cheerio` for HTML parsing
+2. **Add Import model** to Prisma + migration (`imports` table with ImportStatus enum)
+3. **Create URL extraction service** — `src/services/import-extractor.ts`
+   - Fetches HTML, parses JSON-LD `@type: "Recipe"` (name, description, image, prepTime, cookTime, recipeYield, ingredients, instructions)
+   - Open Graph fallback (og:title, og:description, og:image)
+   - Provider detection (instagram, tiktok, youtube, website)
+   - ISO 8601 duration parsing
+4. **Create import service** — `src/services/import.service.ts`
+   - `extractFromUrl()`, `saveImport()` (transaction: Recipe + Import + SavedRecipe), `checkRateLimit()`, `listImports()`
+5. **Create API routes**
+   - `POST /api/v1/imports/extract` — extract recipe data (no DB write)
+   - `POST /api/v1/imports` — save imported recipe
+   - `GET /api/v1/imports` — list import history
+6. **Create useImport hook** — `src/hooks/useImport.ts` (TanStack Query mutations)
+7. **Connect ImportRecipeDialog** to real API (replaced mock setTimeout)
+8. **Rate limiting** — 10 imports/hour per user via DB count, 429 on exceed
+9. **Updated OpenAPI spec** — new endpoints + schemas
+
+### New Files
+- `src/services/import-extractor.ts` — URL fetch + HTML parse + extraction
+- `src/services/import.service.ts` — Business logic + rate limiting
+- `src/app/api/v1/imports/extract/route.ts` — POST extract endpoint
+- `src/app/api/v1/imports/route.ts` — POST save + GET list endpoints
+- `src/hooks/useImport.ts` — TanStack Query mutations
+- `prisma/migrations/..._add_imports/` — Import table migration
+
+### Acceptance Criteria
+- [x] Pasting URL extracts recipe data via JSON-LD or OG tags
+- [x] Partial detection shown for social media URLs (no ingredients/steps)
+- [x] Save creates Recipe (published, isImported) + Import audit + SavedRecipe in transaction
+- [x] Imported recipes appear in Cook Later list
+- [x] Rate limit returns 429 after 10 imports/hour
+- [x] OpenAPI spec updated with new endpoints
 
 ### Tests
+- Import extractor unit tests (URL validation, provider detection, JSON-LD parsing)
 - Import service tests
-- Worker unit tests (URL validation, provider detection)
 - Rate limiting test
 
 ---

@@ -9,8 +9,6 @@ import { Search, SlidersHorizontal, Sparkles, Download, Loader2 } from 'lucide-r
 import { ImportRecipeDialog } from '@/components/ImportRecipeDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRecipes } from '@/hooks/useRecipes';
-import type { Recipe } from '@/components/RecipeCard';
-
 export default function RecipesPage() {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,10 +28,6 @@ export default function RecipesPage() {
     { id: 'light', label: 'Light', icon: '🌿' },
     { id: 'energy-boost', label: 'Energy Boost', icon: '⚡' },
   ];
-
-  const handleViewRecipe = (recipe: Recipe) => {
-    console.log('Viewing recipe:', recipe);
-  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -137,7 +131,7 @@ export default function RecipesPage() {
                     <RecipeCard
                       key={recipe.id}
                       recipe={recipe}
-                      onViewRecipe={handleViewRecipe}
+
                     />
                   ))}
               </div>
@@ -154,7 +148,6 @@ export default function RecipesPage() {
                 <RecipeCard
                   key={recipe.id}
                   recipe={recipe}
-                  onViewRecipe={handleViewRecipe}
                 />
               ))}
             </div>

@@ -2,44 +2,34 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Brain, Utensils, User, X } from 'lucide-react';
+import { Home, Brain, Utensils, User, Shield, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavigationProps {
   onClose?: () => void;
   isMobile?: boolean;
 }
 
-const navItems = [
-  { id: 'home', href: '/', icon: Home },
-  { id: 'dashboard', href: '/dashboard', icon: Brain },
-  { id: 'recipes', href: '/recipes', icon: Utensils },
-  { id: 'profile', href: '/profile', icon: User },
-] as const;
-
 export function Navigation({ onClose, isMobile }: NavigationProps) {
   const { t } = useLanguage();
   const pathname = usePathname();
+  const { user } = useAuth();
+  const role = user?.role ?? 'user';
 
-  const labels: Record<string, string> = {
-    home: t('nav.home'),
-    dashboard: t('nav.aiCoach'),
-    recipes: t('nav.recipes'),
-    profile: t('nav.profile'),
-  };
+  const navItems = [
+    { id: 'home', href: '/', icon: Home, label: t('nav.home'), show: true },
+    { id: 'dashboard', href: '/dashboard', icon: Brain, label: t('nav.aiCoach'), show: true },
+    { id: 'recipes', href: '/recipes', icon: Utensils, label: t('nav.recipes'), show: true },
+    { id: 'manage', href: '/dashboard/recipes/manage', icon: BookOpen, label: 'My Recipes', show: role === 'editor' || role === 'admin' },
+    { id: 'admin', href: '/dashboard/admin', icon: Shield, label: 'Admin', show: role === 'admin' },
+    { id: 'profile', href: '/profile', icon: User, label: t('nav.profile'), show: true },
+  ];
 
   return (
-    <nav className={`${isMobile ? 'flex flex-col' : 'flex flex-row py-2'} gap-1`}>
-      {isMobile && (
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="font-semibold">{t('nav.menu')}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-      )}
-      {navItems.map((item) => {
+    <nav className={`${isMobile ? 'flex flex-col p-2' : 'flex flex-row py-2'} gap-1`}>
+      {navItems.filter((item) => item.show).map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;
         return (
@@ -52,7 +42,7 @@ export function Navigation({ onClose, isMobile }: NavigationProps) {
           >
             <Link href={item.href}>
               <Icon className="h-4 w-4 mr-2" />
-              {labels[item.id]}
+              {item.label}
             </Link>
           </Button>
         );

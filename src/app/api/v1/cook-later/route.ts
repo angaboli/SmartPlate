@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { listSavedRecipes, saveRecipe } from '@/services/cook-later.service';
+import { handleApiError, AuthError, ValidationError } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,13 +10,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(saved);
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return handleApiError(new AuthError('Unauthorized'));
     }
-    console.error('[GET /api/v1/cook-later]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }
 
@@ -26,32 +23,15 @@ export async function POST(request: NextRequest) {
     const { recipeId, tag } = body;
 
     if (!recipeId || typeof recipeId !== 'string') {
-      return NextResponse.json(
-        { error: 'recipeId is required' },
-        { status: 400 },
-      );
+      throw new ValidationError('recipeId is required');
     }
 
     const saved = await saveRecipe(user.sub, recipeId, tag);
     return NextResponse.json(saved, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return handleApiError(new AuthError('Unauthorized'));
     }
-    // Prisma unique constraint violation
-    if (
-      error instanceof Error &&
-      error.message.includes('Unique constraint')
-    ) {
-      return NextResponse.json(
-        { error: 'Recipe already saved' },
-        { status: 409 },
-      );
-    }
-    console.error('[POST /api/v1/cook-later]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

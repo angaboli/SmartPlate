@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Navigation } from '@/components/Navigation';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Toaster } from '@/components/ui/sonner';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Header onMenuClick={() => setMobileMenuOpen(true)} />
 
       {/* Desktop Navigation - Sticky */}
-      <div className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="sticky hidden md:block top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 md:px-6">
           <div className="overflow-x-auto scrollbar-hide">
             <Navigation />
@@ -26,6 +26,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile Navigation Sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
           <Navigation
             onClose={() => setMobileMenuOpen(false)}
             isMobile

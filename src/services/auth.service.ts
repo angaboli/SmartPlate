@@ -6,6 +6,7 @@ import {
   verifyRefreshToken,
   type JwtPayload,
 } from '@/lib/auth';
+import { AuthError, ConflictError } from '@/lib/errors';
 import type { RegisterInput, LoginInput } from '@/lib/validations/auth';
 
 const BCRYPT_ROUNDS = 12;
@@ -21,6 +22,7 @@ export interface AuthResponse {
     id: string;
     email: string;
     name: string | null;
+    role: string;
   };
   tokens: AuthTokens;
 }
@@ -30,7 +32,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
     where: { email: input.email },
   });
   if (existing) {
-    throw new AuthError('Email already registered', 409);
+    throw new ConflictError('Email already registered');
   }
 
   const passwordHash = await hash(input.password, BCRYPT_ROUNDS);
@@ -49,7 +51,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
   const tokens = await generateTokens(user);
 
   return {
-    user: { id: user.id, email: user.email, name: user.name },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role },
     tokens,
   };
 }
@@ -59,18 +61,18 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
     where: { email: input.email },
   });
   if (!user) {
-    throw new AuthError('Invalid email or password', 401);
+    throw new AuthError('Invalid email or password');
   }
 
   const valid = await compare(input.password, user.passwordHash);
   if (!valid) {
-    throw new AuthError('Invalid email or password', 401);
+    throw new AuthError('Invalid email or password');
   }
 
   const tokens = await generateTokens(user);
 
   return {
-    user: { id: user.id, email: user.email, name: user.name },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role },
     tokens,
   };
 }
@@ -80,7 +82,7 @@ export async function refresh(refreshTokenValue: string): Promise<AuthTokens> {
   try {
     payload = await verifyRefreshToken(refreshTokenValue);
   } catch {
-    throw new AuthError('Invalid or expired refresh token', 401);
+    throw new AuthError('Invalid or expired refresh token');
   }
 
   const storedToken = await db.refreshToken.findUnique({
@@ -92,7 +94,7 @@ export async function refresh(refreshTokenValue: string): Promise<AuthTokens> {
     if (storedToken) {
       await db.refreshToken.delete({ where: { id: storedToken.id } });
     }
-    throw new AuthError('Invalid or expired refresh token', 401);
+    throw new AuthError('Invalid or expired refresh token');
   }
 
   // Rotate: delete old, issue new
@@ -114,11 +116,13 @@ async function generateTokens(user: {
   id: string;
   email: string;
   name: string | null;
+  role?: 'user' | 'editor' | 'admin';
 }): Promise<AuthTokens> {
   const jwtPayload: JwtPayload = {
     sub: user.id,
     email: user.email,
     name: user.name ?? undefined,
+    role: user.role ?? 'user',
   };
 
   const [accessToken, refreshToken] = await Promise.all([
@@ -140,14 +144,5 @@ async function generateTokens(user: {
   return { accessToken, refreshToken };
 }
 
-// ─── Error class ────────────────────────────────────
-
-export class AuthError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number,
-  ) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
+// Re-export for backward compatibility with route handlers that import from here
+export { AuthError } from '@/lib/errors';

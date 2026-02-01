@@ -1,11 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hash } from 'bcryptjs';
 import 'dotenv/config';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
 });
 const db = new PrismaClient({ adapter });
+
+const BCRYPT_ROUNDS = 12;
 
 const recipes = [
   {
@@ -252,12 +255,47 @@ const recipes = [
 ];
 
 async function main() {
-  console.log('Seeding recipes...');
+  console.log('Seeding database...');
 
-  // Clear existing recipes
+  // ─── Users (admin + editor) ──────────────────────
+
+  const adminHash = await hash('Admin123!', BCRYPT_ROUNDS);
+  const editorHash = await hash('Editor123!', BCRYPT_ROUNDS);
+
+  const admin = await db.user.upsert({
+    where: { email: 'admin@smartplate.app' },
+    update: { role: 'admin', passwordHash: adminHash },
+    create: {
+      email: 'admin@smartplate.app',
+      name: 'Admin',
+      passwordHash: adminHash,
+      role: 'admin',
+      settings: { create: {} },
+    },
+  });
+  console.log(`  Admin user: ${admin.email} (${admin.id})`);
+
+  const editor = await db.user.upsert({
+    where: { email: 'editor@smartplate.app' },
+    update: { role: 'editor', passwordHash: editorHash },
+    create: {
+      email: 'editor@smartplate.app',
+      name: 'Editor',
+      passwordHash: editorHash,
+      role: 'editor',
+      settings: { create: {} },
+    },
+  });
+  console.log(`  Editor user: ${editor.email} (${editor.id})`);
+
+  // ─── Published recipes (existing seed data) ──────
+
   await db.recipeStep.deleteMany();
   await db.recipeIngredient.deleteMany();
+  await db.savedRecipe.deleteMany();
   await db.recipe.deleteMany();
+
+  const now = new Date();
 
   for (const recipe of recipes) {
     const { ingredients, steps, ...recipeData } = recipe;
@@ -265,6 +303,8 @@ async function main() {
     await db.recipe.create({
       data: {
         ...recipeData,
+        status: 'published',
+        publishedAt: now,
         ingredients: {
           create: ingredients.map((text, i) => ({
             text,
@@ -281,7 +321,76 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${recipes.length} recipes.`);
+  console.log(`  Seeded ${recipes.length} published recipes.`);
+
+  // ─── Draft recipes (for testing workflow) ─────────
+
+  await db.recipe.create({
+    data: {
+      title: 'Spicy Mango Salsa Tacos',
+      description:
+        'Fresh fish tacos topped with a vibrant mango salsa — a draft recipe awaiting review.',
+      prepTimeMin: 20,
+      servings: 3,
+      category: 'SafariTaste',
+      goal: 'light',
+      calories: 340,
+      status: 'draft',
+      authorId: editor.id,
+      ingredients: {
+        create: [
+          { text: '6 small tortillas', sortOrder: 0 },
+          { text: '300g white fish', sortOrder: 1 },
+          { text: '1 ripe mango, diced', sortOrder: 2 },
+          { text: '1 jalapeño, minced', sortOrder: 3 },
+          { text: 'Lime juice', sortOrder: 4 },
+          { text: 'Cilantro', sortOrder: 5 },
+        ],
+      },
+      steps: {
+        create: [
+          { text: 'Season and grill fish fillets.', sortOrder: 0 },
+          { text: 'Dice mango, jalapeño, and cilantro for the salsa.', sortOrder: 1 },
+          { text: 'Mix salsa ingredients with lime juice.', sortOrder: 2 },
+          { text: 'Warm tortillas and assemble tacos.', sortOrder: 3 },
+        ],
+      },
+    },
+  });
+
+  await db.recipe.create({
+    data: {
+      title: 'Matcha Overnight Oats',
+      description:
+        'Creamy overnight oats with matcha green tea — pending review by an editor.',
+      prepTimeMin: 5,
+      servings: 1,
+      category: 'Regular',
+      goal: 'energy-boost',
+      calories: 310,
+      status: 'pending_review',
+      authorId: editor.id,
+      ingredients: {
+        create: [
+          { text: '1/2 cup rolled oats', sortOrder: 0 },
+          { text: '1 tsp matcha powder', sortOrder: 1 },
+          { text: '3/4 cup oat milk', sortOrder: 2 },
+          { text: '1 tbsp maple syrup', sortOrder: 3 },
+          { text: 'Chia seeds', sortOrder: 4 },
+        ],
+      },
+      steps: {
+        create: [
+          { text: 'Mix oats, matcha, milk, syrup, and chia in a jar.', sortOrder: 0 },
+          { text: 'Refrigerate overnight (at least 6 hours).', sortOrder: 1 },
+          { text: 'Top with fresh fruit and serve cold.', sortOrder: 2 },
+        ],
+      },
+    },
+  });
+
+  console.log('  Seeded 2 draft/pending recipes for testing.');
+  console.log('Done.');
 }
 
 main()

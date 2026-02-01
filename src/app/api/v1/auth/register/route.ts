@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerSchema } from '@/lib/validations/auth';
-import { register, AuthError } from '@/services/auth.service';
+import { register } from '@/services/auth.service';
+import { handleApiError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,22 +11,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode },
-      );
-    }
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Validation failed', details: (error as any).issues },
-        { status: 400 },
-      );
-    }
-    console.error('[POST /api/v1/auth/register]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

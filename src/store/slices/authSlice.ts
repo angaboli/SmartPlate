@@ -4,6 +4,7 @@ interface AuthUser {
   id: string;
   email: string;
   name: string | null;
+  role: 'user' | 'editor' | 'admin';
 }
 
 interface AuthState {
@@ -81,6 +82,7 @@ const authSlice = createSlice({
       state.error = null;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth');
+        syncAccessTokenCookie(null);
       }
     },
     hydrateAuth(
@@ -94,6 +96,7 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
+      syncAccessTokenCookie(action.payload.accessToken);
     },
     clearError(state) {
       state.error = null;
@@ -146,10 +149,20 @@ const authSlice = createSlice({
       state.refreshToken = null;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth');
+        syncAccessTokenCookie(null);
       }
     });
   },
 });
+
+function syncAccessTokenCookie(token: string | null) {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    document.cookie = `accessToken=${token}; path=/; max-age=${120 * 60}; samesite=lax`;
+  } else {
+    document.cookie = 'accessToken=; path=/; max-age=0; samesite=lax';
+  }
+}
 
 function persistAuth(state: AuthState) {
   if (typeof window !== 'undefined') {
@@ -161,6 +174,7 @@ function persistAuth(state: AuthState) {
         refreshToken: state.refreshToken,
       }),
     );
+    syncAccessTokenCookie(state.accessToken);
   }
 }
 
