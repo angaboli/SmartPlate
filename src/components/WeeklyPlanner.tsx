@@ -134,35 +134,7 @@ export function WeeklyPlanner({
                     mealTypeColors[meal.type]
                   }`}
                 >
-                  {(onEditMeal || onDeleteMeal) && (
-                    <div className="absolute right-1 top-1 flex gap-1">
-                      {onEditMeal && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditMeal(meal, day.dayIndex);
-                          }}
-                          className="flex items-center justify-center w-7 h-7 rounded bg-background/90 hover:bg-primary hover:text-white border shadow-sm transition-colors"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      {onDeleteMeal && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteMeal(meal.id);
-                          }}
-                          className="flex items-center justify-center w-7 h-7 rounded bg-background/90 hover:bg-destructive hover:text-white border shadow-sm transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex items-start gap-2">
+                    <div className="flex items-start gap-2 pr-16">
                     <span className="text-lg">{mealTypeIcons[meal.type]}</span>
                     <div className="flex-1 space-y-1">
                       <p className="text-xs font-medium uppercase opacity-70">
@@ -172,6 +144,28 @@ export function WeeklyPlanner({
                       <p className="text-sm opacity-70">{meal.calories > 0 ? `${meal.calories} kcal` : '-- kcal'}</p>
                     </div>
                   </div>
+                  {(onEditMeal || onDeleteMeal) && (
+                    <div className="absolute right-2 top-2 flex gap-1 z-10">
+                      {onEditMeal && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMeal(meal, day.dayIndex)}
+                          className="flex items-center justify-center w-7 h-7 rounded bg-background hover:bg-primary hover:text-white border shadow-sm transition-colors cursor-pointer"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {onDeleteMeal && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteMeal(meal.id)}
+                          className="flex items-center justify-center w-7 h-7 rounded bg-background hover:bg-destructive hover:text-white border shadow-sm transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               {day.meals.length === 0 && (
