@@ -193,6 +193,8 @@
   "grocery.downloadPDF": "Télécharger PDF",
   "grocery.shareList": "Partager la liste",
   "grocery.itemsChecked": "Articles cochés :",
+  "grocery.downloaded": "Liste de courses téléchargée !",
+  "grocery.copiedToClipboard": "Liste de courses copiée !",
 
   "recipes.title": "Découverte de recettes",
   "recipes.subtitle": "Explorez des saveurs mondiales avec des recettes saines recommandées par l'IA",

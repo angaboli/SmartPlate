@@ -193,6 +193,8 @@
   "grocery.downloadPDF": "Download PDF",
   "grocery.shareList": "Share List",
   "grocery.itemsChecked": "Items checked:",
+  "grocery.downloaded": "Grocery list downloaded!",
+  "grocery.copiedToClipboard": "Grocery list copied to clipboard!",
 
   "recipes.title": "Recipe Discovery",
   "recipes.subtitle": "Explore global flavors with AI-recommended healthy recipes",
