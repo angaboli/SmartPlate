@@ -191,7 +191,7 @@
   "grocery.failedLoad": "Échec du chargement de la liste de courses",
   "grocery.noItems": "Aucun article à afficher. Générez d'abord un plan repas.",
   "grocery.downloadPDF": "Télécharger PDF",
-  "grocery.shareList": "Partager la liste",
+  "grocery.shareList": "Copier la liste",
   "grocery.itemsChecked": "Articles cochés :",
   "grocery.downloaded": "Liste de courses téléchargée !",
   "grocery.copiedToClipboard": "Liste de courses copiée !",

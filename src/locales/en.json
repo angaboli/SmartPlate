@@ -191,7 +191,7 @@
   "grocery.failedLoad": "Failed to load grocery list",
   "grocery.noItems": "No grocery items to display. Generate a meal plan first.",
   "grocery.downloadPDF": "Download PDF",
-  "grocery.shareList": "Share List",
+  "grocery.shareList": "Copy List",
   "grocery.itemsChecked": "Items checked:",
   "grocery.downloaded": "Grocery list downloaded!",
   "grocery.copiedToClipboard": "Grocery list copied to clipboard!",

@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Download, Share2, Loader2 } from 'lucide-react';
+import { ShoppingCart, Download, Copy, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useGroceryList } from '@/hooks/usePlanner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -79,10 +79,10 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
     toast.success(t('grocery.downloaded'));
   };
 
-  const handleShareList = async () => {
+  const handleCopyList = async () => {
     if (items.length === 0) return;
 
-    // Generate text content for sharing
+    // Generate text content for copying
     let content = '🛒 SmartPlate Grocery List\n\n';
     categories.forEach((category) => {
       const categoryItems = items.filter((item) => item.category === category);
@@ -95,22 +95,8 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
       }
     });
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'SmartPlate Grocery List',
-          text: content,
-        });
-      } catch (err) {
-        // User cancelled or share failed, fallback to clipboard
-        await navigator.clipboard.writeText(content);
-        toast.success(t('grocery.copiedToClipboard'));
-      }
-    } else {
-      // Fallback: copy to clipboard
-      await navigator.clipboard.writeText(content);
-      toast.success(t('grocery.copiedToClipboard'));
-    }
+    await navigator.clipboard.writeText(content);
+    toast.success(t('grocery.copiedToClipboard'));
   };
 
   return (
@@ -199,8 +185,8 @@ export function GroceryListDialog({ open, onOpenChange, planId }: GroceryListDia
                 <Download className="h-4 w-4 mr-2" />
                 {t('grocery.downloadPDF')}
               </Button>
-              <Button variant="outline" className="flex-1" onClick={handleShareList}>
-                <Share2 className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="flex-1" onClick={handleCopyList}>
+                <Copy className="h-4 w-4 mr-2" />
                 {t('grocery.shareList')}
               </Button>
             </div>
