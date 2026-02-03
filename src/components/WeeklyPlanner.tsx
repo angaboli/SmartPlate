@@ -135,23 +135,23 @@ export function WeeklyPlanner({
                   }`}
                 >
                   {(onEditMeal || onDeleteMeal) && (
-                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute right-1 top-1 flex gap-1 opacity-100 sm:opacity-0 transition-opacity group-hover:opacity-100">
                       {onEditMeal && (
                         <button
                           type="button"
                           onClick={() => onEditMeal(meal, day.dayIndex)}
-                          className="rounded p-1 hover:bg-black/10"
+                          className="rounded-md p-1.5 bg-background/80 hover:bg-background border shadow-sm"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-4 w-4" />
                         </button>
                       )}
                       {onDeleteMeal && (
                         <button
                           type="button"
                           onClick={() => onDeleteMeal(meal.id)}
-                          className="rounded p-1 hover:bg-black/10"
+                          className="rounded-md p-1.5 bg-background/80 hover:bg-destructive/10 hover:text-destructive border shadow-sm"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </div>
