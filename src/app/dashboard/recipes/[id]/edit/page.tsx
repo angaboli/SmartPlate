@@ -2,13 +2,14 @@
 
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRecipe, useUpdateRecipe } from '@/hooks/useRecipes';
+import { useRecipe, useUpdateRecipe, useChangeRecipeStatus } from '@/hooks/useRecipes';
 import { RecipeForm } from '@/components/RecipeForm';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function EditRecipePage({
   params,
@@ -19,7 +20,9 @@ export default function EditRecipePage({
   const router = useRouter();
   const { data: recipe, isLoading, error } = useRecipe(id);
   const updateRecipe = useUpdateRecipe();
+  const changeStatus = useChangeRecipeStatus();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   if (isLoading) {
     return (
@@ -78,6 +81,20 @@ export default function EditRecipePage({
           }}
           isPending={updateRecipe.isPending}
           submitLabel={t('manage.saveChanges')}
+          userRole={user?.role}
+          onStatusChange={(status) => {
+            changeStatus.mutate(
+              { id, status: status as 'draft' | 'pending_review' | 'published' | 'rejected' },
+              {
+                onSuccess: () => {
+                  toast.success(`${t('manage.statusChanged')} ${status}`);
+                },
+                onError: (err) => {
+                  toast.error(err.message);
+                },
+              },
+            );
+          }}
         />
       </div>
     </div>

@@ -24,13 +24,26 @@ interface RecipeFormProps {
   onSubmit: (data: RecipeInput) => void;
   isPending: boolean;
   submitLabel: string;
+  userRole?: 'user' | 'editor' | 'admin';
+  onStatusChange?: (status: string) => void;
 }
+
+const statuses = ['draft', 'pending_review', 'published', 'rejected'];
+
+const statusLabelKeys: Record<string, string> = {
+  draft: 'recipes.status.draft',
+  pending_review: 'recipes.status.pendingReview',
+  published: 'recipes.status.published',
+  rejected: 'recipes.status.rejected',
+};
 
 export function RecipeForm({
   initialData,
   onSubmit,
   isPending,
   submitLabel,
+  userRole,
+  onStatusChange,
 }: RecipeFormProps) {
   const { t } = useLanguage();
 
@@ -70,8 +83,11 @@ export function RecipeForm({
   );
   const [category, setCategory] = useState(initialData?.category ?? 'Regular');
   const [goal, setGoal] = useState(initialData?.goal ?? '');
+  const [status, setStatus] = useState(initialData?.status ?? 'draft');
 
   const [titleError, setTitleError] = useState('');
+
+  const isAdmin = userRole === 'admin';
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,7 +152,7 @@ export function RecipeForm({
       </div>
 
       {/* Shared: Category + Goal */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 ${isAdmin ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <div className="space-y-2">
           <Label htmlFor="category">{t('recipeForm.category')}</Label>
           <select
@@ -168,6 +184,26 @@ export function RecipeForm({
             ))}
           </select>
         </div>
+        {isAdmin && (
+          <div className="space-y-2">
+            <Label htmlFor="status">{t('recipeForm.status')}</Label>
+            <select
+              id="status"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                onStatusChange?.(e.target.value);
+              }}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {statuses.map((s) => (
+                <option key={s} value={s}>
+                  {t(statusLabelKeys[s] || '')}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Shared: Prep, Cook, Servings, Calories */}

@@ -231,6 +231,7 @@
   "recipes.status.published": "Publié",
   "recipes.status.rejected": "Rejeté",
 
+  "recipeForm.status": "Statut",
   "recipeForm.title": "Titre",
   "recipeForm.titleRequired": "Au moins un titre (EN ou FR) est requis",
   "recipeForm.titlePlaceholder": "Titre de la recette",
