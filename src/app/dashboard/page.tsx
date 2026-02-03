@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MealInput } from '@/components/MealInput';
 import { AIAnalysisCard } from '@/components/AIAnalysisCard';
 import { SmartSuggestions } from '@/components/SmartSuggestions';
@@ -33,11 +33,16 @@ export default function DashboardPage() {
   const { t, language } = useLanguage();
   const nf = new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US');
 
+  const [mounted, setMounted] = useState(false);
   const [latestLog, setLatestLog] = useState<MealLogDTO | null>(null);
   const [groceryListOpen, setGroceryListOpen] = useState(false);
   const [addMealDialogOpen, setAddMealDialogOpen] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const analyzeMutation = useAnalyzeMeal();
   const { data: summary } = useDailySummary();
@@ -280,14 +285,14 @@ export default function DashboardPage() {
 
       {/* Weekly Planner Section */}
       <section className="space-y-6">
-        {planLoading && (
+        {(!mounted || planLoading) && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">{t('dashboard.loadingPlan')}</p>
           </div>
         )}
 
-        {!planLoading && weekData.length === 0 && (
+        {mounted && !planLoading && weekData.length === 0 && (
           <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">
             <div className="mx-auto max-w-md space-y-4">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -326,7 +331,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {!planLoading && weekData.length > 0 && (
+        {mounted && !planLoading && weekData.length > 0 && (
           <WeeklyPlanner
             weekData={weekData}
             onRegenerateWeek={handleGeneratePlan}
