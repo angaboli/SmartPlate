@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { LogIn, Loader2 } from 'lucide-react';
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from') || '/dashboard';
   const { login, loading, error, clearError } = useAuth();
@@ -26,10 +25,8 @@ function LoginForm() {
     const result = await login(email, password);
     if (result.meta.requestStatus === 'fulfilled') {
       setIsRedirecting(true);
-      // Small delay to ensure Redux state and cookie are persisted before redirect
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      router.push(from);
-      router.refresh();
+      // Use window.location for a full navigation to ensure proxy runs with new cookie
+      window.location.href = from;
     }
   };
 

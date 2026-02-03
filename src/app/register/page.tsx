@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +10,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { UserPlus, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const { register, loading, error, clearError } = useAuth();
   const { t } = useLanguage();
 
@@ -39,10 +37,8 @@ export default function RegisterPage() {
     const result = await register(email, password, name);
     if (result.meta.requestStatus === 'fulfilled') {
       setIsRedirecting(true);
-      // Small delay to ensure Redux state and cookie are persisted before redirect
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      router.push('/dashboard');
-      router.refresh();
+      // Use window.location for a full navigation to ensure proxy runs with new cookie
+      window.location.href = '/dashboard';
     }
   };
 
