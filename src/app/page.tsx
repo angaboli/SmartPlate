@@ -39,7 +39,7 @@ export default function HomePage() {
   const benefits = [t('home.benefit1'), t('home.benefit2'), t('home.benefit3'), t('home.benefit4'), t('home.benefit5'), t('home.benefit6')];
 
   return (
-    <div className="space-y-20 pb-20">
+    <div className="min-h-screen space-y-20 pb-20">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="container px-4 py-16 md:px-6 md:py-24">

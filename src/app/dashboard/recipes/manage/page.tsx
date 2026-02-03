@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
+import { TableSkeleton } from '@/components/skeletons';
 import { toast } from 'sonner';
 import { useDeleteRecipe, useChangeRecipeStatus } from '@/hooks/useRecipes';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -120,7 +121,7 @@ export default function RecipeManagePage() {
   if (!user || (role !== 'editor' && role !== 'admin')) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <BookOpen className="h-6 w-6 text-primary" />
@@ -151,7 +152,7 @@ export default function RecipeManagePage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">{t('manage.loadingRecipes')}</p>
+        <TableSkeleton rows={5} cols={5} />
       ) : recipes.length === 0 ? (
         <p className="text-muted-foreground">{t('manage.noRecipes')}</p>
       ) : (

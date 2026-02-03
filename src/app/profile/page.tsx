@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat, Loader2 } from 'lucide-react';
+import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat } from 'lucide-react';
+import { ProfileSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CookLaterList } from '@/components/CookLaterList';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -124,15 +125,11 @@ export default function ProfilePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-20">
+    <div className="min-h-screen mx-auto max-w-4xl space-y-8 pb-20">
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">{t('profile.title')}</h1>

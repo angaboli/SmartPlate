@@ -38,7 +38,7 @@ function LoginForm() {
           <p className="mt-3 text-sm text-muted-foreground">{t('auth.redirecting')}</p>
         </div>
       )}
-    <div className="mx-auto max-w-md space-y-8 py-12">
+    <div className="min-h-screen mx-auto max-w-md space-y-8 py-12">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">

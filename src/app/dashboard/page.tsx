@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Target, Calendar, Loader2, Sparkles, Plus } from 'lucide-react';
+import { DashboardStatsSkeleton, ChartSkeleton, WeeklyPlannerSkeleton } from '@/components/skeletons';
 import { toast } from 'sonner';
 import {
   useAnalyzeMeal,
@@ -165,7 +166,7 @@ export default function DashboardPage() {
   const isMealSaving = addMealMutation.isPending || updateMealMutation.isPending;
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="min-h-screen space-y-8 pb-20">
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -285,12 +286,7 @@ export default function DashboardPage() {
 
       {/* Weekly Planner Section */}
       <section className="space-y-6">
-        {(!mounted || planLoading) && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">{t('dashboard.loadingPlan')}</p>
-          </div>
-        )}
+        {(!mounted || planLoading) && <WeeklyPlannerSkeleton />}
 
         {mounted && !planLoading && weekData.length === 0 && (
           <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">

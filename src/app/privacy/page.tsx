@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="space-y-8 pb-16 max-w-4xl mx-auto">
+    <div className="min-h-screen space-y-8 pb-16 max-w-4xl mx-auto">
       {/* Header */}
       <section className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">{t('privacy.title')}</h1>

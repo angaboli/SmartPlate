@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useRecipe, useUpdateRecipe, useChangeRecipeStatus } from '@/hooks/useRecipes';
 import { RecipeForm } from '@/components/RecipeForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,8 +27,21 @@ export default function EditRecipePage({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen mx-auto max-w-2xl space-y-6 pb-20">
+        <Skeleton className="h-8 w-40" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+          <Skeleton className="h-10 w-32" />
+        </div>
       </div>
     );
   }
@@ -47,7 +61,7 @@ export default function EditRecipePage({
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 pb-20">
+    <div className="min-h-screen mx-auto max-w-2xl space-y-6 pb-20">
       <Button variant="ghost" size="sm" asChild>
         <Link href={`/recipes/${id}`}>
           <ArrowLeft className="mr-2 h-4 w-4" />

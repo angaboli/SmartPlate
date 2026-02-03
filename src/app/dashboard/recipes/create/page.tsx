@@ -28,7 +28,7 @@ export default function CreateRecipePage() {
   if (!user || (role !== 'editor' && role !== 'admin')) return null;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 pb-20">
+    <div className="min-h-screen mx-auto max-w-2xl space-y-6 pb-20">
       <Button variant="ghost" size="sm" asChild>
         <Link href="/dashboard/recipes/manage">
           <ArrowLeft className="mr-2 h-4 w-4" />

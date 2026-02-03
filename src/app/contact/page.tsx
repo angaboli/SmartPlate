@@ -8,7 +8,7 @@ export default function ContactPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="space-y-12 pb-16 max-w-4xl mx-auto">
+    <div className="min-h-screen space-y-12 pb-16 max-w-4xl mx-auto">
       {/* Hero Section */}
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold tracking-tight md:text-5xl">

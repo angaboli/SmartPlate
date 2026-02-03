@@ -15,10 +15,10 @@ import {
   Flame,
   Sparkles,
   Bookmark,
-  Loader2,
   Pencil,
   Send,
 } from 'lucide-react';
+import { RecipeDetailSkeleton } from '@/components/skeletons';
 import { useCookLater } from '@/contexts/CookLaterContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { bi } from '@/lib/bilingual';
@@ -68,11 +68,7 @@ export default function RecipeDetailPage({
   const submitForReview = useSubmitForReview();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <RecipeDetailSkeleton />;
   }
 
   if (error || !recipe) {
@@ -101,7 +97,7 @@ export default function RecipeDetailPage({
     (recipe.status === 'draft' || recipe.status === 'rejected');
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 pb-20">
+    <div className="min-h-screen mx-auto max-w-3xl space-y-8 pb-20">
       {/* Back link */}
       <Button variant="ghost" size="sm" asChild>
         <Link href="/recipes">

@@ -44,7 +44,7 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="space-y-16 pb-16">
+    <div className="min-h-screen space-y-16 pb-16">
       {/* Hero Section */}
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold tracking-tight md:text-5xl">

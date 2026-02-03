@@ -5,7 +5,8 @@ import { RecipeCard } from '@/components/RecipeCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, SlidersHorizontal, Sparkles, Download, Loader2 } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, Download } from 'lucide-react';
+import { RecipeGridSkeleton } from '@/components/skeletons';
 import { ImportRecipeDialog } from '@/components/ImportRecipeDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRecipes } from '@/hooks/useRecipes';
@@ -30,7 +31,7 @@ export default function RecipesPage() {
   ];
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="min-h-screen space-y-8 pb-20">
       {/* Header */}
       <div className="space-y-2">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -101,11 +102,7 @@ export default function RecipesPage() {
       </div>
 
       {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )}
+      {isLoading && <RecipeGridSkeleton count={8} />}
 
       {/* Error State */}
       {error && (

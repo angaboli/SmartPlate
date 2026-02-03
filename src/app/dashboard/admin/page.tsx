@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Shield } from 'lucide-react';
+import { TableSkeleton } from '@/components/skeletons';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDate } from '@/lib/date-locale';
@@ -97,14 +98,14 @@ export default function AdminPage() {
   if (!user || user.role !== 'admin') return null;
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen space-y-6">
       <div className="flex items-center gap-3">
         <Shield className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">{t('admin.title')}</h1>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">{t('admin.loadingUsers')}</p>
+        <TableSkeleton rows={5} cols={5} />
       ) : (
         <div className="rounded-lg border">
           <Table>
