@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,15 +38,24 @@ export default function RegisterPage() {
 
     const result = await register(email, password, name);
     if (result.meta.requestStatus === 'fulfilled') {
-      const tokens = (result.payload as any).tokens;
-      document.cookie = `accessToken=${tokens.accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+      setIsRedirecting(true);
+      // Small delay to ensure Redux state and cookie are persisted before redirect
+      await new Promise((resolve) => setTimeout(resolve, 100));
       router.push('/dashboard');
+      router.refresh();
     }
   };
 
   const displayError = localError || error;
 
   return (
+    <>
+      {isRedirecting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm bg-background/60">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-3 text-sm text-muted-foreground">{t('auth.redirecting')}</p>
+        </div>
+      )}
     <div className="mx-auto max-w-md space-y-8 py-12">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -156,5 +166,6 @@ export default function RegisterPage() {
         </Link>
       </p>
     </div>
+    </>
   );
 }

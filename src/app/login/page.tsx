@@ -25,10 +25,11 @@ function LoginForm() {
     e.preventDefault();
     const result = await login(email, password);
     if (result.meta.requestStatus === 'fulfilled') {
-      const tokens = (result.payload as any).tokens;
-      document.cookie = `accessToken=${tokens.accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax`;
       setIsRedirecting(true);
+      // Small delay to ensure Redux state and cookie are persisted before redirect
+      await new Promise((resolve) => setTimeout(resolve, 100));
       router.push(from);
+      router.refresh();
     }
   };
 

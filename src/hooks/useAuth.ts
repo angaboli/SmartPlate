@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import {
   loginUser,
@@ -15,6 +15,7 @@ export function useAuth() {
   const { user, accessToken, refreshToken, loading, error } = useAppSelector(
     (state) => state.auth,
   );
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Hydrate auth from localStorage on mount
   useEffect(() => {
@@ -31,6 +32,7 @@ export function useAuth() {
         }
       }
     }
+    setIsHydrated(true);
   }, [dispatch, user]);
 
   const login = useCallback(
@@ -66,6 +68,7 @@ export function useAuth() {
     user,
     accessToken,
     isAuthenticated: !!user,
+    isHydrated,
     loading,
     error,
     login,

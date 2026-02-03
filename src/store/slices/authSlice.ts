@@ -158,7 +158,8 @@ const authSlice = createSlice({
 function syncAccessTokenCookie(token: string | null) {
   if (typeof window === 'undefined') return;
   if (token) {
-    document.cookie = `accessToken=${token}; path=/; max-age=${120 * 60}; samesite=lax`;
+    // Use 24h to match JWT access token expiry
+    document.cookie = `accessToken=${token}; path=/; max-age=${24 * 60 * 60}; samesite=lax`;
   } else {
     document.cookie = 'accessToken=; path=/; max-age=0; samesite=lax';
   }

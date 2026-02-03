@@ -100,13 +100,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <h4 className="font-semibold">{t('footer.company')}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <button className="hover:text-primary">{t('footer.about')}</button>
+                  <Link href="/about" className="hover:text-primary">{t('footer.about')}</Link>
                 </li>
                 <li>
-                  <button className="hover:text-primary">{t('footer.privacy')}</button>
+                  <Link href="/privacy" className="hover:text-primary">{t('footer.privacy')}</Link>
                 </li>
                 <li>
-                  <button className="hover:text-primary">{t('footer.terms')}</button>
+                  <Link href="/terms" className="hover:text-primary">{t('footer.terms')}</Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="hover:text-primary">{t('footer.contact')}</Link>
                 </li>
               </ul>
             </div>
