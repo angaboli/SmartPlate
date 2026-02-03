@@ -135,23 +135,29 @@ export function WeeklyPlanner({
                   }`}
                 >
                   {(onEditMeal || onDeleteMeal) && (
-                    <div className="absolute right-1 top-1 flex gap-1 opacity-100 sm:opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute right-1 top-1 flex gap-1">
                       {onEditMeal && (
                         <button
                           type="button"
-                          onClick={() => onEditMeal(meal, day.dayIndex)}
-                          className="rounded-md p-1.5 bg-background/80 hover:bg-background border shadow-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditMeal(meal, day.dayIndex);
+                          }}
+                          className="flex items-center justify-center w-7 h-7 rounded bg-background/90 hover:bg-primary hover:text-white border shadow-sm transition-colors"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                       )}
                       {onDeleteMeal && (
                         <button
                           type="button"
-                          onClick={() => onDeleteMeal(meal.id)}
-                          className="rounded-md p-1.5 bg-background/80 hover:bg-destructive/10 hover:text-destructive border shadow-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteMeal(meal.id);
+                          }}
+                          className="flex items-center justify-center w-7 h-7 rounded bg-background/90 hover:bg-destructive hover:text-white border shadow-sm transition-colors"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
