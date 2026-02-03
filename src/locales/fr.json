@@ -94,6 +94,11 @@
   "footer.terms": "Conditions",
   "footer.copyright": "2026 SmartPlate. Tous droits réservés.",
 
+  "dashboard.welcomeTitle": "Votre Coach Nutrition IA",
+  "dashboard.welcomeDesc": "Suivez vos repas, obtenez des analyses IA et planifiez votre semaine pour une meilleure nutrition.",
+  "dashboard.step1": "Suivre les repas",
+  "dashboard.step2": "Analyses IA",
+  "dashboard.step3": "Planifier la semaine",
   "dashboard.dailyGoal": "Objectif quotidien",
   "dashboard.weeklyProgress": "Progrès hebdomadaire",
   "dashboard.days": "jours",

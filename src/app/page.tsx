@@ -50,7 +50,7 @@ export default function HomePage() {
                   <Sparkles className="mr-1 h-3 w-3" />
                   {t('home.badge')}
                 </Badge>
-                <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
+                <h1 className="text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
                   {t('home.headline')}
                 </h1>
                 <p className="text-lg text-muted-foreground md:text-xl">

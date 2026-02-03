@@ -8,7 +8,6 @@ import { WeeklyPlanner } from '@/components/WeeklyPlanner';
 import { GroceryListDialog } from '@/components/GroceryListDialog';
 import { AddEditMealDialog } from '@/components/AddEditMealDialog';
 import { WeeklyProgressChart } from '@/components/WeeklyProgressChart';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -222,119 +221,125 @@ export default function DashboardPage() {
       {/* Weekly Progress Chart */}
       <WeeklyProgressChart data={summary?.weeklyData} />
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="analyze" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="analyze">{t('dashboard.tabAnalyze')}</TabsTrigger>
-          <TabsTrigger value="planner">{t('dashboard.tabPlanner')}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="analyze" className="space-y-8">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">{t('dashboard.trackMeal')}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t('dashboard.trackMealDesc')}
-              </p>
-            </div>
-            <MealInput onAnalyze={handleAnalyze} loading={analyzeMutation.isPending} />
+      {/* Welcome Guide */}
+      <section className="rounded-xl border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex-1 space-y-2">
+            <h2 className="text-xl font-semibold">{t('dashboard.welcomeTitle')}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t('dashboard.welcomeDesc')}
+            </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-xs border">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+              {t('dashboard.step1')}
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-xs border">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+              {t('dashboard.step2')}
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-xs border">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+              {t('dashboard.step3')}
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {analyzed && latestLog && (
-            <>
-              <div>
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold">{t('dashboard.aiAnalysis')}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('dashboard.analysisFor')} {latestLog.mealText.length > 80
-                      ? latestLog.mealText.slice(0, 80) + '...'
-                      : latestLog.mealText}
-                    {' '}({latestLog.totalCalories} kcal)
-                  </p>
-                </div>
-                <AIAnalysisCard data={latestLog.analysis.analysisData} />
-              </div>
-              <SmartSuggestions suggestions={latestLog.analysis.suggestions} />
-            </>
-          )}
+      {/* AI Meal Analysis Section */}
+      <section className="space-y-6">
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold">{t('dashboard.trackMeal')}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t('dashboard.trackMealDesc')}
+            </p>
+          </div>
+          <MealInput onAnalyze={handleAnalyze} loading={analyzeMutation.isPending} />
+        </div>
 
-          {!analyzed && (
-            <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">
-              <div className="mx-auto max-w-md space-y-3">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <TrendingUp className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold">{t('dashboard.noAnalysis')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('dashboard.noAnalysisDesc')}
+        {analyzed && latestLog && (
+          <>
+            <div>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold">{t('dashboard.aiAnalysis')}</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t('dashboard.analysisFor')} {latestLog.mealText.length > 80
+                    ? latestLog.mealText.slice(0, 80) + '...'
+                    : latestLog.mealText}
+                  {' '}({latestLog.totalCalories} kcal)
                 </p>
               </div>
+              <AIAnalysisCard data={latestLog.analysis.analysisData} />
             </div>
-          )}
-        </TabsContent>
+            <SmartSuggestions suggestions={latestLog.analysis.suggestions} />
+          </>
+        )}
+      </section>
 
-        <TabsContent value="planner" className="space-y-6">
-          {planLoading && (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">{t('dashboard.loadingPlan')}</p>
-            </div>
-          )}
+      {/* Weekly Planner Section */}
+      <section className="space-y-6">
+        {planLoading && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">{t('dashboard.loadingPlan')}</p>
+          </div>
+        )}
 
-          {!planLoading && weekData.length === 0 && (
-            <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">
-              <div className="mx-auto max-w-md space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold">{t('dashboard.noPlan')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('dashboard.noPlanDesc')}
-                </p>
-                <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-                  <Button
-                    onClick={handleGeneratePlan}
-                    disabled={generatePlanMutation.isPending}
-                  >
-                    {generatePlanMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {t('dashboard.generating')}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {t('dashboard.generateAI')}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleAddMeal(0)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('dashboard.createManually')}
-                  </Button>
-                </div>
+        {!planLoading && weekData.length === 0 && (
+          <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">
+            <div className="mx-auto max-w-md space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold">{t('dashboard.noPlan')}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t('dashboard.noPlanDesc')}
+              </p>
+              <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+                <Button
+                  onClick={handleGeneratePlan}
+                  disabled={generatePlanMutation.isPending}
+                >
+                  {generatePlanMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t('dashboard.generating')}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {t('dashboard.generateAI')}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleAddMeal(0)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('dashboard.createManually')}
+                </Button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {!planLoading && weekData.length > 0 && (
-            <WeeklyPlanner
-              weekData={weekData}
-              onRegenerateWeek={handleGeneratePlan}
-              onGenerateGroceryList={handleGenerateGroceryList}
-              isRegenerating={generatePlanMutation.isPending}
-              onAddMeal={handleAddMeal}
-              onEditMeal={handleEditMeal}
-              onDeleteMeal={handleDeleteMeal}
-              onOptimizeWithAI={handleOptimizePlan}
-              isOptimizing={adjustPlanMutation.isPending}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
+        {!planLoading && weekData.length > 0 && (
+          <WeeklyPlanner
+            weekData={weekData}
+            onRegenerateWeek={handleGeneratePlan}
+            onGenerateGroceryList={handleGenerateGroceryList}
+            isRegenerating={generatePlanMutation.isPending}
+            onAddMeal={handleAddMeal}
+            onEditMeal={handleEditMeal}
+            onDeleteMeal={handleDeleteMeal}
+            onOptimizeWithAI={handleOptimizePlan}
+            isOptimizing={adjustPlanMutation.isPending}
+          />
+        )}
+      </section>
 
       <GroceryListDialog
         open={groceryListOpen}

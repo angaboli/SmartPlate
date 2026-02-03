@@ -94,6 +94,11 @@
   "footer.terms": "Terms",
   "footer.copyright": "2026 SmartPlate. All rights reserved.",
 
+  "dashboard.welcomeTitle": "Your AI Nutrition Coach",
+  "dashboard.welcomeDesc": "Track your meals, get AI-powered insights, and plan your week for better nutrition.",
+  "dashboard.step1": "Log meals",
+  "dashboard.step2": "Get AI insights",
+  "dashboard.step3": "Plan your week",
   "dashboard.dailyGoal": "Daily Goal",
   "dashboard.weeklyProgress": "Weekly Progress",
   "dashboard.days": "days",
