@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/v1/cron/cleanup-rate-limits",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
