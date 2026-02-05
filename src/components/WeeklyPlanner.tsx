@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2, Download } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { generatePlannerPDF } from '@/lib/generatePDF';
+import { toast } from 'sonner';
 
 interface Meal {
   id: string;
@@ -42,8 +44,13 @@ export function WeeklyPlanner({
   onOptimizeWithAI,
   isOptimizing,
 }: WeeklyPlannerProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+
+  const handleDownloadPDF = async () => {
+    await generatePlannerPDF(weekData, language);
+    toast.success(t('planner.downloaded'));
+  };
 
   const mealTypeColors = {
     breakfast: 'bg-[#E9C46A]/20 text-[#8A6A4F] border-[#E9C46A]',
@@ -85,6 +92,10 @@ export function WeeklyPlanner({
           <Button variant="outline" onClick={onRegenerateWeek} disabled={isRegenerating || isOptimizing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
             {isRegenerating ? t('planner.regenerating') : t('planner.regenerateWeek')}
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            {t('planner.downloadPDF')}
           </Button>
           <Button onClick={onGenerateGroceryList} className="bg-primary">
             <ShoppingCart className="h-4 w-4 mr-2" />
