@@ -73,7 +73,10 @@ async function unsaveRecipeApi(recipeId: string): Promise<void> {
     method: 'DELETE',
     headers: getAuthHeader(),
   });
-  if (!res.ok) throw new Error('Failed to unsave recipe');
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to unsave recipe');
+  }
 }
 
 async function updateSavedRecipeApi(data: {
@@ -85,7 +88,10 @@ async function updateSavedRecipeApi(data: {
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify(data.updates),
   });
-  if (!res.ok) throw new Error('Failed to update saved recipe');
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to update saved recipe');
+  }
   return res.json();
 }
 

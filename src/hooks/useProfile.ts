@@ -16,7 +16,10 @@ function getAuthHeader(): Record<string, string> {
 
 async function fetchProfile(): Promise<ProfileDTO> {
   const res = await fetch('/api/v1/me', { headers: getAuthHeader() });
-  if (!res.ok) throw new Error('Failed to fetch profile');
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to fetch profile');
+  }
   return res.json();
 }
 
@@ -26,7 +29,10 @@ async function patchProfile(data: UpdateProfileInput): Promise<ProfileDTO> {
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to update profile');
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to update profile');
+  }
   return res.json();
 }
 

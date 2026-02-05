@@ -53,7 +53,10 @@ async function fetchRecipes(filters: RecipeFilters): Promise<RecipeDTO[]> {
   const res = await fetch(`/api/v1/recipes${qs ? `?${qs}` : ''}`, {
     headers: getAuthHeader(),
   });
-  if (!res.ok) throw new Error('Failed to fetch recipes');
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to fetch recipes');
+  }
   return res.json();
 }
 
@@ -61,7 +64,10 @@ async function fetchRecipeById(id: string): Promise<RecipeDTO> {
   const res = await fetch(`/api/v1/recipes/${id}`, {
     headers: getAuthHeader(),
   });
-  if (!res.ok) throw new Error('Failed to fetch recipe');
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to fetch recipe');
+  }
   return res.json();
 }
 

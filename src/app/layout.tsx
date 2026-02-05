@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Mulish } from 'next/font/google';
 import { StoreProvider } from '@/components/providers/StoreProvider';
 import { AppShell } from '@/components/layout/AppShell';
+import type { Language } from '@/store/slices/languageSlice';
 import '@/styles/index.css';
 
 const mulish = Mulish({
@@ -19,15 +21,19 @@ export const metadata: Metadata = {
     'Track, analyze and improve your nutrition effortlessly with SmartPlate. AI-powered meal analysis, recipe discovery, and personalized meal planning.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const langCookie = cookieStore.get('smartplate-language')?.value;
+  const initialLanguage: Language = langCookie === 'fr' ? 'fr' : 'en';
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={initialLanguage} suppressHydrationWarning>
       <body className={`${mulish.variable} font-sans antialiased`}>
-        <StoreProvider>
+        <StoreProvider initialLanguage={initialLanguage}>
           <AppShell>{children}</AppShell>
         </StoreProvider>
       </body>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,20 @@ import { LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 function LoginForm() {
   const searchParams = useSearchParams();
   const from = searchParams.get('from') || '/dashboard';
-  const { login, loading, error, clearError } = useAuth();
+  const { login, loading, error, clearError, isAuthenticated, isHydrated } = useAuth();
   const { t } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (isHydrated && isAuthenticated) {
+      window.location.href = from;
+    }
+  }, [isHydrated, isAuthenticated, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
