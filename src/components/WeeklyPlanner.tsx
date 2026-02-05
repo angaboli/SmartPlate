@@ -62,9 +62,19 @@ export function WeeklyPlanner({
   const mealTypeIcons = {
     breakfast: '🌅',
     lunch: '☀️',
-    dinner: '🌙',
     snack: '🍎',
+    dinner: '🌙',
   };
+
+  const mealTypeOrder: Record<string, number> = {
+    breakfast: 0,
+    lunch: 1,
+    snack: 2,
+    dinner: 3,
+  };
+
+  const sortMeals = (meals: Meal[]) =>
+    [...meals].sort((a, b) => (mealTypeOrder[a.type] ?? 9) - (mealTypeOrder[b.type] ?? 9));
 
   return (
     <div className="space-y-6">
@@ -138,7 +148,7 @@ export function WeeklyPlanner({
             </div>
 
             <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-              {day.meals.map((meal) => (
+              {sortMeals(day.meals).map((meal) => (
                 <div
                   key={meal.id}
                   className={`group relative rounded-lg border p-3 transition-all hover:shadow-md ${
@@ -149,7 +159,7 @@ export function WeeklyPlanner({
                     <span className="text-lg">{mealTypeIcons[meal.type]}</span>
                     <div className="flex-1 space-y-1">
                       <p className="text-xs font-medium uppercase opacity-70">
-                        {meal.type}
+                        {t(`tag.${meal.type}`)}
                       </p>
                       <p className="font-medium leading-tight line-clamp-2">{meal.name}</p>
                       <p className="text-sm opacity-70">{meal.calories > 0 ? `${meal.calories} kcal` : '-- kcal'}</p>

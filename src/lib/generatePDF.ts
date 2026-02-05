@@ -74,7 +74,7 @@ function addFooter(doc: jsPDF, pageNum: number) {
   doc.rect(0, y, 210, 11, 'F');
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.white);
-  doc.text('smartplate.app', 15, y + 7);
+  doc.text('smartplate.fr', 15, y + 7);
   doc.text(`Page ${pageNum}`, 195, y + 7, { align: 'right' });
 }
 
@@ -103,7 +103,7 @@ export async function generateGroceryPDF(
   await addHeader(doc, title, date);
 
   const categories = Array.from(new Set(items.map((i) => i.category)));
-  let y = 52;
+  let y = 46;
   let page = 1;
 
   categories.forEach((category) => {
@@ -134,7 +134,7 @@ export async function generateGroceryPDF(
     doc.setFontSize(7);
     doc.text(`${catItems.length}`, 184, y + 6.5, { align: 'center' });
 
-    y += 14;
+    y += 12;
 
     // Items
     catItems.forEach((item, idx) => {
@@ -177,10 +177,10 @@ export async function generateGroceryPDF(
       doc.setFont('helvetica', 'normal');
       doc.text(item.quantity, 195 - qtyWidth / 2, y, { align: 'center' });
 
-      y += 8;
+      y += 7;
     });
 
-    y += 5;
+    y += 3;
   });
 
   // Summary box
@@ -225,9 +225,20 @@ interface DayPlan {
 }
 
 const MEAL_TYPE_LABELS: Record<string, Record<string, string>> = {
-  en: { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' },
-  fr: { breakfast: 'Petit-dej', lunch: 'Dejeuner', dinner: 'Diner', snack: 'Collation' },
+  en: { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' },
+  fr: { breakfast: 'Petit-dej', lunch: 'Dejeuner', snack: 'Collation', dinner: 'Diner' },
 };
+
+const MEAL_TYPE_ORDER: Record<string, number> = {
+  breakfast: 0,
+  lunch: 1,
+  snack: 2,
+  dinner: 3,
+};
+
+function sortMeals(meals: Meal[]): Meal[] {
+  return [...meals].sort((a, b) => (MEAL_TYPE_ORDER[a.type] ?? 9) - (MEAL_TYPE_ORDER[b.type] ?? 9));
+}
 
 const MEAL_TYPE_COLORS: Record<string, [number, number, number]> = {
   breakfast: [233, 196, 106],   // gold
@@ -254,14 +265,14 @@ export async function generatePlannerPDF(weekData: DayPlan[], lang: 'en' | 'fr')
   const title = lang === 'fr' ? 'Planning repas hebdomadaire' : 'Weekly Meal Plan';
   await addHeader(doc, title, date);
 
-  let y = 52;
+  let y = 46;
   let page = 1;
   const mealLabels = MEAL_TYPE_LABELS[lang] || MEAL_TYPE_LABELS.en;
 
   weekData.forEach((day) => {
     const totalCal = day.meals.reduce((sum, m) => sum + m.calories, 0);
     const mealsNeeded = Math.max(day.meals.length, 1);
-    const blockHeight = 16 + mealsNeeded * 10 + 6;
+    const blockHeight = 14 + mealsNeeded * 9 + 4;
 
     if (y + blockHeight > 278) {
       addFooter(doc, page);
@@ -294,7 +305,7 @@ export async function generatePlannerPDF(weekData: DayPlan[], lang: 'en' | 'fr')
     doc.setFont('helvetica', 'normal');
     doc.text(day.date, 193 - calWidth - 5, y + 7.5, { align: 'right' });
 
-    y += 16;
+    y += 14;
 
     // Meals
     if (day.meals.length === 0) {
@@ -303,9 +314,9 @@ export async function generatePlannerPDF(weekData: DayPlan[], lang: 'en' | 'fr')
       doc.setFont('helvetica', 'italic');
       const noMeals = lang === 'fr' ? 'Aucun repas planifie' : 'No meals planned';
       doc.text(noMeals, 25, y);
-      y += 10;
+      y += 8;
     } else {
-      day.meals.forEach((meal) => {
+      sortMeals(day.meals).forEach((meal) => {
         if (y > 278) {
           addFooter(doc, page);
           doc.addPage();
@@ -343,7 +354,7 @@ export async function generatePlannerPDF(weekData: DayPlan[], lang: 'en' | 'fr')
           doc.text(`${meal.calories} kcal`, 190, y + 1, { align: 'right' });
         }
 
-        y += 10;
+        y += 9;
       });
     }
 
@@ -352,7 +363,7 @@ export async function generatePlannerPDF(weekData: DayPlan[], lang: 'en' | 'fr')
     doc.setLineWidth(0.3);
     doc.line(20, y, 190, y);
     doc.setLineWidth(0.2);
-    y += 6;
+    y += 4;
   });
 
   // Weekly summary
