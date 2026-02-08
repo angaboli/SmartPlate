@@ -9,6 +9,7 @@ import {
   hydrateAuth,
   clearError,
 } from '@/store/slices/authSlice';
+import { isTokenExpired } from '@/lib/fetchWithAuth';
 
 export function useAuth() {
   const dispatch = useAppDispatch();
@@ -17,22 +18,71 @@ export function useAuth() {
   );
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Hydrate auth from localStorage on mount
+  // Hydrate auth from localStorage on mount, checking token validity
   useEffect(() => {
-    if (!user) {
-      const stored = localStorage.getItem('auth');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.user && parsed.accessToken && parsed.refreshToken) {
-            dispatch(hydrateAuth(parsed));
-          }
-        } catch {
-          localStorage.removeItem('auth');
-        }
-      }
+    if (user) {
+      setIsHydrated(true);
+      return;
     }
-    setIsHydrated(true);
+
+    let cancelled = false;
+
+    async function hydrate() {
+      const stored = localStorage.getItem('auth');
+      if (!stored) {
+        setIsHydrated(true);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored);
+        if (!parsed.user || !parsed.accessToken || !parsed.refreshToken) {
+          localStorage.removeItem('auth');
+          setIsHydrated(true);
+          return;
+        }
+
+        // If access token is still valid, hydrate directly
+        if (!isTokenExpired(parsed.accessToken)) {
+          if (!cancelled) dispatch(hydrateAuth(parsed));
+          if (!cancelled) setIsHydrated(true);
+          return;
+        }
+
+        // Access token expired – try to refresh before hydrating
+        const res = await fetch('/api/v1/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: parsed.refreshToken }),
+        });
+
+        if (res.ok) {
+          const tokens = await res.json();
+          const newAuth = {
+            user: parsed.user,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+          };
+          localStorage.setItem('auth', JSON.stringify(newAuth));
+          document.cookie = `accessToken=${tokens.accessToken}; path=/; max-age=${24 * 60 * 60}; samesite=lax`;
+          if (!cancelled) dispatch(hydrateAuth(newAuth));
+        } else {
+          // Refresh failed – clear stale auth completely
+          localStorage.removeItem('auth');
+          document.cookie = 'accessToken=; path=/; max-age=0; samesite=lax';
+        }
+      } catch {
+        localStorage.removeItem('auth');
+        document.cookie = 'accessToken=; path=/; max-age=0; samesite=lax';
+      }
+
+      if (!cancelled) setIsHydrated(true);
+    }
+
+    hydrate();
+    return () => {
+      cancelled = true;
+    };
   }, [dispatch, user]);
 
   const login = useCallback(

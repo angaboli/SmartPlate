@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 // ─── Types ──────────────────────────────────────
 
@@ -46,18 +47,6 @@ export interface GroceryItemDTO {
 
 // ─── Auth helpers ───────────────────────────────
 
-function getAuthHeader(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const stored = localStorage.getItem('auth');
-    if (stored) {
-      const { accessToken } = JSON.parse(stored);
-      if (accessToken) return { Authorization: `Bearer ${accessToken}` };
-    }
-  } catch {}
-  return {};
-}
-
 function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -73,9 +62,8 @@ function isAuthenticated(): boolean {
 // ─── API functions ──────────────────────────────
 
 async function fetchMealPlan(): Promise<MealPlanDTO | null> {
-  const res = await fetch('/api/v1/planner', {
-    headers: getAuthHeader(),
-  });
+  const res = await fetchWithAuth('/api/v1/planner');
+  if (res.status === 401) throw new Error('Unauthorized');
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to fetch meal plan');
@@ -85,9 +73,9 @@ async function fetchMealPlan(): Promise<MealPlanDTO | null> {
 }
 
 async function generatePlanApi(): Promise<MealPlanDTO> {
-  const res = await fetch('/api/v1/planner/generate', {
+  const res = await fetchWithAuth('/api/v1/planner/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -101,9 +89,9 @@ async function generatePlanApi(): Promise<MealPlanDTO> {
 }
 
 async function addMealApi(data: AddMealData): Promise<MealPlanDTO> {
-  const res = await fetch('/api/v1/planner/meals', {
+  const res = await fetchWithAuth('/api/v1/planner/meals', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -115,9 +103,9 @@ async function addMealApi(data: AddMealData): Promise<MealPlanDTO> {
 }
 
 async function updateMealApi({ itemId, data }: { itemId: string; data: UpdateMealData }): Promise<MealPlanDTO> {
-  const res = await fetch(`/api/v1/planner/meals/${itemId}`, {
+  const res = await fetchWithAuth(`/api/v1/planner/meals/${itemId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -129,9 +117,8 @@ async function updateMealApi({ itemId, data }: { itemId: string; data: UpdateMea
 }
 
 async function deleteMealApi(itemId: string): Promise<MealPlanDTO> {
-  const res = await fetch(`/api/v1/planner/meals/${itemId}`, {
+  const res = await fetchWithAuth(`/api/v1/planner/meals/${itemId}`, {
     method: 'DELETE',
-    headers: getAuthHeader(),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -142,9 +129,9 @@ async function deleteMealApi(itemId: string): Promise<MealPlanDTO> {
 }
 
 async function adjustPlanApi(): Promise<MealPlanDTO> {
-  const res = await fetch('/api/v1/planner/adjust', {
+  const res = await fetchWithAuth('/api/v1/planner/adjust', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -158,9 +145,7 @@ async function adjustPlanApi(): Promise<MealPlanDTO> {
 }
 
 async function fetchGroceryList(planId: string): Promise<{ items: GroceryItemDTO[] }> {
-  const res = await fetch(`/api/v1/planner/${planId}/groceries`, {
-    headers: getAuthHeader(),
-  });
+  const res = await fetchWithAuth(`/api/v1/planner/${planId}/groceries`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to fetch grocery list');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 // ─── Types ──────────────────────────────────────────
 
@@ -55,25 +56,16 @@ export interface DailySummaryDTO {
 
 // ─── Auth helpers ───────────────────────────────────
 
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
+function isAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
   const tokens = localStorage.getItem('auth');
-  if (!tokens) return null;
+  if (!tokens) return false;
   try {
     const { accessToken } = JSON.parse(tokens);
-    return accessToken || null;
+    return !!accessToken;
   } catch {
-    return null;
+    return false;
   }
-}
-
-function getAuthHeader(): Record<string, string> {
-  const token = getAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function isAuthenticated(): boolean {
-  return getAccessToken() !== null;
 }
 
 // ─── API functions ──────────────────────────────────
@@ -82,9 +74,9 @@ async function analyzeMealApi(data: {
   mealText: string;
   mealType: string;
 }): Promise<MealLogDTO> {
-  const res = await fetch('/api/v1/meal-logs', {
+  const res = await fetchWithAuth('/api/v1/meal-logs', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -99,9 +91,8 @@ async function analyzeMealApi(data: {
 
 async function fetchMealLogs(date?: string): Promise<MealLogDTO[]> {
   const params = date ? `?date=${date}` : '';
-  const res = await fetch(`/api/v1/meal-logs${params}`, {
-    headers: getAuthHeader(),
-  });
+  const res = await fetchWithAuth(`/api/v1/meal-logs${params}`);
+  if (res.status === 401) throw new Error('Unauthorized');
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to fetch meal logs');
@@ -110,9 +101,8 @@ async function fetchMealLogs(date?: string): Promise<MealLogDTO[]> {
 }
 
 async function fetchDailySummary(): Promise<DailySummaryDTO> {
-  const res = await fetch('/api/v1/meal-logs/summary', {
-    headers: getAuthHeader(),
-  });
+  const res = await fetchWithAuth('/api/v1/meal-logs/summary');
+  if (res.status === 401) throw new Error('Unauthorized');
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to fetch summary');

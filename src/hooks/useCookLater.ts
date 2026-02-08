@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 export interface SavedRecipeDTO {
   id: string;
@@ -31,22 +32,8 @@ export interface SavedRecipeDTO {
   };
 }
 
-function getAuthHeader(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const tokens = localStorage.getItem('auth');
-  if (!tokens) return {};
-  try {
-    const { accessToken } = JSON.parse(tokens);
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-  } catch {
-    return {};
-  }
-}
-
 async function fetchSavedRecipes(): Promise<SavedRecipeDTO[]> {
-  const res = await fetch('/api/v1/cook-later', {
-    headers: getAuthHeader(),
-  });
+  const res = await fetchWithAuth('/api/v1/cook-later');
   if (res.status === 401) return [];
   if (!res.ok) throw new Error('Failed to fetch saved recipes');
   return res.json();
@@ -56,9 +43,9 @@ async function saveRecipeApi(data: {
   recipeId: string;
   tag?: string;
 }): Promise<SavedRecipeDTO> {
-  const res = await fetch('/api/v1/cook-later', {
+  const res = await fetchWithAuth('/api/v1/cook-later', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -69,9 +56,8 @@ async function saveRecipeApi(data: {
 }
 
 async function unsaveRecipeApi(recipeId: string): Promise<void> {
-  const res = await fetch(`/api/v1/cook-later/${recipeId}`, {
+  const res = await fetchWithAuth(`/api/v1/cook-later/${recipeId}`, {
     method: 'DELETE',
-    headers: getAuthHeader(),
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error('Unauthorized');
@@ -83,9 +69,9 @@ async function updateSavedRecipeApi(data: {
   savedId: string;
   updates: { tag?: string | null; isCooked?: boolean };
 }): Promise<SavedRecipeDTO> {
-  const res = await fetch(`/api/v1/cook-later/${data.savedId}`, {
+  const res = await fetchWithAuth(`/api/v1/cook-later/${data.savedId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data.updates),
   });
   if (!res.ok) {

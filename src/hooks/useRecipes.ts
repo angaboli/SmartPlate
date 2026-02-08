@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import type { RecipeFilters } from '@/services/recipes.service';
 
 export interface RecipeDTO {
@@ -30,17 +31,6 @@ export interface RecipeDTO {
   updatedAt: string;
 }
 
-function getAuthHeader(): Record<string, string> {
-  try {
-    const stored = localStorage.getItem('auth');
-    if (stored) {
-      const { accessToken } = JSON.parse(stored);
-      if (accessToken) return { Authorization: `Bearer ${accessToken}` };
-    }
-  } catch {}
-  return {};
-}
-
 async function fetchRecipes(filters: RecipeFilters): Promise<RecipeDTO[]> {
   const params = new URLSearchParams();
   if (filters.search) params.set('search', filters.search);
@@ -50,24 +40,16 @@ async function fetchRecipes(filters: RecipeFilters): Promise<RecipeDTO[]> {
     params.set('aiRecommended', String(filters.aiRecommended));
 
   const qs = params.toString();
-  const res = await fetch(`/api/v1/recipes${qs ? `?${qs}` : ''}`, {
-    headers: getAuthHeader(),
-  });
-  if (!res.ok) {
-    if (res.status === 401) throw new Error('Unauthorized');
-    throw new Error('Failed to fetch recipes');
-  }
+  const res = await fetchWithAuth(`/api/v1/recipes${qs ? `?${qs}` : ''}`);
+  if (res.status === 401) throw new Error('Unauthorized');
+  if (!res.ok) throw new Error('Failed to fetch recipes');
   return res.json();
 }
 
 async function fetchRecipeById(id: string): Promise<RecipeDTO> {
-  const res = await fetch(`/api/v1/recipes/${id}`, {
-    headers: getAuthHeader(),
-  });
-  if (!res.ok) {
-    if (res.status === 401) throw new Error('Unauthorized');
-    throw new Error('Failed to fetch recipe');
-  }
+  const res = await fetchWithAuth(`/api/v1/recipes/${id}`);
+  if (res.status === 401) throw new Error('Unauthorized');
+  if (!res.ok) throw new Error('Failed to fetch recipe');
   return res.json();
 }
 
@@ -110,9 +92,9 @@ export function useCreateRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: RecipeInput): Promise<RecipeDTO> => {
-      const res = await fetch('/api/v1/recipes', {
+      const res = await fetchWithAuth('/api/v1/recipes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -137,9 +119,9 @@ export function useUpdateRecipe() {
       id: string;
       data: RecipeInput;
     }): Promise<RecipeDTO> => {
-      const res = await fetch(`/api/v1/recipes/${id}`, {
+      const res = await fetchWithAuth(`/api/v1/recipes/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -159,9 +141,8 @@ export function useDeleteRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const res = await fetch(`/api/v1/recipes/${id}`, {
+      const res = await fetchWithAuth(`/api/v1/recipes/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeader(),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -184,9 +165,9 @@ export function useChangeRecipeStatus() {
       id: string;
       status: string;
     }): Promise<RecipeDTO> => {
-      const res = await fetch(`/api/v1/recipes/${id}/status`, {
+      const res = await fetchWithAuth(`/api/v1/recipes/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
@@ -206,9 +187,8 @@ export function useSubmitForReview() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<RecipeDTO> => {
-      const res = await fetch(`/api/v1/recipes/${id}/submit`, {
+      const res = await fetchWithAuth(`/api/v1/recipes/${id}/submit`, {
         method: 'POST',
-        headers: getAuthHeader(),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

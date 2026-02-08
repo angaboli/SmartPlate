@@ -8,6 +8,7 @@ import {
   translate,
   type Language,
 } from '@/store/slices/languageSlice';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 export type { Language };
 
@@ -40,21 +41,11 @@ export function useLanguage() {
     // Fire-and-forget API sync for authenticated users
     const auth = localStorage.getItem('auth');
     if (auth) {
-      try {
-        const { accessToken } = JSON.parse(auth);
-        if (accessToken) {
-          fetch('/api/v1/me', {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ language: lang }),
-          }).catch(() => {});
-        }
-      } catch {
-        // ignore parse errors
-      }
+      fetchWithAuth('/api/v1/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang }),
+      }).catch(() => {});
     }
   };
 
