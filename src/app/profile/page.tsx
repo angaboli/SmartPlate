@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat } from 'lucide-react';
+import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat, Plus, X } from 'lucide-react';
 import { ProfileSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CookLaterList } from '@/components/CookLaterList';
@@ -37,6 +37,7 @@ export default function ProfilePage() {
     dairyFree: false,
   });
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [customAllergyInput, setCustomAllergyInput] = useState('');
 
   // ─── Nutrition targets state
   const [calorieTarget, setCalorieTarget] = useState('2000');
@@ -69,15 +70,30 @@ export default function ProfilePage() {
     { id: 'energy', label: t('profile.goal.energy'), icon: '⚡' },
   ];
 
-  const allergies = ['Nuts', 'Shellfish', 'Eggs', 'Soy', 'Wheat', 'Fish'];
-
   const toggleAllergy = (allergy: string) => {
     setSelectedAllergies((prev) =>
       prev.includes(allergy)
         ? prev.filter((a) => a !== allergy)
-        : [...prev, allergy],
+        : prev.length >= 20 ? prev : [...prev, allergy],
     );
   };
+
+  const handleAddCustomAllergy = () => {
+    const value = customAllergyInput.trim().slice(0, 100);
+    if (!value) return;
+    if (selectedAllergies.some((a) => a.toLowerCase() === value.toLowerCase())) {
+      setCustomAllergyInput('');
+      return;
+    }
+    if (selectedAllergies.length >= 20) return;
+    setSelectedAllergies((prev) => [...prev, value]);
+    setCustomAllergyInput('');
+  };
+
+  const predefinedAllergies = ['Nuts', 'Shellfish', 'Eggs', 'Soy', 'Wheat', 'Fish'];
+  const customAllergies = selectedAllergies.filter(
+    (a) => !predefinedAllergies.includes(a),
+  );
 
   function handleSaveProfile() {
     updateProfile.mutate(
@@ -388,7 +404,7 @@ export default function ProfilePage() {
               {t('profile.allergiesDesc')}
             </p>
             <div className="flex flex-wrap gap-2">
-              {allergies.map((allergy) => (
+              {predefinedAllergies.map((allergy) => (
                 <Badge
                   key={allergy}
                   variant={selectedAllergies.includes(allergy) ? 'default' : 'outline'}
@@ -403,6 +419,61 @@ export default function ProfilePage() {
                 </Badge>
               ))}
             </div>
+
+            {customAllergies.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {customAllergies.map((allergy) => (
+                  <Badge
+                    key={allergy}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {allergy}
+                    <button
+                      type="button"
+                      className="ml-1 inline-flex items-center"
+                      onClick={() =>
+                        setSelectedAllergies((prev) =>
+                          prev.filter((a) => a !== allergy),
+                        )
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {selectedAllergies.length >= 20 ? (
+              <p className="mt-3 text-sm text-destructive">
+                {t('profile.allergyMaxReached')}
+              </p>
+            ) : (
+              <div className="mt-3 flex gap-2">
+                <Input
+                  value={customAllergyInput}
+                  onChange={(e) => setCustomAllergyInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCustomAllergy();
+                    }
+                  }}
+                  placeholder={t('profile.allergyPlaceholder')}
+                  className="max-w-xs bg-input-background"
+                  maxLength={100}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddCustomAllergy}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  {t('profile.addCustomAllergy')}
+                </Button>
+              </div>
+            )}
           </div>
 
           <Button
