@@ -147,11 +147,10 @@
   "mealInput.analyzeAI": "Analyser avec l'IA",
 
   "analysis.mealBalance": "Équilibre du repas",
-  "analysis.compositionLooks": "La composition de votre repas semble",
-  "analysis.keepUp": "Continuez comme ça !",
-  "analysis.hydration": "Hydratation",
-  "analysis.drinkMore": "Buvez 1 litre de plus pour atteindre votre objectif",
-  "analysis.macronutrients": "Macronutriments",
+  "analysis.balanceExcellent": "Excellent",
+  "analysis.balanceGood": "Bon",
+  "analysis.balanceNeedsImprovement": "À améliorer",
+  "analysis.macronutrients": "Détail nutritionnel",
   "analysis.addMore": "Ajouter plus",
   "analysis.reduce": "Réduire",
 

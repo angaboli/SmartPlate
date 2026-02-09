@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertCircle, TrendingUp, Droplets } from 'lucide-react';
+import { CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -11,6 +11,7 @@ interface NutrientData {
 
 interface AnalysisData {
   balance: 'excellent' | 'good' | 'needs-improvement';
+  balanceExplanation?: string;
   nutrients: NutrientData[];
   missing: string[];
   overconsumption: string[];
@@ -38,63 +39,69 @@ export function AIAnalysisCard({ data }: AIAnalysisCardProps) {
     return balance === 'excellent' ? CheckCircle2 : AlertCircle;
   };
 
+  const getBalanceLabel = (balance: string) => {
+    switch (balance) {
+      case 'excellent':
+        return t('analysis.balanceExcellent');
+      case 'good':
+        return t('analysis.balanceGood');
+      default:
+        return t('analysis.balanceNeedsImprovement');
+    }
+  };
+
+  const getNutrientColor = (value: number, target: number) => {
+    const ratio = value / target;
+    if (ratio >= 0.8 && ratio <= 1.2) return 'text-primary';
+    if (ratio < 0.5 || ratio > 1.5) return 'text-destructive';
+    return 'text-[#E9C46A]';
+  };
+
   const BalanceIcon = getBalanceIcon(data.balance);
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {/* Overall Balance */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border bg-card p-6 shadow-sm md:col-span-2">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{t('analysis.mealBalance')}</p>
             <div className="flex items-center gap-2">
               <BalanceIcon className={`h-5 w-5 ${getBalanceColor(data.balance)}`} />
-              <span className="text-lg font-semibold capitalize">{data.balance}</span>
+              <span className={`text-lg font-semibold ${getBalanceColor(data.balance)}`}>
+                {getBalanceLabel(data.balance)}
+              </span>
             </div>
           </div>
           <div className="rounded-lg bg-secondary p-3">
             <TrendingUp className="h-5 w-5 text-primary" />
           </div>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {t('analysis.compositionLooks')} {data.balance}. {t('analysis.keepUp')}
-        </p>
-      </div>
-
-      {/* Hydration */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{t('analysis.hydration')}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold">1.5L / 2.5L</span>
-            </div>
-          </div>
-          <div className="rounded-lg bg-secondary p-3">
-            <Droplets className="h-5 w-5 text-primary" />
-          </div>
-        </div>
-        <Progress value={60} className="mt-3" />
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t('analysis.drinkMore')}
-        </p>
+        {data.balanceExplanation && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {data.balanceExplanation}
+          </p>
+        )}
       </div>
 
       {/* Macronutrients */}
       <div className="rounded-xl border bg-card p-6 shadow-sm md:col-span-2">
         <h3 className="mb-4 font-semibold">{t('analysis.macronutrients')}</h3>
         <div className="space-y-4">
-          {data.nutrients.map((nutrient) => (
-            <div key={nutrient.name}>
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{nutrient.name}</span>
-                <span className="font-medium">
-                  {nutrient.value}g / {nutrient.target}g
-                </span>
+          {data.nutrients.map((nutrient) => {
+            const percentage = Math.min((nutrient.value / nutrient.target) * 100, 100);
+            return (
+              <div key={nutrient.name}>
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{nutrient.name}</span>
+                  <span className={`font-medium ${getNutrientColor(nutrient.value, nutrient.target)}`}>
+                    {nutrient.value}{nutrient.unit} / {nutrient.target}{nutrient.unit}
+                  </span>
+                </div>
+                <Progress value={percentage} />
               </div>
-              <Progress value={(nutrient.value / nutrient.target) * 100} />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
