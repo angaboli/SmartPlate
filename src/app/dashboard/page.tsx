@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MealInput } from '@/components/MealInput';
 import { AIAnalysisCard } from '@/components/AIAnalysisCard';
 import { SmartSuggestions } from '@/components/SmartSuggestions';
@@ -11,7 +11,7 @@ import { WeeklyProgressChart } from '@/components/WeeklyProgressChart';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Target, Calendar, Loader2, Sparkles, Plus } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Loader2, Sparkles, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DashboardStatsSkeleton, ChartSkeleton, WeeklyPlannerSkeleton } from '@/components/skeletons';
 import { toast } from 'sonner';
 import {
@@ -40,6 +40,23 @@ export default function DashboardPage() {
   const [addMealDialogOpen, setAddMealDialogOpen] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const weekRangeLabel = useMemo(() => {
+    const now = new Date();
+    now.setDate(now.getDate() + weekOffset * 7);
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const loc = language === 'fr' ? 'fr-FR' : 'en-US';
+    const fmt = new Intl.DateTimeFormat(loc, { month: 'short', day: 'numeric' });
+    const yearFmt = new Intl.DateTimeFormat(loc, { year: 'numeric' });
+    return `${fmt.format(monday)} – ${fmt.format(sunday)}, ${yearFmt.format(sunday)}`;
+  }, [weekOffset, language]);
 
   useEffect(() => {
     setMounted(true);
@@ -47,12 +64,12 @@ export default function DashboardPage() {
 
   const analyzeMutation = useAnalyzeMeal();
   const { data: summary } = useDailySummary();
-  const { data: mealPlan, isLoading: planLoading } = useMealPlan();
-  const generatePlanMutation = useGeneratePlan();
-  const addMealMutation = useAddMeal();
-  const updateMealMutation = useUpdateMeal();
-  const deleteMealMutation = useDeleteMeal();
-  const adjustPlanMutation = useAdjustPlan();
+  const { data: mealPlan, isLoading: planLoading } = useMealPlan(weekOffset);
+  const generatePlanMutation = useGeneratePlan(weekOffset);
+  const addMealMutation = useAddMeal(weekOffset);
+  const updateMealMutation = useUpdateMeal(weekOffset);
+  const deleteMealMutation = useDeleteMeal(weekOffset);
+  const adjustPlanMutation = useAdjustPlan(weekOffset);
 
   // Stats from live summary
   const todayCalories = summary?.today.totalCalories ?? 0;
@@ -286,6 +303,40 @@ export default function DashboardPage() {
 
       {/* Weekly Planner Section */}
       <section className="space-y-6">
+        {/* Week navigation — always visible */}
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setWeekOffset((o) => o - 1)}
+            aria-label={t('planner.previousWeek')}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium min-w-[180px] text-center">
+            {weekRangeLabel}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setWeekOffset((o) => o + 1)}
+            aria-label={t('planner.nextWeek')}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {weekOffset !== 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setWeekOffset(0)}
+            >
+              {t('planner.today')}
+            </Button>
+          )}
+        </div>
+
         {(!mounted || planLoading) && <WeeklyPlannerSkeleton />}
 
         {mounted && !planLoading && weekData.length === 0 && (

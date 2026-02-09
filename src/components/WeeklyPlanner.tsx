@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2, Download } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -45,7 +44,6 @@ export function WeeklyPlanner({
   isOptimizing,
 }: WeeklyPlannerProps) {
   const { t, language } = useLanguage();
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
   const handleDownloadPDF = async () => {
     await generatePlannerPDF(weekData, language);
