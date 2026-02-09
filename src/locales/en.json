@@ -172,6 +172,10 @@
   "planner.addOne": "Add one",
   "planner.downloadPDF": "Download weekly plan",
   "planner.downloaded": "Meal plan downloaded!",
+  "planner.previousWeek": "Previous week",
+  "planner.nextWeek": "Next week",
+  "planner.today": "Today",
+  "planner.weekRange": "Week of {start}",
 
   "planner.day.monday": "Monday",
   "planner.day.tuesday": "Tuesday",

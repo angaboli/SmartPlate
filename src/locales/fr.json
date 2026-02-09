@@ -172,6 +172,10 @@
   "planner.addOne": "En ajouter un",
   "planner.downloadPDF": "Telecharger le plan hebdomadaire",
   "planner.downloaded": "Planning telecharge !",
+  "planner.previousWeek": "Semaine précédente",
+  "planner.nextWeek": "Semaine prochaine",
+  "planner.today": "Aujourd'hui",
+  "planner.weekRange": "Semaine du {start}",
 
   "planner.day.monday": "Lundi",
   "planner.day.tuesday": "Mardi",
