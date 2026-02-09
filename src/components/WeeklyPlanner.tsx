@@ -121,7 +121,7 @@ export function WeeklyPlanner({
             <div className="border-b bg-secondary/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">{day.day}</h3>
+                  <h3 className="font-semibold">{t(`planner.day.${day.day.toLowerCase()}`)}</h3>
                   <p className="text-sm text-muted-foreground">{day.date}</p>
                 </div>
                 <div className="flex items-center gap-3">
