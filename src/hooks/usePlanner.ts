@@ -61,8 +61,8 @@ function isAuthenticated(): boolean {
 
 // ─── API functions ──────────────────────────────
 
-async function fetchMealPlan(): Promise<MealPlanDTO | null> {
-  const res = await fetchWithAuth('/api/v1/planner');
+async function fetchMealPlan(weekOffset: number): Promise<MealPlanDTO | null> {
+  const res = await fetchWithAuth(`/api/v1/planner?week=${weekOffset}`);
   if (res.status === 401) throw new Error('Unauthorized');
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -72,10 +72,11 @@ async function fetchMealPlan(): Promise<MealPlanDTO | null> {
   return data.plan ?? null;
 }
 
-async function generatePlanApi(): Promise<MealPlanDTO> {
+async function generatePlanApi(weekOffset: number): Promise<MealPlanDTO> {
   const res = await fetchWithAuth('/api/v1/planner/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ week: weekOffset }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -88,7 +89,7 @@ async function generatePlanApi(): Promise<MealPlanDTO> {
   return data.plan;
 }
 
-async function addMealApi(data: AddMealData): Promise<MealPlanDTO> {
+async function addMealApi(data: AddMealData & { week: number }): Promise<MealPlanDTO> {
   const res = await fetchWithAuth('/api/v1/planner/meals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -128,10 +129,11 @@ async function deleteMealApi(itemId: string): Promise<MealPlanDTO> {
   return json.plan;
 }
 
-async function adjustPlanApi(): Promise<MealPlanDTO> {
+async function adjustPlanApi(weekOffset: number): Promise<MealPlanDTO> {
   const res = await fetchWithAuth('/api/v1/planner/adjust', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ week: weekOffset }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -155,20 +157,20 @@ async function fetchGroceryList(planId: string): Promise<{ items: GroceryItemDTO
 
 // ─── Hooks ──────────────────────────────────────
 
-export function useMealPlan() {
+export function useMealPlan(weekOffset = 0) {
   return useQuery({
-    queryKey: ['meal-plan'],
-    queryFn: fetchMealPlan,
+    queryKey: ['meal-plan', weekOffset],
+    queryFn: () => fetchMealPlan(weekOffset),
     enabled: isAuthenticated(),
   });
 }
 
-export function useGeneratePlan() {
+export function useGeneratePlan(weekOffset = 0) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: generatePlanApi,
+    mutationFn: () => generatePlanApi(weekOffset),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meal-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['meal-plan', weekOffset] });
     },
   });
 }
@@ -182,42 +184,42 @@ export function useGroceryList(planId: string | null) {
   });
 }
 
-export function useAddMeal() {
+export function useAddMeal(weekOffset = 0) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: addMealApi,
+    mutationFn: (data: AddMealData) => addMealApi({ ...data, week: weekOffset }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meal-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['meal-plan', weekOffset] });
     },
   });
 }
 
-export function useUpdateMeal() {
+export function useUpdateMeal(weekOffset = 0) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updateMealApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meal-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['meal-plan', weekOffset] });
     },
   });
 }
 
-export function useDeleteMeal() {
+export function useDeleteMeal(weekOffset = 0) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteMealApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meal-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['meal-plan', weekOffset] });
     },
   });
 }
 
-export function useAdjustPlan() {
+export function useAdjustPlan(weekOffset = 0) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: adjustPlanApi,
+    mutationFn: () => adjustPlanApi(weekOffset),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meal-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['meal-plan', weekOffset] });
     },
   });
 }

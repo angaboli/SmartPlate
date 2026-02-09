@@ -12,7 +12,7 @@ import {
   checkPlannerRateLimit,
   getWeekStartDate,
   formatPlanForClient,
-  getCurrentPlan,
+  getPlan,
 } from '../planner.service';
 
 beforeEach(() => {
@@ -83,10 +83,10 @@ describe('formatPlanForClient', () => {
   });
 });
 
-describe('getCurrentPlan', () => {
+describe('getPlan', () => {
   it('returns null when no plan exists', async () => {
     db.mealPlan.findUnique.mockResolvedValue(null);
-    const result = await getCurrentPlan('u1');
+    const result = await getPlan('u1');
     expect(result).toBeNull();
   });
 
@@ -97,7 +97,7 @@ describe('getCurrentPlan', () => {
       items: [],
     });
 
-    const result = await getCurrentPlan('u1');
+    const result = await getPlan('u1');
     expect(result).not.toBeNull();
     expect(result!.id).toBe('p1');
   });

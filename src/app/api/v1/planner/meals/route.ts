@@ -9,6 +9,7 @@ const AddMealSchema = z.object({
   mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']),
   name: z.string().min(1).max(200),
   calories: z.number().int().min(0).max(10000).optional(),
+  week: z.number().int().min(-52).max(52).optional().default(0),
 });
 
 export async function POST(request: NextRequest) {
@@ -19,8 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const data = AddMealSchema.parse(body);
-    const plan = await addMealToPlan(user.sub, data);
+    const { week, ...data } = AddMealSchema.parse(body);
+    const plan = await addMealToPlan(user.sub, data, week);
 
     return NextResponse.json({ plan }, { status: 201 });
   } catch (error) {

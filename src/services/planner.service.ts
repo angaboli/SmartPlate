@@ -64,10 +64,16 @@ export function getWeekStartDate(date?: Date): Date {
   return d;
 }
 
-// ─── Get current plan ───────────────────────────
+export function getWeekStartForOffset(offset = 0): Date {
+  const now = new Date();
+  now.setDate(now.getDate() + offset * 7);
+  return getWeekStartDate(now);
+}
 
-export async function getCurrentPlan(userId: string): Promise<ClientMealPlan | null> {
-  const weekStart = getWeekStartDate();
+// ─── Get plan for week ──────────────────────────
+
+export async function getPlan(userId: string, weekOffset = 0): Promise<ClientMealPlan | null> {
+  const weekStart = getWeekStartForOffset(weekOffset);
 
   const plan = await db.mealPlan.findUnique({
     where: { userId_weekStart: { userId, weekStart } },
@@ -83,7 +89,7 @@ export async function getCurrentPlan(userId: string): Promise<ClientMealPlan | n
 
 // ─── Generate and save plan ─────────────────────
 
-export async function generateAndSavePlan(userId: string): Promise<ClientMealPlan> {
+export async function generateAndSavePlan(userId: string, weekOffset = 0): Promise<ClientMealPlan> {
   // Fetch user settings for AI context
   const settings = await db.userSettings.findUnique({
     where: { userId },
@@ -101,7 +107,7 @@ export async function generateAndSavePlan(userId: string): Promise<ClientMealPla
   };
 
   const aiResult = await generateWeeklyPlan(userContext);
-  const weekStart = getWeekStartDate();
+  const weekStart = getWeekStartForOffset(weekOffset);
 
   // Transaction: delete existing plan for this week + create new one
   const plan = await db.$transaction(async (tx) => {
@@ -224,8 +230,8 @@ export function formatPlanForClient(
 
 // ─── Get or create current plan ────────────────
 
-export async function getOrCreateCurrentPlan(userId: string) {
-  const weekStart = getWeekStartDate();
+export async function getOrCreatePlan(userId: string, weekOffset = 0) {
+  const weekStart = getWeekStartForOffset(weekOffset);
 
   const plan = await db.mealPlan.upsert({
     where: { userId_weekStart: { userId, weekStart } },
@@ -244,8 +250,9 @@ export async function getOrCreateCurrentPlan(userId: string) {
 export async function addMealToPlan(
   userId: string,
   data: { dayIndex: number; mealType: string; name: string; calories?: number },
+  weekOffset = 0,
 ): Promise<ClientMealPlan> {
-  const plan = await getOrCreateCurrentPlan(userId);
+  const plan = await getOrCreatePlan(userId, weekOffset);
 
   const maxSort = await db.mealPlanItem.aggregate({
     where: { mealPlanId: plan.id, dayIndex: data.dayIndex },
@@ -338,8 +345,8 @@ export async function deleteMealItem(
 
 // ─── Adjust plan with AI ───────────────────────
 
-export async function adjustPlanWithAI(userId: string): Promise<ClientMealPlan> {
-  const plan = await getOrCreateCurrentPlan(userId);
+export async function adjustPlanWithAI(userId: string, weekOffset = 0): Promise<ClientMealPlan> {
+  const plan = await getOrCreatePlan(userId, weekOffset);
 
   const settings = await db.userSettings.findUnique({
     where: { userId },
