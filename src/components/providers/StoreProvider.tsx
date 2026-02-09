@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { makeStore, type AppStore } from '@/store/store';
@@ -14,11 +14,7 @@ interface StoreProviderProps {
 }
 
 export function StoreProvider({ initialLanguage = 'en', children }: StoreProviderProps) {
-  const storeRef = useRef<AppStore | null>(null);
-  if (!storeRef.current) {
-    storeRef.current = makeStore(initialLanguage);
-  }
-  const store = storeRef.current;
+  const [store] = useState(() => makeStore(initialLanguage));
 
   const [queryClient] = useState(
     () =>
