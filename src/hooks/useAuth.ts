@@ -1,27 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import {
   loginUser,
   registerUser,
   logout as logoutAction,
   hydrateAuth,
+  markHydrated,
   clearError,
 } from '@/store/slices/authSlice';
 import { isTokenExpired } from '@/lib/fetchWithAuth';
 
 export function useAuth() {
   const dispatch = useAppDispatch();
-  const { user, accessToken, refreshToken, loading, error } = useAppSelector(
-    (state) => state.auth,
-  );
-  const [isHydrated, setIsHydrated] = useState(false);
+  const { user, accessToken, refreshToken, isHydrated, loading, error } =
+    useAppSelector((state) => state.auth);
 
   // Hydrate auth from localStorage on mount, checking token validity
   useEffect(() => {
     if (user) {
-      setIsHydrated(true);
+      dispatch(markHydrated());
       return;
     }
 
@@ -30,7 +29,7 @@ export function useAuth() {
     async function hydrate() {
       const stored = localStorage.getItem('auth');
       if (!stored) {
-        setIsHydrated(true);
+        if (!cancelled) dispatch(markHydrated());
         return;
       }
 
@@ -38,14 +37,13 @@ export function useAuth() {
         const parsed = JSON.parse(stored);
         if (!parsed.user || !parsed.accessToken || !parsed.refreshToken) {
           localStorage.removeItem('auth');
-          setIsHydrated(true);
+          if (!cancelled) dispatch(markHydrated());
           return;
         }
 
         // If access token is still valid, hydrate directly
         if (!isTokenExpired(parsed.accessToken)) {
           if (!cancelled) dispatch(hydrateAuth(parsed));
-          if (!cancelled) setIsHydrated(true);
           return;
         }
 
@@ -70,13 +68,13 @@ export function useAuth() {
           // Refresh failed – clear stale auth completely
           localStorage.removeItem('auth');
           document.cookie = 'accessToken=; path=/; max-age=0; samesite=lax';
+          if (!cancelled) dispatch(markHydrated());
         }
       } catch {
         localStorage.removeItem('auth');
         document.cookie = 'accessToken=; path=/; max-age=0; samesite=lax';
+        if (!cancelled) dispatch(markHydrated());
       }
-
-      if (!cancelled) setIsHydrated(true);
     }
 
     hydrate();

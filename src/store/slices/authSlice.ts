@@ -11,6 +11,7 @@ interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
   refreshToken: string | null;
+  isHydrated: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -19,6 +20,7 @@ const initialState: AuthState = {
   user: null,
   accessToken: null,
   refreshToken: null,
+  isHydrated: false,
   loading: false,
   error: null,
 };
@@ -96,7 +98,11 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
+      state.isHydrated = true;
       syncAccessTokenCookie(action.payload.accessToken);
+    },
+    markHydrated(state) {
+      state.isHydrated = true;
     },
     clearError(state) {
       state.error = null;
@@ -179,5 +185,5 @@ function persistAuth(state: AuthState) {
   }
 }
 
-export const { logout, hydrateAuth, clearError } = authSlice.actions;
+export const { logout, hydrateAuth, markHydrated, clearError } = authSlice.actions;
 export default authSlice.reducer;
