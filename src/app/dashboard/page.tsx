@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { MealInput } from '@/components/MealInput';
 import { AIAnalysisCard } from '@/components/AIAnalysisCard';
 import { SmartSuggestions } from '@/components/SmartSuggestions';
+import { MealRecap } from '@/components/MealRecap';
 import { WeeklyPlanner } from '@/components/WeeklyPlanner';
 import { GroceryListDialog } from '@/components/GroceryListDialog';
 import { AddEditMealDialog } from '@/components/AddEditMealDialog';
@@ -297,6 +298,13 @@ export default function DashboardPage() {
               <AIAnalysisCard data={latestLog.analysis.analysisData} />
             </div>
             <SmartSuggestions suggestions={latestLog.analysis.suggestions} />
+            <MealRecap
+              mealText={latestLog.mealText}
+              mealType={latestLog.mealType}
+              totalCalories={latestLog.totalCalories}
+              analysisData={latestLog.analysis.analysisData}
+              suggestions={latestLog.analysis.suggestions}
+            />
           </>
         )}
       </section>

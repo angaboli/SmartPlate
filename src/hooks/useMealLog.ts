@@ -14,6 +14,7 @@ export interface NutrientDTO {
 
 export interface AnalysisDataDTO {
   balance: 'excellent' | 'good' | 'needs-improvement';
+  balanceExplanation?: string;
   nutrients: NutrientDTO[];
   missing: string[];
   overconsumption: string[];

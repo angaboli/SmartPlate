@@ -476,5 +476,18 @@
   "contact.socialTitle": "Follow Us",
   "contact.socialDesc": "Stay updated with the latest features and nutrition tips.",
   "contact.feedbackTitle": "Feedback",
-  "contact.feedbackDesc": "Your feedback helps us improve SmartPlate. Don't hesitate to share your ideas and suggestions!"
+  "contact.feedbackDesc": "Your feedback helps us improve SmartPlate. Don't hesitate to share your ideas and suggestions!",
+
+  "recap.title": "Full Analysis Recap",
+  "recap.yourMeal": "Your Meal",
+  "recap.aiAnalysis": "AI Analysis",
+  "recap.aiRecommendations": "AI Recommendations",
+  "recap.estimatedCalories": "Estimated Calories",
+  "recap.nutrient": "Nutrient",
+  "recap.value": "Value",
+  "recap.target": "Target",
+  "recap.status": "Status",
+  "recap.missingNutrients": "Missing Nutrients",
+  "recap.overconsumption": "Overconsumption",
+  "recap.suggestions": "Suggestions"
 }

@@ -476,5 +476,18 @@
   "contact.socialTitle": "Suivez-nous",
   "contact.socialDesc": "Restez informé des dernières fonctionnalités et conseils nutritionnels.",
   "contact.feedbackTitle": "Vos retours",
-  "contact.feedbackDesc": "Vos retours nous aident à améliorer SmartPlate. N'hésitez pas à partager vos idées et suggestions !"
+  "contact.feedbackDesc": "Vos retours nous aident à améliorer SmartPlate. N'hésitez pas à partager vos idées et suggestions !",
+
+  "recap.title": "Récapitulatif complet",
+  "recap.yourMeal": "Votre repas",
+  "recap.aiAnalysis": "Analyse IA",
+  "recap.aiRecommendations": "Recommandations IA",
+  "recap.estimatedCalories": "Calories estimées",
+  "recap.nutrient": "Nutriment",
+  "recap.value": "Valeur",
+  "recap.target": "Objectif",
+  "recap.status": "Statut",
+  "recap.missingNutrients": "Nutriments manquants",
+  "recap.overconsumption": "Surconsommation",
+  "recap.suggestions": "Suggestions"
 }
