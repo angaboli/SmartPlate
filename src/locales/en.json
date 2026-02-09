@@ -174,7 +174,7 @@
   "planner.downloaded": "Meal plan downloaded!",
   "planner.previousWeek": "Previous week",
   "planner.nextWeek": "Next week",
-  "planner.today": "Today",
+  "planner.today": "Current week",
   "planner.weekRange": "Week of {start}",
 
   "planner.day.monday": "Monday",
