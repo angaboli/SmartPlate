@@ -194,29 +194,36 @@ function buildSystemPrompt(ctx: UserNutritionContext): string {
   const carbTargetG = Math.round((ctx.calorieTarget * 0.45) / 4); // 45% of calories
   const fatTargetG = Math.round((ctx.calorieTarget * 0.30) / 9);  // 30% of calories
 
-  return `You are a professional nutritionist AI. Analyze the user's SPECIFIC meal in detail.
+  return `You are a professional nutritionist AI. Analyze ALL the food the user describes.
 
-Your analysis must be UNIQUE to the exact foods described. Identify each ingredient, estimate its portion size, and calculate nutrients accordingly. Do NOT give generic advice — reference the actual foods in the meal.
+IMPORTANT — Input parsing rules:
+- The user may describe a single meal, multiple meals, an entire day, or even several days of eating.
+- Read the ENTIRE input carefully. Identify EVERY food item mentioned, no matter how the text is structured (lists, sentences, day-by-day, comma-separated, etc.).
+- SUM the calories and nutrients of ALL foods described — do NOT analyze only a part of the input.
+- If multiple meals or days are described, the analysis must cover EVERYTHING combined as a whole.
+- Never ignore or skip items mentioned in the text.
+
+Your analysis must be UNIQUE to the exact foods described. Identify each ingredient, estimate its portion size, and calculate nutrients accordingly. Do NOT give generic advice — reference the actual foods provided.
 
 Return a JSON object:
 {
   "analysisData": {
     "balance": "excellent" | "good" | "needs-improvement",
-    "balanceExplanation": "<1-2 sentences explaining WHY this meal has this balance rating, referencing the specific foods>",
+    "balanceExplanation": "<1-2 sentences explaining the overall nutritional balance of EVERYTHING described, referencing the specific foods>",
     "nutrients": [
       { "name": "Protein", "value": <g>, "target": ${ctx.proteinTargetG}, "unit": "g" },
       { "name": "Carbohydrates", "value": <g>, "target": ${carbTargetG}, "unit": "g" },
       { "name": "Fats", "value": <g>, "target": ${fatTargetG}, "unit": "g" },
       { "name": "Fiber", "value": <g>, "target": 25, "unit": "g" },
-      <add 2-4 MORE nutrients relevant to THIS specific meal, e.g. Iron, Calcium, Vitamin C, Sodium, Sugar, Omega-3, Vitamin A, Vitamin D, Potassium, Zinc — pick whichever are most notable for the foods described>
+      <add 2-4 MORE nutrients relevant to THIS specific input, e.g. Iron, Calcium, Vitamin C, Sodium, Sugar, Omega-3, Vitamin A, Vitamin D, Potassium, Zinc — pick whichever are most notable for the foods described>
     ],
-    "missing": ["<specific nutrient or food group this meal lacks — be precise, e.g. 'Vitamin C from fresh fruits or vegetables' not just 'vitamins'>"],
-    "overconsumption": ["<specific nutrient or food that is excessive in this meal — be precise, e.g. 'Saturated fat from cheese and butter' not just 'fat'>"]
+    "missing": ["<specific nutrient or food group that is lacking across all the food described — be precise, e.g. 'Vitamin C from fresh fruits or vegetables' not just 'vitamins'>"],
+    "overconsumption": ["<specific nutrient or food that is excessive across all the food described — be precise, e.g. 'Saturated fat from cheese and butter' not just 'fat'>"]
   },
   "suggestions": [
-    { "type": "improve" | "swap" | "add", "title": "<short title>", "description": "<actionable suggestion referencing specific foods in the meal>" }
+    { "type": "improve" | "swap" | "add", "title": "<short title>", "description": "<actionable suggestion referencing specific foods from the input>" }
   ],
-  "totalCalories": <estimated total calories as integer>
+  "totalCalories": <estimated TOTAL calories for ALL food described, as integer>
 }
 
 User profile:
@@ -228,11 +235,12 @@ User profile:
 Rules:
 - ${langInstruction}
 - Estimate nutrients based on standard portion sizes and USDA/common food databases.
-- The "nutrients" array MUST have at least 6 entries: the 4 macros (Protein, Carbohydrates, Fats, Fiber) PLUS 2-4 micronutrients that are particularly relevant to the specific foods in this meal.
-- For micronutrient targets, use standard daily recommended values (e.g. Iron: 18mg, Calcium: 1000mg, Vitamin C: 90mg, Sodium: 2300mg).
-- Provide 3-6 suggestions. Each MUST reference specific foods from the meal. Use a mix of "improve", "swap", and "add" types.
+- The nutrient targets above are DAILY targets. If the user describes multiple days, scale targets accordingly (e.g. 3 days = 3x daily target).
+- The "nutrients" array MUST have at least 6 entries: the 4 macros (Protein, Carbohydrates, Fats, Fiber) PLUS 2-4 micronutrients that are particularly relevant to the specific foods described.
+- For micronutrient targets, use standard daily recommended values (e.g. Iron: 18mg, Calcium: 1000mg, Vitamin C: 90mg, Sodium: 2300mg). Scale if multiple days.
+- Provide 3-6 suggestions. Each MUST reference specific foods from the input. Use a mix of "improve", "swap", and "add" types.
 - "missing" should list 1-4 specific deficiencies. Be precise about what food or nutrient is lacking.
-- "overconsumption" should list items that are excessive (can be empty if the meal is well-balanced).
+- "overconsumption" should list items that are excessive (can be empty if the food is well-balanced).
 - Return ONLY the JSON object, no markdown, no code blocks.`;
 }
 
@@ -251,7 +259,7 @@ export async function analyzeMeal(
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Meal type: ${mealType}\nMeal description: ${mealText}\n\nAnalyze this specific meal in detail. Identify each ingredient and its nutritional contribution.` },
+      { role: 'user', content: `Meal type: ${mealType}\nMeal description:\n${mealText}\n\nAnalyze ALL food items described above. Identify every ingredient, estimate portions, and aggregate the total nutritional values.` },
     ],
   });
 
