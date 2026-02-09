@@ -73,6 +73,7 @@ export async function createMealLog(
     glutenFree: settings?.glutenFree ?? false,
     dairyFree: settings?.dairyFree ?? false,
     allergies: settings?.allergies ?? [],
+    language: settings?.language ?? 'en',
   };
 
   // Call AI

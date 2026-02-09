@@ -18,7 +18,8 @@ const NutrientSchema = z.object({
 
 const AnalysisDataSchema = z.object({
   balance: z.enum(['excellent', 'good', 'needs-improvement']),
-  nutrients: z.array(NutrientSchema).min(1),
+  balanceExplanation: z.string(),
+  nutrients: z.array(NutrientSchema).min(4),
   missing: z.array(z.string()),
   overconsumption: z.array(z.string()),
 });
@@ -185,39 +186,54 @@ function buildSystemPrompt(ctx: UserNutritionContext): string {
     ? `The user has these dietary restrictions: ${restrictions.join(', ')}.`
     : 'The user has no specific dietary restrictions.';
 
-  return `You are a professional nutritionist AI assistant for SmartPlate, a nutrition tracking app.
+  const langInstruction = ctx.language === 'fr'
+    ? 'IMPORTANT: ALL text values in the JSON (balanceExplanation, nutrient names, suggestion titles, descriptions, missing items, overconsumption items) MUST be written in French.'
+    : 'All text values in the JSON must be written in English.';
 
-Analyze the user's meal and return a JSON object with the following structure:
+  // Compute macro targets from calorie target
+  const carbTargetG = Math.round((ctx.calorieTarget * 0.45) / 4); // 45% of calories
+  const fatTargetG = Math.round((ctx.calorieTarget * 0.30) / 9);  // 30% of calories
+
+  return `You are a professional nutritionist AI. Analyze the user's SPECIFIC meal in detail.
+
+Your analysis must be UNIQUE to the exact foods described. Identify each ingredient, estimate its portion size, and calculate nutrients accordingly. Do NOT give generic advice — reference the actual foods in the meal.
+
+Return a JSON object:
 {
   "analysisData": {
     "balance": "excellent" | "good" | "needs-improvement",
+    "balanceExplanation": "<1-2 sentences explaining WHY this meal has this balance rating, referencing the specific foods>",
     "nutrients": [
-      { "name": "Protein", "value": <estimated grams>, "target": ${ctx.proteinTargetG}, "unit": "g" },
-      { "name": "Carbohydrates", "value": <estimated grams>, "target": <reasonable target>, "unit": "g" },
-      { "name": "Fats", "value": <estimated grams>, "target": <reasonable target>, "unit": "g" },
-      { "name": "Fiber", "value": <estimated grams>, "target": 25, "unit": "g" }
+      { "name": "Protein", "value": <g>, "target": ${ctx.proteinTargetG}, "unit": "g" },
+      { "name": "Carbohydrates", "value": <g>, "target": ${carbTargetG}, "unit": "g" },
+      { "name": "Fats", "value": <g>, "target": ${fatTargetG}, "unit": "g" },
+      { "name": "Fiber", "value": <g>, "target": 25, "unit": "g" },
+      <add 2-4 MORE nutrients relevant to THIS specific meal, e.g. Iron, Calcium, Vitamin C, Sodium, Sugar, Omega-3, Vitamin A, Vitamin D, Potassium, Zinc — pick whichever are most notable for the foods described>
     ],
-    "missing": ["<nutrient or food group that should be added>"],
-    "overconsumption": ["<nutrient or food that is excessive>"]
+    "missing": ["<specific nutrient or food group this meal lacks — be precise, e.g. 'Vitamin C from fresh fruits or vegetables' not just 'vitamins'>"],
+    "overconsumption": ["<specific nutrient or food that is excessive in this meal — be precise, e.g. 'Saturated fat from cheese and butter' not just 'fat'>"]
   },
   "suggestions": [
-    { "type": "improve" | "swap" | "add", "title": "<short title>", "description": "<actionable suggestion>" }
+    { "type": "improve" | "swap" | "add", "title": "<short title>", "description": "<actionable suggestion referencing specific foods in the meal>" }
   ],
   "totalCalories": <estimated total calories as integer>
 }
 
-User's daily calorie target: ${ctx.calorieTarget} kcal.
-User's protein target: ${ctx.proteinTargetG}g.
-User's goal: ${ctx.goal}.
-${restrictionsText}
+User profile:
+- Daily calorie target: ${ctx.calorieTarget} kcal
+- Protein target: ${ctx.proteinTargetG}g/day
+- Goal: ${ctx.goal}
+- ${restrictionsText}
 
 Rules:
-- Estimate nutrients as accurately as possible based on common food databases.
-- Provide at least 2-4 suggestions that are actionable and specific.
-- The "missing" array should list things the meal lacks.
-- The "overconsumption" array should list things that are excessive (can be empty).
-- Set carb and fat targets proportionally based on the calorie target.
-- Return ONLY the JSON object, no markdown formatting, no code blocks.`;
+- ${langInstruction}
+- Estimate nutrients based on standard portion sizes and USDA/common food databases.
+- The "nutrients" array MUST have at least 6 entries: the 4 macros (Protein, Carbohydrates, Fats, Fiber) PLUS 2-4 micronutrients that are particularly relevant to the specific foods in this meal.
+- For micronutrient targets, use standard daily recommended values (e.g. Iron: 18mg, Calcium: 1000mg, Vitamin C: 90mg, Sodium: 2300mg).
+- Provide 3-6 suggestions. Each MUST reference specific foods from the meal. Use a mix of "improve", "swap", and "add" types.
+- "missing" should list 1-4 specific deficiencies. Be precise about what food or nutrient is lacking.
+- "overconsumption" should list items that are excessive (can be empty if the meal is well-balanced).
+- Return ONLY the JSON object, no markdown, no code blocks.`;
 }
 
 // ─── Main analysis function ─────────────────────────
@@ -231,11 +247,11 @@ export async function analyzeMeal(
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
-    temperature: 0.3,
+    temperature: 0.7,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Meal type: ${mealType}\nMeal: ${mealText}` },
+      { role: 'user', content: `Meal type: ${mealType}\nMeal description: ${mealText}\n\nAnalyze this specific meal in detail. Identify each ingredient and its nutritional contribution.` },
     ],
   });
 
@@ -338,12 +354,17 @@ export async function generateGroceryList(
     ? `Dietary restrictions: ${restrictions.join(', ')}.`
     : 'No specific dietary restrictions.';
 
+  const langInstruction = ctx.language === 'fr'
+    ? 'IMPORTANT: All ingredient names MUST be written in French.'
+    : 'All ingredient names must be written in English.';
+
   const systemPrompt = `You are a professional nutritionist AI for SmartPlate.
 Given a list of meal names for a weekly meal plan, generate an aggregated grocery shopping list.
 
 ${restrictionsText}
 
 Rules:
+- ${langInstruction}
 - Combine duplicate ingredients and provide practical quantities for the whole week.
 - Use realistic grocery store quantities (e.g., "500g", "1 bunch", "2 cans", "1 dozen").
 - Categorize each item into exactly one of: Protein, Vegetables, Fruits, Grains, Dairy, Pantry, Spices, Other.

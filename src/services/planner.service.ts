@@ -176,6 +176,7 @@ export async function getGroceryListForPlan(
     glutenFree: settings?.glutenFree ?? false,
     dairyFree: settings?.dairyFree ?? false,
     allergies: settings?.allergies ?? [],
+    language: settings?.language ?? 'en',
   };
 
   return generateGroceryList(mealNames, userContext);
