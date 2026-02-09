@@ -69,7 +69,7 @@ export function StoreProvider({ initialLanguage = 'en', children }: StoreProvide
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
         </ThemeProvider>
       </QueryClientProvider>
