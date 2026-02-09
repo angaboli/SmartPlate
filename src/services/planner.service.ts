@@ -104,6 +104,7 @@ export async function generateAndSavePlan(userId: string, weekOffset = 0): Promi
     glutenFree: settings?.glutenFree ?? false,
     dairyFree: settings?.dairyFree ?? false,
     allergies: settings?.allergies ?? [],
+    language: settings?.language ?? 'en',
   };
 
   const aiResult = await generateWeeklyPlan(userContext);
@@ -361,6 +362,7 @@ export async function adjustPlanWithAI(userId: string, weekOffset = 0): Promise<
     glutenFree: settings?.glutenFree ?? false,
     dairyFree: settings?.dairyFree ?? false,
     allergies: settings?.allergies ?? [],
+    language: settings?.language ?? 'en',
   };
 
   const existingMeals = plan.items.map((item) => ({

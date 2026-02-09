@@ -79,6 +79,10 @@ export async function adjustWeeklyPlan(
     return `${dayName}:\n${dayMeals.map((m) => `  - ${m.type}: ${m.name} (${m.calories} kcal)`).join('\n')}`;
   }).join('\n');
 
+  const langInstruction = ctx.language === 'fr'
+    ? 'IMPORTANT: All meal names MUST be written in French.'
+    : 'All meal names must be written in English.';
+
   const systemPrompt = `You are a professional nutritionist AI for SmartPlate.
 You are given the user's current weekly meal plan. Optimize and adjust it to better meet their nutrition goals while preserving their general preferences and meal structure.
 
@@ -88,6 +92,7 @@ Goal: ${ctx.goal}.
 ${restrictionsText}
 
 Rules:
+- ${langInstruction}
 - Keep meals the user likely enjoys but adjust portions/ingredients for better nutrition.
 - Fill in any empty days with appropriate meals.
 - Ensure each day has exactly 4 meals: breakfast, lunch, dinner, snack.
@@ -163,6 +168,7 @@ export interface UserNutritionContext {
   glutenFree: boolean;
   dairyFree: boolean;
   allergies: string[];
+  language?: string;
 }
 
 // ─── System prompt builder ──────────────────────────
@@ -261,6 +267,10 @@ export async function generateWeeklyPlan(
     ? `Dietary restrictions: ${restrictions.join(', ')}.`
     : 'No specific dietary restrictions.';
 
+  const langInstruction = ctx.language === 'fr'
+    ? 'IMPORTANT: All meal names MUST be written in French.'
+    : 'All meal names must be written in English.';
+
   const systemPrompt = `You are a professional nutritionist AI for SmartPlate.
 Generate a 7-day meal plan (Monday to Sunday) with exactly 4 meals per day: breakfast, lunch, dinner, snack.
 
@@ -271,6 +281,7 @@ Goal: ${ctx.goal}.
 ${restrictionsText}
 
 Rules:
+- ${langInstruction}
 - Ensure variety across the week — avoid repeating the same meal.
 - Each day must have exactly 4 meals in this order: breakfast, lunch, dinner, snack.
 - Meal names should be specific (e.g., "Grilled chicken with quinoa and steamed broccoli" not just "Chicken").
