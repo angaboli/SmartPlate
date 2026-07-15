@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Moon, Sun, Menu, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -48,7 +48,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
           <Link href="/" className="flex items-center gap-2 max-w-[230px] max-h-15 relative">
-            <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/smartplate_logo_Final.svg" alt="SmartPlate Logo" width={230} height={60} />
+            <Logo />
           </Link>
         </div>
 

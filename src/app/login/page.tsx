@@ -1,12 +1,12 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
@@ -50,7 +50,7 @@ function LoginForm() {
     <div className="min-h-screen mx-auto max-w-md space-y-8 py-12">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/smartplate_logo_Final.svg" alt="SmartPlate Logo" width={230} height={60} />
+          <Logo />
         </div>
         <h2 className="text-xl font-semibold">{t('auth.welcomeBack')}</h2>
         <p className="text-muted-foreground">

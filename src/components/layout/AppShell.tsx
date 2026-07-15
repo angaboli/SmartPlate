@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
+import { Logo } from '@/components/Logo';
 import { Navigation } from '@/components/Navigation';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Toaster } from '@/components/ui/sonner';
@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/smartplate_logo_Final.svg" alt="SmartPlate Logo" width={230} height={60} />
+                <Logo />
               </div>
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}
