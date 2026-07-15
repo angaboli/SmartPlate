@@ -1,8 +1,8 @@
 # SmartPlate — Master Project Plan
 
-> **Version**: 2.2
-> **Last updated**: 2026-02-01
-> **Status**: In progress — M6 (AI Coach - Meal Analysis) completed
+> **Version**: 2.3
+> **Last updated**: 2026-07-15
+> **Status**: M0–M8 done; M9 (Hardening) in progress — see [IMPROVEMENTS.md](./IMPROVEMENTS.md) for the current prioritized backlog
 
 ---
 
@@ -105,9 +105,9 @@ src/
 
 ---
 
-## 3. Target Architecture
+## 3. Target Architecture (now current architecture)
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for full details.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for full, up-to-date details — this section is kept short to avoid drifting out of sync with it again.
 
 ### Unified Next.js Architecture
 
@@ -131,52 +131,39 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for full details.
   │                                   │
   │  ┌───────────────────────────┐   │
   │  │ Service Layer             │   │
-  │  │ (plain TS functions)      │   │
+  │  │ (plain TS functions,      │   │
+  │  │  incl. synchronous AI     │   │
+  │  │  calls — no queue)        │   │
   │  └─────────┬─────────────────┘   │
   └────────────┼─────────────────────┘
                │
-      ┌────────┴──────┐    ┌────────────────┐
-      │  PostgreSQL   │    │  Redis + BullMQ │
-      │  (Neon)       │    │  (workers run   │
-      │  via Prisma   │    │   separately)   │
-      └───────────────┘    └────────────────┘
+      ┌────────┴──────┐
+      │  PostgreSQL   │
+      │  (Neon)       │
+      │  via Prisma   │
+      └───────────────┘
 ```
 
-### Project Structure (Target)
+No Redis, no BullMQ, no standalone workers — an earlier version of this plan called for them, but M5 shipped a DB-backed synchronous import flow instead (see `docs/ROADMAP.md`), and AI calls followed the same pattern in M6/M7. See [ARCHITECTURE.md § Why No Queue](./ARCHITECTURE.md#why-no-queue-redisbullmq) for the tradeoffs.
+
+### Project Structure (current)
 
 ```
-SmartPlateApp/
-├── app/                              # Next.js App Router
-│   ├── layout.tsx                    # Root layout (providers, header, nav, footer)
-│   ├── page.tsx                      # Home (SSR)
-│   ├── login/page.tsx
-│   ├── register/page.tsx
-│   ├── dashboard/page.tsx            # AI Coach (protected)
-│   ├── recipes/
-│   │   ├── page.tsx                  # Listing (SSR for SEO)
-│   │   └── [id]/page.tsx            # Detail (SSR for SEO)
-│   ├── profile/page.tsx             # Protected
-│   └── api/v1/                      # REST API (Route Handlers)
-│       ├── health/route.ts
-│       ├── auth/...
-│       ├── recipes/...
-│       ├── saved-recipes/...
-│       ├── imports/...
-│       ├── meal-logs/...
-│       └── planner/...
+SmartPlate/
 ├── src/
-│   ├── components/                   # All existing components
+│   ├── app/                          # Next.js App Router (pages + api/v1/*)
+│   ├── components/                   # React components
 │   ├── contexts/                     # React contexts
-│   ├── hooks/                        # Data fetching hooks
-│   ├── lib/                          # Utilities (db, auth, ai, validation)
+│   ├── hooks/                        # Data fetching hooks (TanStack Query)
+│   ├── lib/                          # db, auth, rbac, errors, rate-limit, validations/
 │   ├── services/                     # Business logic (plain functions)
+│   ├── store/                        # Redux Toolkit
 │   ├── locales/                      # i18n JSON files
-│   └── styles/                       # CSS files
-├── workers/                          # Standalone BullMQ workers
+│   ├── styles/                       # CSS files
+│   └── proxy.ts                      # Next.js 16 middleware (auth, redirects)
 ├── prisma/                           # Schema + migrations
-├── middleware.ts                      # Auth, rate limiting
 ├── next.config.ts
-├── package.json                      # Single package
+├── package.json
 └── .env
 ```
 
@@ -189,13 +176,13 @@ See [ADR/](./ADR/) folder for Architecture Decision Records.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Framework | Next.js (unified frontend + API) | SSR for SEO, API Routes for mobile, single deployment |
-| Separate backend? | No (Next.js only) | ~20 endpoints don't justify a second framework; API Routes are standard REST |
+| Separate backend? | No (Next.js only) | ~26 endpoints don't justify a second framework; API Routes are standard REST |
 | API style | REST via Route Handlers | Portable for mobile clients; standard HTTP |
 | ORM | Prisma | Type-safe, great migrations, PostgreSQL-native |
 | Validation | Zod | Runtime validation for API + forms |
-| Auth | JWT + refresh tokens via middleware | Mobile-friendly, stateless |
-| Job queue | Redis + BullMQ (separate workers) | Async import parsing and AI calls |
-| i18n | Custom LanguageContext + JSON files | Already integrated; simple for 2 languages |
+| Auth | JWT + refresh tokens via `src/proxy.ts` | Mobile-friendly, stateless |
+| Job queue | None — synchronous import/AI calls | Simpler; see [ARCHITECTURE.md § Why No Queue](./ARCHITECTURE.md#why-no-queue-redisbullmq) for the tradeoff and mitigations |
+| i18n | JSON files (`src/locales/`) + `LanguageContext` | Already integrated; simple for 2 languages |
 | Data fetching | TanStack Query | Caching, mutations, loading/error states |
 | Testing | Vitest + Testing Library | Fast, compatible with Next.js |
 
@@ -253,9 +240,9 @@ See [ROADMAP.md](./ROADMAP.md) for detailed milestones and tasks.
 | **M4.5** | RBAC + Recipe publication workflow | Done |
 | **M5** | Import from social link (DB-backed, no Redis) | Done |
 | **M6** | AI Coach (LLM meal analysis + suggestions) | Done |
-| **M7** | Planner + grocery list | |
-| **M8** | i18n EN/FR complete | |
-| **M9** | Security, rate limits, monitoring, tests | |
+| **M7** | Planner + grocery list | Done |
+| **M8** | i18n EN/FR complete | Done |
+| **M9** | Security, rate limits, monitoring, tests | In progress — see [IMPROVEMENTS.md](./IMPROVEMENTS.md) |
 
 ---
 
@@ -282,15 +269,16 @@ Conceptual roles to ensure complete coverage across milestones:
 | Prisma | ORM + migrations |
 | Zod | Runtime validation |
 | TanStack Query | Frontend data fetching |
-| BullMQ + Redis | Async job processing (separate workers) |
+| Redux Toolkit | Global client state (auth, language, cook later) |
 | Vitest | Testing |
 | Conventional Commits | Commit discipline |
 
-### Deferred
+### Deferred / rejected
 
 | Tool | Reason |
 |---|---|
-| NestJS | Overkill for ~20 endpoints; Next.js API Routes sufficient |
+| NestJS | Overkill for ~26 endpoints; Next.js API Routes sufficient |
+| Redis + BullMQ | Considered for import/AI job processing, never built — synchronous calls proved sufficient (see ARCHITECTURE.md); revisit only if latency becomes a real production problem |
 | Monorepo (pnpm workspaces) | Single app, no need to split packages |
 | Turborepo | Single package, no workspace orchestration needed |
 | tRPC | REST preferred for mobile portability |

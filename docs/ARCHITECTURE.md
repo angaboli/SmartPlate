@@ -1,7 +1,7 @@
 # SmartPlate — Architecture
 
-> **Version**: 2.0
-> **Last updated**: 2026-01-28
+> **Version**: 3.0
+> **Last updated**: 2026-07-15
 
 ---
 
@@ -29,43 +29,40 @@
 │  │   App Router (Pages)    │    │   API Route Handlers         │    │
 │  │                         │    │   /api/v1/*                  │    │
 │  │   / (SSR)               │    │                              │    │
-│  │   /recipes (SSR)        │    │   auth/   → register, login  │    │
-│  │   /recipes/:id (SSR)    │    │   users/  → profile, settings│    │
-│  │   /dashboard (CSR)      │    │   recipes/→ CRUD + filters   │    │
-│  │   /profile (CSR)        │    │   imports/→ async job create │    │
-│  │   /login (CSR)          │    │   meal-logs/ → log + analyze │    │
-│  │   /register (CSR)       │    │   planner/→ weeks + items    │    │
-│  └─────────────────────────┘    │   saved-recipes/ → CRUD     │    │
+│  │   /recipes (SSR)        │    │   auth/    → register, login │    │
+│  │   /recipes/:id (SSR)    │    │   me/      → profile         │    │
+│  │   /dashboard (CSR)      │    │   admin/   → user management │    │
+│  │   /profile (CSR)        │    │   recipes/ → CRUD + RBAC     │    │
+│  │   /login (CSR)          │    │   cook-later/ → CRUD         │    │
+│  │   /register (CSR)       │    │   imports/ → extract + save  │    │
+│  └─────────────────────────┘    │   meal-logs/ → log + analyze │    │
+│                                  │   planner/ → weeks + items   │    │
 │                                  └──────────────┬───────────────┘    │
 │                                                 │                    │
 │  ┌──────────────────────────────────────────────┴───────────────┐   │
 │  │                    Service Layer                              │   │
 │  │                    (plain TypeScript functions)               │   │
 │  │                                                              │   │
-│  │  auth.service.ts   recipes.service.ts   imports.service.ts   │   │
-│  │  users.service.ts  meal-logs.service.ts planner.service.ts   │   │
-│  │  ai.service.ts                                               │   │
-│  └──────────┬──────────────────────────────────┬────────────────┘   │
-│             │                                  │                     │
-│  ┌──────────v──────────┐            ┌──────────v──────────┐        │
-│  │  Prisma Client      │            │  BullMQ Queues      │        │
-│  │  (DB access)        │            │  (enqueue jobs)     │        │
-│  └──────────┬──────────┘            └──────────┬──────────┘        │
-└─────────────┼──────────────────────────────────┼────────────────────┘
-              │                                  │
-     ┌────────v──────┐                  ┌────────v──────────┐
-     │  PostgreSQL   │                  │  Redis            │
-     │  (Neon)       │                  │                   │
-     │               │                  │  ┌──────────────┐ │
-     │  11 tables    │                  │  │ Workers      │ │
-     │  (see DATA    │                  │  │ (standalone) │ │
-     │   MODEL)      │                  │  │              │ │
-     └───────────────┘                  │  │ import.ts    │ │
-                                        │  │ ai-analyze.ts│ │
-                                        │  │ ai-plan.ts   │ │
-                                        │  └──────────────┘ │
-                                        └───────────────────┘
+│  │  auth.service.ts    recipes.service.ts    import.service.ts  │   │
+│  │  user.service.ts    meal-log.service.ts   planner.service.ts │   │
+│  │  cook-later.service.ts    ai.service.ts (OpenAI, synchronous)│   │
+│  └──────────┬───────────────────────────────────────────────────┘   │
+│             │                                                        │
+│  ┌──────────v──────────┐                                            │
+│  │  Prisma Client      │                                            │
+│  │  (DB access)        │                                            │
+│  └──────────┬──────────┘                                            │
+└─────────────┼──────────────────────────────────────────────────────┘
+              │
+     ┌────────v──────┐
+     │  PostgreSQL   │
+     │  (Neon)       │
+     │               │
+     │  See DATA_MODEL.md for the full schema
+     └───────────────┘
 ```
+
+There are no background workers and no message queue (Redis/BullMQ). Recipe import extraction (`cheerio` scraping) and AI calls (OpenAI) run **synchronously** inside the API route handler that receives the request — see [Why No Queue?](#why-no-queue-redisbullmq) below.
 
 ---
 
@@ -80,19 +77,21 @@ Next.js App Router with file-based routing. Pages are either server-rendered (SS
 | `/` | SSR | Public | Yes — landing page |
 | `/recipes` | SSR | Public | Yes — recipe listing |
 | `/recipes/[id]` | SSR | Public | Yes — recipe detail with JSON-LD |
-| `/login` | CSR | Public | No |
-| `/register` | CSR | Public | No |
+| `/login`, `/register` | CSR | Public | No |
+| `/about`, `/contact`, `/privacy`, `/terms` | SSR | Public | Yes |
 | `/dashboard` | CSR | Protected | No — authenticated content |
+| `/dashboard/admin` | CSR | Protected (admin) | No |
+| `/dashboard/recipes/manage`, `/create`, `/[id]/edit` | CSR | Protected (editor/admin) | No |
 | `/profile` | CSR | Protected | No — authenticated content |
 
 ### 2. API Route Handlers (`/api/v1/*`)
 
-Standard REST endpoints implemented as Next.js Route Handlers. Each handler exports HTTP method functions (`GET`, `POST`, `PATCH`, `DELETE`).
+Standard REST endpoints implemented as Next.js Route Handlers under `src/app/api/v1/`. Each handler exports HTTP method functions (`GET`, `POST`, `PATCH`, `DELETE`).
 
-These are regular HTTP endpoints — callable from any client (web, mobile, curl, Postman).
+These are regular HTTP endpoints — callable from any client (web, mobile, curl, Postman). See [API_CONTRACT.md](./API_CONTRACT.md) for the full endpoint list (26 routes across auth, admin, recipes, cook-later, imports, meal-logs, planner, health, cron).
 
 ```typescript
-// app/api/v1/recipes/route.ts
+// src/app/api/v1/recipes/route.ts
 export async function GET(request: NextRequest) {
   // Parse query params, call service, return JSON
 }
@@ -108,7 +107,7 @@ Plain TypeScript functions containing all business logic. No framework dependenc
 
 ```typescript
 // src/services/recipes.service.ts
-export async function listRecipes(filters: RecipeFilters): Promise<PaginatedResult<Recipe>> {
+export async function listRecipes(filters: RecipeFilters): Promise<Recipe[]> {
   return prisma.recipe.findMany({ ... });
 }
 
@@ -122,26 +121,13 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
 - Testable — just import and call with mocked dependencies
 - Portable — if you ever extract to a separate API, the logic moves unchanged
 
-### 4. Middleware (`middleware.ts`)
+### 4. Proxy (`src/proxy.ts`)
 
-Next.js middleware runs at the edge before every request. Handles:
-- JWT token validation for protected routes
-- Redirect unauthenticated users to `/login`
-- Rate limiting headers
-- CORS for API routes
+Next.js 16 renamed the `middleware.ts` convention to `proxy.ts` (same edge runtime, runs before every matched request). `src/proxy.ts` handles:
+- JWT access-token validation (via `jose`) for protected routes (`/dashboard/*`, `/profile/*`)
+- Redirecting unauthenticated users to `/login` (and authenticated users away from `/login`/`/register`)
 
-### 5. Workers (`workers/`)
-
-Standalone Node.js processes that consume BullMQ jobs. Not part of the Next.js server — they run separately.
-
-```
-workers/
-├── import.worker.ts        # Recipe import from social links
-├── ai-analysis.worker.ts   # Meal analysis via LLM
-└── ai-planner.worker.ts    # Weekly plan generation via LLM
-```
-
-Workers share the same `src/services/` and `src/lib/` code as the main app.
+Rate limiting is not done at the edge — it's implemented per-endpoint in the service layer via `src/lib/rate-limit.ts` (DB-backed, see below), not in the proxy.
 
 ---
 
@@ -153,36 +139,23 @@ Workers share the same `src/services/` and `src/lib/` code as the main app.
 User pastes URL in ImportRecipeDialog
   │
   v
-POST /api/v1/imports { url }
+POST /api/v1/imports/extract { url }
   │
   v
-Route Handler → importsService.create()
-  - Validates URL
+Route Handler → import.service.ts extractFromUrl()
+  - Validates URL, checks rate limit (10/hour/user, src/lib/rate-limit.ts)
+  - Fetches HTML via cheerio (timeout, size cap)
+  - Parses JSON-LD "Recipe" schema, falls back to Open Graph tags
   - Detects provider (Instagram/TikTok/YouTube/Other)
-  - Creates Import record (status: pending)
-  - Enqueues "import:parse" job to BullMQ
-  - Returns 202 { id, status: "pending" }
+  - Returns extracted data (no DB write yet) — synchronously, same request
   │
   v
-Frontend polls GET /api/v1/imports/:id every 2 seconds
+Frontend shows extracted data in an editable form
+User edits/confirms → POST /api/v1/imports { ...editedData }
   │
   v
-import.worker.ts picks up job:
-  - Fetches URL content (timeout 10s)
-  - Extracts: title, author, image (Open Graph / JSON-LD)
-  - Attempts recipe parsing
-  - Updates Import record (status: completed | partial | failed)
-  │
-  v
-Frontend receives completed status:
-  - Shows extracted data in editable form
-  - User edits/confirms
-  - POST /api/v1/imports/:id/save
-  │
-  v
-Route Handler → importsService.save()
-  - Creates Recipe record
-  - Creates SavedRecipe record
+Route Handler → import.service.ts saveImport()
+  - Transaction: creates Recipe (isImported: true) + Import audit row + SavedRecipe
   - Returns 201
 ```
 
@@ -192,25 +165,21 @@ Route Handler → importsService.save()
 User types meal description → submits
   │
   v
-POST /api/v1/meal-logs { description, mealType }
+POST /api/v1/meal-logs { mealText, mealType }
   │
   v
-Route Handler → mealLogsService.create()
-  - Creates MealLog record
-  - Enqueues "ai:analyze" job
-  - Returns 202 { id, status: "analyzing" }
-  │
-  v
-ai-analysis.worker.ts picks up job:
-  - Loads user settings (goals, preferences, allergies)
+Route Handler → meal-log.service.ts createMealLog()
+  - Checks rate limit (20 analyses/day/user)
+  - Loads user settings (goals, preferences, allergies) from DB
   - Constructs prompt with meal + user context
-  - Calls LLM API
-  - Parses structured response (Zod validation)
-  - Updates MealLog with analysis
+  - Calls OpenAI (gpt-4o-mini, JSON mode) synchronously — same request,
+    25s client timeout (src/services/ai.service.ts)
+  - Validates response with Zod, throws a clean 503 if the AI call times out
+  - Persists MealLog with the analysis
+  - Returns 201 with the full analysis — no polling
   │
   v
-Frontend polls GET /api/v1/meal-logs/:id
-  - Displays nutrients, balance, suggestions
+Frontend displays nutrients, balance, suggestions immediately
 ```
 
 ### Authentication Flow
@@ -219,20 +188,17 @@ Frontend polls GET /api/v1/meal-logs/:id
 Register/Login → POST /api/v1/auth/login
   │
   v
-Route Handler → authService.login()
+Route Handler → auth.service.ts login()
   - Verify credentials (bcrypt)
   - Sign JWT access token (15min)
   - Create refresh token (7d, stored in DB)
-  - Return { accessToken, refreshToken }
+  - Return { accessToken, refreshToken } (access token also set as httpOnly cookie)
   │
   v
-Frontend stores tokens (httpOnly cookie or secure storage)
-  │
-  v
-Every API request:
-  - middleware.ts validates JWT from cookie/header
-  - On 401 → frontend auto-refreshes via /api/v1/auth/refresh
-  - On refresh failure → redirect to /login
+Every subsequent request to a protected route:
+  - src/proxy.ts validates the JWT from the cookie
+  - On invalid/expired token → redirect to /login
+  - Frontend calls /api/v1/auth/refresh when the access token expires
 ```
 
 ---
@@ -241,7 +207,7 @@ Every API request:
 
 See [ADR-002](./ADR/002-unified-nextjs.md) for the full decision record.
 
-Summary: SmartPlate has ~20 API endpoints. Next.js Route Handlers provide standard REST endpoints callable from any client (web or mobile). A second framework (NestJS) would add ~60 extra files, a second deployment, and a monorepo — complexity not justified at this scale.
+Summary: SmartPlate has ~26 API endpoints. Next.js Route Handlers provide standard REST endpoints callable from any client (web or mobile). A second framework (NestJS) would add a large surface area, a second deployment, and a monorepo — complexity not justified at this scale.
 
 The service layer (`src/services/`) is framework-agnostic. If a standalone API is ever needed, these functions can be extracted into any framework without rewriting business logic.
 
@@ -257,19 +223,12 @@ The service layer (`src/services/`) is framework-agnostic. If a standalone API i
 4. JSON columns for flexible AI analysis storage
 5. Neon provides serverless scaling + point-in-time recovery
 
-### Why Redis + BullMQ for Workers?
+### Why No Queue (Redis/BullMQ)?
 
-Background jobs (recipe import, AI analysis, plan generation) are long-running (5-30 seconds). They cannot block the API response. BullMQ provides:
-- Reliable job processing with retries
-- Dead letter queue for failed jobs
-- Concurrency control
-- Job status tracking (polled by frontend)
+An earlier version of this document planned a Redis + BullMQ + standalone-workers pipeline for recipe import parsing and AI calls, with the frontend polling job status every 2 seconds. That was never built — see [ADR](./ADR/) history and `docs/ROADMAP.md` M5 ("Import Feature (DB-backed, No Redis)"). Both import extraction and AI calls run synchronously inside the request/response cycle instead:
 
-Workers run as standalone Node.js processes, sharing code from `src/`.
+- **Simpler**: one deployment, no extra infrastructure (Redis), no separate worker process to run/monitor/deploy.
+- **Good enough at current scale**: cheerio scraping and gpt-4o-mini JSON completions typically complete in a few seconds.
+- **The real risk**: a slow OpenAI response or a slow-to-load import source can hold a serverless function open for the request's whole duration. `ai.service.ts` sets an explicit 25s client-side timeout precisely to fail cleanly (503) well before a typical Vercel function execution limit is hit, rather than letting the platform kill the request with no useful error.
 
-### Why Not Serverless Functions for Workers?
-
-- Import processing may take 10-30 seconds (exceeds typical serverless timeout)
-- AI calls may stream responses
-- BullMQ requires a persistent connection to Redis
-- Worker processes are simpler to debug locally
+If AI or import latency becomes a real production problem, the recommended next step is a serverless-friendly queue (Vercel Queues, Inngest, QStash) rather than reintroducing Redis — see [docs/IMPROVEMENTS.md](./IMPROVEMENTS.md) for the tracked backlog item.

@@ -11,7 +11,7 @@
 ### Qu'est-ce qui change ?
 - Tous les menus, boutons et textes de l'interface sont traduits
 - Le changement est instantané (pas de rechargement de page)
-- Votre choix est conservé pendant toute votre session
+- Votre choix est mémorisé (localStorage) et retrouvé à votre prochaine visite, même après avoir fermé le navigateur
 
 ---
 
@@ -140,11 +140,7 @@ Le sous-menu principal **Home | AI Coach | Recipes | Profile** reste maintenant 
    - Icône 🌙/☀️ en haut à droite pour changer
    - Idéal pour cuisiner le soir sans éblouissement
 
-4. **Profitez du mode hors ligne**
-   - Les recettes importées restent accessibles
-   - Consultez-les même sans connexion internet
-
-5. **Combinez avec les recettes SafariTaste**
+4. **Combinez avec les recettes SafariTaste**
    - Vos recettes importées complètent le catalogue existant
    - Créez votre propre bibliothèque culinaire personnalisée
 
@@ -159,7 +155,7 @@ Le sous-menu principal **Home | AI Coach | Recipes | Profile** reste maintenant 
 **R :** Il n'y a pas de limite ! Sauvegardez autant de recettes que vous le souhaitez.
 
 ### Q : Les recettes sont-elles synchronisées entre appareils ?
-**R :** Actuellement, les recettes sont stockées localement. Une synchronisation cloud sera disponible dans une future version.
+**R :** Oui. Vos recettes sauvegardées sont liées à votre compte et stockées en base de données — connectez-vous sur n'importe quel appareil pour les retrouver.
 
 ### Q : Puis-je modifier une recette après l'avoir importée ?
 **R :** Oui ! Lors de l'import, vous pouvez éditer tous les champs avant de sauvegarder.
@@ -182,6 +178,6 @@ Si vous rencontrez un problème :
 
 ---
 
-**Version du guide** : 1.0  
-**Dernière mise à jour** : Janvier 2026  
+**Version du guide** : 1.1
+**Dernière mise à jour** : 2026-07-15
 **Langues disponibles** : 🇬🇧 EN / 🇫🇷 FR
