@@ -48,7 +48,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
           <Link href="/" className="flex items-center gap-2 max-w-[230px] max-h-15 relative">
-            <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/SmartPlateLogo.jpg" alt="SmartPlate Logo" width={230} height={60} />
+            <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/smartplate_logo_Final.svg" alt="SmartPlate Logo" width={230} height={60} />
           </Link>
         </div>
 

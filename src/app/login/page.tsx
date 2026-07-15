@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -49,10 +50,7 @@ function LoginForm() {
     <div className="min-h-screen mx-auto max-w-md space-y-8 py-12">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <span className="text-xl">🍽️</span>
-          </div>
-          <h1 className="text-2xl font-bold">SmartPlate</h1>
+          <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/smartplate_logo_Final.svg" alt="SmartPlate Logo" width={230} height={60} />
         </div>
         <h2 className="text-xl font-semibold">{t('auth.welcomeBack')}</h2>
         <p className="text-muted-foreground">

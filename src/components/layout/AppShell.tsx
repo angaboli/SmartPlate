@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Navigation } from '@/components/Navigation';
@@ -48,10 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-lg">🍽️</span>
-                </div>
-                <h3 className="font-semibold">SmartPlate</h3>
+                <Image fill={false} className='max-w-[230px] w-full h-auto max-h-15' src="/smartplate_logo_Final.svg" alt="SmartPlate Logo" width={230} height={60} />
               </div>
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}
