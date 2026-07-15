@@ -80,15 +80,6 @@
     "vaul": "1.1.2",
     "zod": "^4.3.6"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/engines",
-      "@tailwindcss/oxide",
-      "esbuild",
-      "prisma",
-      "sharp"
-    ]
-  },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.12",
     "@types/node": "^22.0.0",

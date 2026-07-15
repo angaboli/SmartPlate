@@ -1,0 +1,8 @@
+allowBuilds:
+  '@prisma/engines': true
+  '@tailwindcss/oxide': true
+  core-js: true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
