@@ -15,7 +15,7 @@ Ce document liste les écarts concrets constatés entre le code tel qu'il existe
 - **IA** : appels OpenAI (GPT-4o-mini) **synchrones**, directement dans les services (`src/services/ai.service.ts`, `meal-log.service.ts`, `planner.service.ts`) — aucune file d'attente, aucun worker.
 - **i18n** : 480 clés EN/FR strictement synchronisées (`scripts/check-translations.ts`).
 - **Tests** : 15 fichiers, uniquement unitaires sur `src/lib/**` et `src/services/**` (`vitest.config.ts` ne mesure la couverture que sur ces deux dossiers).
-- **CI** (`\.github/workflows/ci.yml`) : lint → typecheck → test → build. Pas d'étape `pnpm audit`.
+- **CI** (`\.github/workflows/ci.yml`) : install → **audit (`--prod --audit-level=high`)** → lint → typecheck → test → build.
 
 ---
 
@@ -36,13 +36,10 @@ Autres divergences dans les mêmes docs :
 **Action** : passe de nettoyage documentaire — retirer/rectifier les sections Redis/BullMQ/workers dans `ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md` ; corriger l'inventaire de routes ; aligner la version Node. `USER_GUIDE.md` a le même problème (décrit un Cook Later "en session uniquement", alors qu'il est persistant en DB depuis M4).
 **Effort** : M (documentation uniquement, pas de code).
 
-### 2. `"next": "latest"` dans `package.json`
-Aucune version épinglée → un build peut changer de comportement sans qu'aucun commit ne le déclenche (déjà sur Next.js 16, une version très récente). Pas de champ `engines` ni `packageManager`, alors que le projet dépend strictement de pnpm (`pnpm-workspace.yaml`, `pnpm.onlyBuiltDependencies`).
+### 2. ~~`"next": "latest"` dans `package.json`~~ — ✅ Résolu (2026-07-15)
+`"next"` est maintenant épinglé en dur à `16.2.10` (voir aussi le point 4 : ce bump corrige au passage 7 CVE high sur `next`, dont plusieurs bypass de Middleware/Proxy — pertinent puisque `src/proxy.ts` gère la protection des routes). `engines.node` (`>=22`) et `packageManager` (`pnpm@11.11.0`) ajoutés à `package.json`.
 
-**Action** :
-- Remplacer `"next": "latest"` par la version exacte actuellement installée (`16.1.6`).
-- Ajouter `"engines": { "node": ">=22" }` et `"packageManager": "pnpm@9.x"`.
-**Effort** : S.
+**Attention pnpm 9 vs 11** : `pnpm-workspace.yaml` utilise `allowBuilds`, une fonctionnalité pnpm 10/11 — pnpm 9 (utilisé jusqu'ici en CI) plante dessus (`ERROR packages field missing or empty`). `.github/workflows/ci.yml` a été corrigé pour laisser `pnpm/action-setup@v4` lire la version depuis `packageManager` au lieu de forcer `version: 9`, pour rester synchronisé automatiquement avec ce champ à l'avenir.
 
 ### 3. Appels OpenAI synchrones sans garde-fou de timeout
 `createMealLog`, `generateWeeklyPlan`/`adjustWeeklyPlan`, `import extract` appellent l'API OpenAI en bloquant la réponse HTTP. Sur Vercel, les fonctions serverless ont une limite d'exécution (10s en Hobby, configurable en Pro) — si OpenAI répond lentement, la requête échoue sans retry ni statut de job consultable, contrairement à ce que `ARCHITECTURE.md` promet encore ("Frontend polls... every 2 seconds").
@@ -50,11 +47,20 @@ Aucune version épinglée → un build peut changer de comportement sans qu'aucu
 **Action** : au minimum, documenter le choix "synchrone, acceptable à l'échelle actuelle" avec un timeout explicite côté `ai.service.ts` + message d'erreur clair au frontend. Si la latence devient un problème réel en prod, envisager une file légère serverless-friendly (Vercel Queues, Inngest, QStash) plutôt que de réintroduire Redis.
 **Effort** : S (doc) → M (si file d'attente ajoutée).
 
-### 4. CI sans audit de dépendances
-`docs/SECURITY.md` impose `pnpm audit` en politique obligatoire ("No critical or high vulnerabilities allowed in production"), mais `.github/workflows/ci.yml` ne l'exécute jamais.
+### 4. ~~CI sans audit de dépendances~~ — ✅ Résolu (2026-07-15)
+`docs/SECURITY.md` impose `pnpm audit` en politique obligatoire ("No critical or high vulnerabilities allowed in production"), mais `.github/workflows/ci.yml` ne l'exécutait jamais.
 
-**Action** : ajouter une étape `pnpm audit --audit-level=high` (ou équivalent) au CI, avec échec du job si violation.
-**Effort** : S.
+Ajouté : étape `pnpm audit --prod --audit-level=high` (scope `--prod` volontaire — la politique SECURITY.md porte sur la production, pas sur l'outillage dev comme vite/vitest qui a ses propres findings non-bloquants sans impact runtime).
+
+**Avant d'activer le gate**, un premier run a révélé **116 vulnérabilités** dont **22 high + 1 critical côté production** :
+- `jspdf` (1 critical + 4 high : injection HTML/PDF, DoS) → corrigé, `4.1.0` → `4.2.1`.
+- `next` (7 high, dont plusieurs **bypass Middleware/Proxy**, directement pertinent pour `src/proxy.ts`) → corrigé, `16.1.6` → `16.2.10`.
+- `undici` (transitif via `cheerio`, 4 high liés à WebSocket) → corrigé via `pnpm-workspace.yaml` `overrides: { undici: '>=7.28.0' }` (cheerio@1.2.0, déjà en dernière version, résout encore un undici plus ancien en interne).
+- `lodash` (transitif via `recharts`, 1 high, injection de code via `_.template`) → corrigé via le même mécanisme `overrides: { lodash: '>=4.17.24' }` (recharts 2.x est en fin de vie, pas de nouvelle release prévue).
+- Reste : 19 vulnérabilités moderate/low en prod (ex. `dompurify` bundlé par `jspdf`, `patched: >=3.4.8` — pas encore résolu, sous le seuil `--audit-level=high`, à surveiller).
+
+Vérifié après upgrade : `tsc --noEmit`, `eslint .`, `vitest run` (163 tests), et `next build` tous verts ; `pnpm audit --prod --audit-level=high` exit 0.
+**Effort** : S (gate CI) + M (résolution des CVE trouvées, fait dans la foulée).
 
 ---
 
@@ -167,8 +173,8 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 
 ## Plan d'exécution suggéré
 
-1. **Sprint doc-cleanup** (P0-1, P1-5, P2-11) — aucun risque de régression, gros gain de clarté pour la suite. Peut être fait par un agent en une passe.
-2. **Sprint hardening CI/deps** (P0-2, P0-4) — petits changements à fort effet de sécurité/reproductibilité.
+1. **Sprint doc-cleanup** (P0-1 — partiel : `SETUP.md`/`DEPLOYMENT.md` faits, reste `ARCHITECTURE.md`/`PLAN.md`/`USER_GUIDE.md` ; P1-5, P2-11) — aucun risque de régression, gros gain de clarté pour la suite. Peut être fait par un agent en une passe.
+2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
 3. **Sprint tests critiques** (P1-6, priorité 1-2 seulement) — sécuriser auth/RBAC/rate-limit avant d'ajouter de nouvelles features.
 4. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
 5. Le reste (P2-8, P2-9, P3) peut être traité au fil de l'eau selon la charge produit réelle.
