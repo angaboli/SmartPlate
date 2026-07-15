@@ -6,3 +6,7 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+
+overrides:
+  undici: '>=7.28.0'
+  lodash: '>=4.17.24'
