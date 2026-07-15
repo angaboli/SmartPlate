@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '@/lib/date-locale';
 import { bi } from '@/lib/bilingual';
-import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
 
 export function CookLaterList() {
   const { savedRecipes, isLoading, unsaveRecipe, markAsCooked } = useCookLater();

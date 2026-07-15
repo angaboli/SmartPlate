@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Brain, TrendingUp, Calendar, Utensils, Sparkles, CheckCircle, Download } from 'lucide-react';
-import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { useState } from 'react';
 import { ImportRecipeDialog } from '@/components/ImportRecipeDialog';
 import { useLanguage } from '@/contexts/LanguageContext';

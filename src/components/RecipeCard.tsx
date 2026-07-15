@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, Users, Sparkles, Bookmark } from 'lucide-react';
-import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { useCookLater } from '@/contexts/CookLaterContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { bi } from '@/lib/bilingual';

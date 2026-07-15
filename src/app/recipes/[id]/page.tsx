@@ -4,7 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useRecipe, useSubmitForReview } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
-import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { DeleteRecipeDialog } from '@/components/DeleteRecipeDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
