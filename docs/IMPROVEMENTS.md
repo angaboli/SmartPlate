@@ -121,9 +121,47 @@ Aucune version épinglée → un build peut changer de comportement sans qu'aucu
 
 | Sujet | Constat | Action suggérée |
 |---|---|---|
-| Stockage d'images custom | `docs/DEPLOYMENT.md` liste S3/Cloudflare R2 comme "à ajouter si besoin" — aucune intégration actuelle. | À faire seulement si l'upload d'images de recettes custom devient une fonctionnalité demandée. |
+| Stockage d'images custom | Décidé — voir [Backlog: Stockage d'objets (Cloudflare R2)](#backlog--stockage-dobjets-cloudflare-r2) ci-dessous. | Credentials déjà provisionnés dans `.env`/`.env.example`, implémentation à planifier. |
 | Pluralisation i18n | 480 clés statiques EN/FR, pas de moteur ICU (pluriels, genre). | Pas urgent à 2 langues ; à revisiter si une 3e langue ou des formats pluriels complexes arrivent. |
 | Monitoring uptime | `docs/DEPLOYMENT.md` recommande UptimeRobot/Better Stack — non configuré. | Simple à ajouter, faible effort, bon rapport valeur/coût avant un lancement public. |
+
+---
+
+## Backlog — Stockage d'objets (Cloudflare R2)
+
+> **Statut** : planifié, non implémenté. Credentials déjà ajoutés (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` dans `.env`/`.env.example`). À implémenter quand le besoin produit se confirme — ce plan sert de point de départ, pas d'engagement de calendrier.
+
+### Objectif
+
+Remplacer/compléter le stockage d'images actuel (URLs externes brutes dans `Recipe.imageUrl`, `User.avatarUrl` — de simples champs `String`, aucun upload réel) par un stockage d'objets géré (Cloudflare R2, compatible API S3) pour :
+1. **Images de recettes** — upload manuel par l'utilisateur/editor lors de la création/édition d'une recette, et ré-hébergement des images scrapées lors d'un import (au lieu de hotlink direct vers Instagram/TikTok/YouTube).
+2. **Autres documents de l'app** — avatars utilisateurs, exports PDF partageables (aujourd'hui `src/lib/generatePDF.ts` génère le PDF côté client à la volée, sans persistance — R2 permettrait un lien de partage si ce besoin apparaît).
+
+### Pourquoi maintenant est le bon moment de le planifier (mais pas forcément de l'implémenter)
+
+Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés-pour-les-recettes-importées) de ce document : au lieu de whitelister des domaines externes fragiles (Instagram/TikTok/YouTube peuvent changer leurs CDN, bloquer le hotlinking, ou renvoyer 403), l'import re-téléverserait l'image extraite vers R2 une fois, avec une URL stable et un seul domaine à whitelister dans `next.config.ts` (celui de R2/du CDN custom).
+
+### Approche technique proposée
+
+1. **Client S3-compatible** — `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` (R2 est compatible API S3, `R2_ENDPOINT` sert d'endpoint custom). Nouveau `src/lib/storage.ts` : client singleton (même pattern que `src/lib/db.ts`), fonctions `getUploadUrl()`, `getPublicUrl()`, `deleteObject()`.
+2. **Flux d'upload recommandé : presigned URL, pas de proxy binaire par la route Next.js** — le client demande une URL de upload signée (`POST /api/v1/uploads/presign`, body `{ contentType, purpose: 'recipe-image' | 'avatar' }`), reçoit une URL PUT signée à durée de vie courte (~5 min), upload directement vers R2 depuis le navigateur, puis confirme l'URL finale au backend (`PATCH /api/v1/recipes/:id` avec la nouvelle `imageUrl`, ou `PATCH /api/v1/me` pour l'avatar). Évite de faire transiter des fichiers binaires par les fonctions serverless Vercel (limites de taille de payload/temps d'exécution).
+3. **Structure des clés objet** — `recipes/{recipeId}/{uuid}.{ext}`, `avatars/{userId}/{uuid}.{ext}` — préfixes par domaine pour faciliter le nettoyage/les règles de lifecycle R2 plus tard.
+4. **Validation côté API avant de signer l'upload** :
+   - Type MIME whitelisté (`image/jpeg`, `image/png`, `image/webp`) pour les images ; whitelist distincte si documents génériques un jour.
+   - Taille max (ex: 5MB images) — à valider côté client ET revalider une fois l'objet uploadé (ex: `HEAD` sur l'objet R2 après upload, rejeter/supprimer si hors limite).
+   - Auth + RBAC : seul le propriétaire de la recette (ou editor/admin, cf. `src/lib/rbac.ts`) peut obtenir une URL d'upload pour cette recette.
+   - Rate limiting réutilisant `src/lib/rate-limit.ts` (même mécanisme DB-based que imports/AI), ex. 20 uploads/heure/utilisateur.
+5. **Accès public vs privé** — bucket en lecture publique (ou domaine custom Cloudflare) pour les images de recettes (déjà du contenu public une fois la recette publiée) ; si des documents privés arrivent un jour (ex. export PDF partagé avec expiration), utiliser des URLs signées en lecture (GET presigned) plutôt qu'un bucket public.
+6. **`next.config.ts`** — ajouter le domaine R2 public (ou domaine custom) à `images.remotePatterns` une fois le bucket configuré.
+7. **Schéma Prisma** — pas de migration obligatoire pour la v1 (les champs `imageUrl`/`avatarUrl` existants acceptent déjà n'importe quelle URL). À envisager plus tard si le nettoyage des objets orphelins (recette supprimée mais image jamais effacée de R2) devient un problème : soit un job de nettoyage périodique (cron Vercel, comme `cleanup-rate-limits`), soit une table `Asset` dédiée trackant chaque objet et son propriétaire.
+
+### Découpage suggéré (quand ce sera priorisé)
+
+1. `src/lib/storage.ts` (client R2 + presign) + tests avec le SDK mocké.
+2. `POST /api/v1/uploads/presign` + validations + rate limiting.
+3. UI d'upload sur `RecipeForm.tsx` (remplacer le champ URL texte actuel par un vrai upload avec preview) et sur la page profil (avatar).
+4. Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle.
+5. `next.config.ts` whitelist + nettoyage éventuel des anciens domaines externes une fois la migration import faite.
 
 ---
 
@@ -133,7 +171,8 @@ Aucune version épinglée → un build peut changer de comportement sans qu'aucu
 2. **Sprint hardening CI/deps** (P0-2, P0-4) — petits changements à fort effet de sécurité/reproductibilité.
 3. **Sprint tests critiques** (P1-6, priorité 1-2 seulement) — sécuriser auth/RBAC/rate-limit avant d'ajouter de nouvelles features.
 4. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
-5. Le reste (P2-8, P2-9, P2-10, P3) peut être traité au fil de l'eau selon la charge produit réelle.
+5. Le reste (P2-8, P2-9, P3) peut être traité au fil de l'eau selon la charge produit réelle.
+6. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
 
 ---
 
