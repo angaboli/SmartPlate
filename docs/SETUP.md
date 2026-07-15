@@ -1,7 +1,7 @@
 # SmartPlate — Development Setup Guide
 
-> **Version**: 2.0
-> **Last updated**: 2026-01-28
+> **Version**: 3.0
+> **Last updated**: 2026-07-15
 
 ---
 
@@ -9,11 +9,12 @@
 
 | Tool | Version | Purpose |
 |---|---|---|
-| Node.js | 20 LTS+ | Runtime |
+| Node.js | 22+ | Runtime |
 | pnpm | 9+ | Package manager (mandatory) |
 | PostgreSQL | 15+ | Database (Neon cloud — already configured) |
-| Redis | 7+ | Job queue (from M5 onward) |
 | Git | 2.40+ | Version control |
+
+No Redis or job queue is required. AI calls (OpenAI) and recipe imports (cheerio-based extraction) run synchronously inside the Next.js request/response cycle — see [ARCHITECTURE.md](./ARCHITECTURE.md) and [IMPROVEMENTS.md](./IMPROVEMENTS.md) for the tradeoffs of this choice.
 
 ### Install pnpm (if not installed)
 
@@ -40,18 +41,13 @@ cp .env.example .env
 | `JWT_SECRET` | JWT signing secret (min 32 chars) | `random-64-character-string` | M2 |
 | `JWT_REFRESH_SECRET` | Refresh token secret (min 32 chars) | `another-random-64-char-string` | M2 |
 
-### Required from M5+
-
-| Variable | Description | Example |
-|---|---|---|
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
-
 ### Required from M6+
 
 | Variable | Description | Example |
 |---|---|---|
 | `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
-| `AI_MODEL` | LLM model name | `gpt-4o` |
+
+The LLM model (`gpt-4o-mini`) is hardcoded in `src/services/ai.service.ts` — there is no `AI_MODEL` environment variable.
 
 ### Optional
 
@@ -67,8 +63,8 @@ cp .env.example .env
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
-cd SmartPlateApp
+git clone git@github.com:angaboli/SmartPlate.git
+cd SmartPlate
 pnpm install
 ```
 
@@ -78,8 +74,8 @@ pnpm install
 # Apply schema to PostgreSQL (Neon)
 pnpm prisma migrate dev
 
-# Seed with sample data (after M3)
-pnpm prisma db seed
+# Seed with sample data (users, recipes, RBAC roles)
+pnpm db:seed
 ```
 
 ### 3. Start Development
@@ -93,8 +89,8 @@ Open http://localhost:3000
 ### 4. Verify
 
 - Web: http://localhost:3000
-- API health: http://localhost:3000/api/v1/health (after M1)
-- Prisma Studio: `pnpm prisma studio`
+- API health: http://localhost:3000/api/v1/health
+- Prisma Studio: `pnpm db:studio`
 
 ---
 
@@ -108,127 +104,86 @@ Open http://localhost:3000
 | `lint` | `pnpm lint` | Run ESLint |
 | `typecheck` | `pnpm typecheck` | TypeScript type checking |
 | `test` | `pnpm test` | Run all tests |
+| `test:watch` | `pnpm test:watch` | Run tests in watch mode |
+| `test:coverage` | `pnpm test:coverage` | Run tests with coverage report |
+| `db:seed` | `pnpm db:seed` | Run seed script |
+| `db:migrate` | `pnpm db:migrate` | Create + apply migration (`prisma migrate dev`) |
+| `db:studio` | `pnpm db:studio` | Visual database browser |
 
-### Prisma Commands
+### Additional Prisma Commands
 
 | Command | Description |
 |---|---|
-| `pnpm prisma migrate dev --name <name>` | Create + apply migration |
 | `pnpm prisma migrate deploy` | Apply migrations (production) |
-| `pnpm prisma generate` | Regenerate Prisma client |
-| `pnpm prisma studio` | Visual database browser |
-| `pnpm prisma db seed` | Run seed script |
+| `pnpm prisma generate` | Regenerate Prisma client (also runs automatically via `postinstall`) |
 | `pnpm prisma migrate reset` | Reset database (caution!) |
 
-### Worker Commands (M5+)
-
-```bash
-# Run import worker
-pnpm worker:import
-
-# Run AI analysis worker
-pnpm worker:ai-analysis
-
-# Run AI planner worker
-pnpm worker:ai-planner
-```
+There are no worker processes to run — recipe import extraction and AI analysis/planning execute synchronously inside the API route handlers (no Redis, no BullMQ, no `workers/` directory).
 
 ---
 
 ## Directory Structure
 
 ```
-SmartPlateApp/
-├── app/                              # Next.js App Router
-│   ├── layout.tsx                    # Root layout
-│   ├── page.tsx                      # Home
-│   ├── login/page.tsx
-│   ├── register/page.tsx
-│   ├── dashboard/page.tsx
-│   ├── recipes/
-│   │   ├── page.tsx
-│   │   └── [id]/page.tsx
-│   ├── profile/page.tsx
-│   └── api/v1/                       # REST API Route Handlers
-│       ├── health/route.ts
-│       ├── auth/
-│       │   ├── register/route.ts
-│       │   ├── login/route.ts
-│       │   ├── refresh/route.ts
-│       │   └── logout/route.ts
-│       ├── users/me/
-│       │   ├── route.ts
-│       │   └── settings/route.ts
-│       ├── recipes/
-│       │   ├── route.ts
-│       │   └── [id]/route.ts
-│       ├── saved-recipes/
-│       │   ├── route.ts
-│       │   └── [id]/route.ts
-│       ├── imports/
-│       │   ├── route.ts
-│       │   └── [id]/
-│       │       ├── route.ts
-│       │       └── save/route.ts
-│       ├── meal-logs/
-│       │   ├── route.ts
-│       │   └── [id]/route.ts
-│       └── planner/
-│           └── weeks/
-│               ├── route.ts
-│               ├── generate/route.ts
-│               └── [weekId]/
-│                   ├── items/[itemId]/route.ts
-│                   └── grocery-list/route.ts
-│
+SmartPlate/
 ├── src/
+│   ├── app/                          # Next.js App Router
+│   │   ├── layout.tsx                # Root layout
+│   │   ├── page.tsx                  # Home
+│   │   ├── login/page.tsx
+│   │   ├── register/page.tsx
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx              # AI Coach (protected)
+│   │   │   ├── admin/page.tsx        # Admin (protected, admin role)
+│   │   │   └── recipes/manage/page.tsx  # Editor/admin recipe review
+│   │   ├── recipes/
+│   │   │   ├── page.tsx              # Listing (SSR)
+│   │   │   └── [id]/page.tsx        # Detail (SSR)
+│   │   ├── profile/page.tsx          # Protected
+│   │   └── api/v1/                   # REST API Route Handlers
+│   │       ├── health/route.ts
+│   │       ├── auth/{register,login,refresh,logout}/route.ts
+│   │       ├── me/route.ts
+│   │       ├── admin/users/route.ts
+│   │       ├── admin/users/[id]/role/route.ts
+│   │       ├── recipes/route.ts
+│   │       ├── recipes/[id]/{route,submit,review,status}.ts
+│   │       ├── cook-later/route.ts
+│   │       ├── cook-later/[id]/route.ts
+│   │       ├── imports/route.ts
+│   │       ├── imports/extract/route.ts
+│   │       ├── meal-logs/route.ts
+│   │       ├── meal-logs/summary/route.ts
+│   │       ├── planner/route.ts
+│   │       ├── planner/generate/route.ts
+│   │       ├── planner/adjust/route.ts
+│   │       ├── planner/meals/route.ts
+│   │       ├── planner/meals/[itemId]/route.ts
+│   │       ├── planner/[id]/groceries/route.ts
+│   │       └── cron/cleanup-rate-limits/route.ts
+│   │
 │   ├── components/                   # React components
 │   │   ├── ui/                       # Radix/shadcn primitives
+│   │   ├── layout/AppShell.tsx
 │   │   ├── Header.tsx
 │   │   ├── Navigation.tsx
 │   │   ├── RecipeCard.tsx
 │   │   ├── ImportRecipeDialog.tsx
 │   │   └── ...
-│   ├── contexts/                     # React contexts
-│   │   ├── AuthContext.tsx
-│   │   ├── LanguageContext.tsx
-│   │   └── CookLaterContext.tsx
-│   ├── hooks/                        # Custom hooks
-│   │   ├── useRecipes.ts
-│   │   ├── useSavedRecipes.ts
-│   │   └── ...
-│   ├── lib/                          # Utilities
-│   │   ├── db.ts                     # Prisma singleton
-│   │   ├── auth.ts                   # JWT helpers
-│   │   ├── queue.ts                  # BullMQ connection
-│   │   ├── ai.ts                     # LLM client
-│   │   └── validations/              # Zod schemas
-│   ├── services/                     # Business logic
-│   │   ├── auth.service.ts
-│   │   ├── users.service.ts
-│   │   ├── recipes.service.ts
-│   │   ├── imports.service.ts
-│   │   ├── meal-logs.service.ts
-│   │   └── planner.service.ts
-│   ├── locales/                      # i18n
-│   │   ├── en.json
-│   │   └── fr.json
-│   └── styles/
-│       ├── tailwind.css
-│       ├── theme.css
-│       └── fonts.css
-│
-├── workers/                          # BullMQ workers
-│   ├── import.worker.ts
-│   ├── ai-analysis.worker.ts
-│   └── ai-planner.worker.ts
+│   ├── contexts/                     # React contexts (language, cook later)
+│   ├── hooks/                        # TanStack Query hooks (useRecipes, useAuth, ...)
+│   ├── lib/                          # db, auth, rbac, errors, rate-limit, validations/
+│   ├── services/                     # Business logic (plain TS functions)
+│   ├── store/                        # Redux Toolkit (auth, language, cook later)
+│   ├── locales/                      # i18n — en.json, fr.json
+│   ├── styles/                       # tailwind.css, theme.css, fonts.css
+│   └── proxy.ts                      # Next.js 16 middleware (auth, redirects)
 │
 ├── prisma/
 │   ├── schema.prisma
 │   ├── seed.ts
 │   └── migrations/
 │
-├── middleware.ts                      # Next.js middleware
 ├── next.config.ts
 ├── tsconfig.json
 ├── package.json
@@ -236,6 +191,8 @@ SmartPlateApp/
 ├── .env.example
 └── .gitignore
 ```
+
+There is no `workers/` directory and no `middleware.ts` — see the note above about the synchronous architecture and `src/proxy.ts`.
 
 ---
 
@@ -250,11 +207,6 @@ pnpm prisma generate
 1. Verify `DATABASE_URL` in `.env`
 2. Check Neon dashboard for connection limits
 3. Test: `pnpm prisma db pull`
-
-### Redis connection issues (M5+)
-1. Verify Redis is running: `redis-cli ping`
-2. Check `REDIS_URL` in `.env`
-3. Windows: use WSL2 or Docker for Redis
 
 ### Port conflicts
 Set `PORT=3001` in `.env` to change the default port.

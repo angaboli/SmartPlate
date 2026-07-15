@@ -1,7 +1,7 @@
 # SmartPlate — Deployment Guide
 
-> **Version**: 2.0
-> **Last updated**: 2026-01-28
+> **Version**: 3.0
+> **Last updated**: 2026-07-15
 
 ---
 
@@ -19,21 +19,18 @@
               │                        │
               │   - Pages (SSR/CSR)    │
               │   - API Routes         │
-              │   - Middleware          │
+              │   - proxy.ts (auth)    │
               └───────────┬────────────┘
                           │
-          ┌───────────────┼───────────────┐
-          │               │               │
- ┌────────v────────┐ ┌───v──────────┐ ┌──v────────────┐
- │  PostgreSQL     │ │  Redis       │ │  Workers       │
- │  (Neon)         │ │  (Upstash)   │ │  (Railway/     │
- │                 │ │              │ │   Render)       │
- └─────────────────┘ └──────────────┘ └────────────────┘
+                 ┌────────v────────┐
+                 │  PostgreSQL     │
+                 │  (Neon)         │
+                 └─────────────────┘
 ```
 
 ### Single Deployment
 
-The main application (pages + API routes) deploys as a single unit to Vercel. Workers deploy separately as long-running Node.js processes.
+The entire application (pages + API routes) deploys as a **single unit** to Vercel. There are no separate worker processes to deploy — recipe import extraction and AI (OpenAI) calls run synchronously inside the API route handlers. See [IMPROVEMENTS.md](./IMPROVEMENTS.md) for the timeout tradeoffs of this choice on serverless functions.
 
 ---
 
@@ -45,29 +42,14 @@ The main application (pages + API routes) deploys as a single unit to Vercel. Wo
 |---|---|
 | Native Next.js support | Zero-config deployment |
 | Preview deployments | Every PR gets a preview URL |
-| Edge middleware | Auth + rate limiting at the edge |
+| Edge middleware (`proxy.ts`) | Auth redirects at the edge |
 | Serverless functions | API routes auto-scale |
+| Cron | `vercel.json` schedules daily rate-limit cleanup |
 | SSL | Automatic |
-
-### Workers → Railway or Render
-
-Workers need long-running processes (not serverless). They run continuously, consuming BullMQ jobs.
-
-```bash
-# Railway: deploy workers directory
-# Start command per worker:
-node --loader tsx workers/import.worker.ts
-node --loader tsx workers/ai-analysis.worker.ts
-node --loader tsx workers/ai-planner.worker.ts
-```
 
 ### Database → Neon (already configured)
 
 Serverless PostgreSQL with connection pooling. Point-in-time recovery included.
-
-### Redis → Upstash (recommended)
-
-Serverless Redis, pay-per-request. Global replication available.
 
 ---
 
@@ -83,18 +65,14 @@ DATABASE_URL=postgresql://...
 JWT_SECRET=<random-64-chars>
 JWT_REFRESH_SECRET=<random-64-chars>
 
-# Redis
-REDIS_URL=redis://...
-
-# AI
+# AI (model is hardcoded to gpt-4o-mini in src/services/ai.service.ts)
 OPENAI_API_KEY=sk-...
-AI_MODEL=gpt-4o
 
 # App
 NODE_ENV=production
 NEXT_PUBLIC_APP_URL=https://smartplate.ai
 
-# Optional
+# Optional (not yet wired in code — see IMPROVEMENTS.md)
 SENTRY_DSN=https://...
 ```
 
@@ -119,33 +97,9 @@ pnpm prisma migrate deploy
 
 ### GitHub Actions
 
-```yaml
-name: CI/CD
+The actual pipeline lives in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): checkout → pnpm install (frozen lockfile) → lint → typecheck → test → build (Node 22). It does not yet run `pnpm audit` — see [IMPROVEMENTS.md](./IMPROVEMENTS.md).
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-```
-
-Vercel auto-deploys from `main` branch. Workers auto-deploy from Railway/Render connected to the same repo.
+Vercel auto-deploys from the `main` branch on every push (and generates a preview deployment for every pull request).
 
 ---
 
@@ -170,13 +124,13 @@ SSL is automatic via Vercel. No manual certificate management.
 
 ## Monitoring
 
-| Concern | Tool |
-|---|---|
-| Uptime | UptimeRobot / Better Stack |
-| Errors | Sentry |
-| Logs | Vercel logs (app) + Railway logs (workers) |
-| Database | Neon dashboard |
-| API health | `GET /api/v1/health` |
+| Concern | Tool | Status |
+|---|---|---|
+| Uptime | UptimeRobot / Better Stack | Not configured |
+| Errors | Sentry | Not wired in code yet — recommended, see [IMPROVEMENTS.md](./IMPROVEMENTS.md) |
+| Logs | Vercel logs (pino, structured JSON) | Active |
+| Database | Neon dashboard | Active |
+| API health | `GET /api/v1/health` | Active |
 
 ---
 
@@ -185,6 +139,7 @@ SSL is automatic via Vercel. No manual certificate management.
 | Trigger | Action |
 |---|---|
 | High API traffic | Vercel auto-scales serverless functions |
-| Slow workers | Scale worker instances on Railway |
+| Slow AI (OpenAI) responses | Risk of serverless function timeout since calls are synchronous — see [IMPROVEMENTS.md](./IMPROVEMENTS.md) |
 | DB connection limits | Neon connection pooling (already enabled) |
+| Recipe catalog growth | `GET /api/v1/recipes` has no pagination yet — add before the catalog grows significantly |
 | Image storage needed | Add S3-compatible storage (Cloudflare R2) |
