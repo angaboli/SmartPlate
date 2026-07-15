@@ -1,11 +1,32 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { AppError } from '@/lib/errors';
 
 // ─── OpenAI client ──────────────────────────────────
 
+// AI calls run synchronously inside the API route handler (no queue/worker
+// — see docs/ARCHITECTURE.md). A 25s client timeout keeps failures within
+// typical serverless function limits and lets us return a clean error
+// instead of the platform killing the request with an opaque timeout.
+const AI_TIMEOUT_MS = 25_000;
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: AI_TIMEOUT_MS,
 });
+
+async function createChatCompletion(
+  params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+) {
+  try {
+    return await openai.chat.completions.create(params);
+  } catch (error) {
+    if (error instanceof OpenAI.APIConnectionTimeoutError) {
+      throw new AppError('The AI is taking too long to respond. Please try again.', 503);
+    }
+    throw error;
+  }
+}
 
 // ─── Zod schemas for LLM output validation ─────────
 
@@ -116,7 +137,7 @@ Return a JSON object with this exact structure:
   ]
 }`;
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: 'gpt-4o-mini',
     temperature: 0.3,
     response_format: { type: 'json_object' },
@@ -245,7 +266,7 @@ export async function analyzeMeal(
 ): Promise<MealAnalysisResult> {
   const systemPrompt = buildSystemPrompt(userContext);
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: 'gpt-4o-mini',
     temperature: 0.7,
     response_format: { type: 'json_object' },
@@ -318,7 +339,7 @@ Return a JSON object with this exact structure:
   ]
 }`;
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: 'gpt-4o-mini',
     temperature: 0.3,
     response_format: { type: 'json_object' },
@@ -378,7 +399,7 @@ Return a JSON object:
   ]
 }`;
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: 'gpt-4o-mini',
     temperature: 0.3,
     response_format: { type: 'json_object' },
