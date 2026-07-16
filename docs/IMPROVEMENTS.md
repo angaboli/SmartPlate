@@ -92,17 +92,16 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 ## P2 — Dette technique / hygiène
 
-### 8. Dépendances installées mais inutilisées
-`react-dnd` + `react-dnd-html5-backend` sont dans `package.json` mais `docs/ROADMAP.md` confirme explicitement (M7) : *"Drag-and-drop reordering is not implemented (react-dnd installed but unused)"*. Poids mort (~bundle size) sans bénéfice.
+### 8. Dépendances installées mais inutilisées — 🟡 Décidé, pas encore fait
+`react-dnd` + `react-dnd-html5-backend` sont dans `package.json` mais `docs/ROADMAP.md` confirme explicitement (M7) : *"Drag-and-drop reordering is not implemented (react-dnd installed but unused)"*.
 
-**Action** : soit implémenter le drag-and-drop dans `WeeklyPlanner.tsx` (fonctionnalité produit initialement prévue), soit retirer la dépendance si elle n'est plus dans la roadmap.
-**Effort** : S (retrait) / M (implémentation réelle).
+**Décision (2026-07-16)** : implémenter le vrai drag-and-drop dans `WeeklyPlanner.tsx` (pas retirer la dépendance) — reste à faire.
+**Effort** : M.
 
-### 9. Pas de pagination sur `GET /api/v1/recipes`
-`src/services/recipes.service.ts` ne contient aucun `skip`/`take`/paramètre de page — toutes les recettes sont chargées en une requête. Fonctionne à faible volume, mais ne passera pas à l'échelle dès que le catalogue de recettes grossira (surtout avec les imports utilisateurs qui créent des `Recipe` en continu).
+### 9. ~~Pas de pagination sur `GET /api/v1/recipes`~~ — ✅ Résolu (2026-07-16)
+`src/services/recipes.service.ts` ne contenait aucun `skip`/`take`/paramètre de page.
 
-**Action** : ajouter une pagination cursor-based ou offset-based avant que le volume de recettes ne devienne un problème (seuil suggéré : avant la mise en prod publique, pas après).
-**Effort** : S.
+`listRecipes()` accepte maintenant `{ page, limit }` (défaut 20, max 100), retourne `{ data, meta: { page, limit, total, totalPages } }` ; la route valide/borne `page`/`limit` ; `useRecipes()` et `RecipesPage` (avec composant `Pagination` shadcn) mis à jour en conséquence. **Régression détectée et corrigée dans la foulée** : `src/app/dashboard/recipes/manage/page.tsx` appelait cette route directement (hors du hook) et attendait l'ancienne forme tableau — plantait en prod (`recipes.map is not a function`), corrigé avec `limit=100` explicite (pas de pagination UI sur cette page admin).
 
 ### 10. ~~Domaines d'images non whitelistés pour les recettes importées~~ — ❌ Faux positif, corrigé (2026-07-16)
 Le constat initial ("`next/image` refusera de charger les domaines Instagram/TikTok/YouTube non whitelistés") supposait que les images de recettes passaient par `next/image`. En vérifiant le rendu réel : **aucun** des 4 endroits qui affichent `recipe.imageUrl` (`RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx`, `src/app/recipes/[id]/page.tsx`) n'utilise `next/image` — tous passent par `ImageWithFallback`, qui rend une balise `<img>` brute (confirmé par les warnings ESLint `@next/next/no-img-element` sur ce fichier). La restriction `images.remotePatterns` de `next.config.ts` ne s'applique donc jamais à ces images — pas de bug ici.
