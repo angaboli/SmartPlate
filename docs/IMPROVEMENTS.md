@@ -159,6 +159,28 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 3. UI d'upload sur `RecipeForm.tsx` (remplacer le champ URL texte actuel par un vrai upload avec preview) et sur la page profil (avatar).
 4. Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle.
 5. `next.config.ts` whitelist + nettoyage éventuel des anciens domaines externes une fois la migration import faite.
+6. **UX à corriger dans la même passe** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent actuellement `ImageWithFallback` même quand `recipe.imageUrl` est `null` (l'utilisateur l'a signalé) — ça montre l'icône d'erreur de `ImageWithFallback` par défaut plutôt que de masquer la zone image. À corriger quand le re-upload/re-hébergement R2 est fait : soit ne pas rendre le bloc image du tout si `imageUrl` est vide, soit s'assurer que toute recette a une image (upload obligatoire ou image par défaut de la catégorie).
+
+---
+
+## Backlog — Scan photo d'un repas (AI Coach)
+
+> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-16).
+
+### Objectif
+
+Permettre de logger un repas en prenant/uploadant une photo au lieu de (ou en plus de) taper une description texte dans `MealInput.tsx`. L'IA identifie les aliments visibles sur la photo et produit la même analyse structurée (nutriments, équilibre, suggestions) que le flux texte actuel.
+
+### Approche technique proposée
+
+1. **Pas de nouveau modèle IA nécessaire** — `gpt-4o-mini` (déjà utilisé dans `src/services/ai.service.ts`) accepte des entrées image via le content-block `image_url` de l'API Chat Completions d'OpenAI. Nouvelle fonction `analyzeMealPhoto(imageBase64, mealType, ctx)` réutilisant `MealAnalysisResultSchema` (même schéma Zod de sortie que `analyzeMeal`), avec un prompt adapté ("identifie les aliments visibles, estime les portions...").
+2. **v1 sans dépendance à R2** — envoyer l'image en base64 directement dans la requête à OpenAI, sans la persister nulle part (l'analyse textuelle résultante est sauvegardée dans `MealLog` comme aujourd'hui, pas la photo elle-même). Évite de bloquer cette fonctionnalité sur le chantier R2.
+   - **v2 (après R2)** : uploader la photo vers R2 (réutiliser le flux presigned upload du backlog R2 ci-dessus) et stocker son URL sur `MealLog` pour que l'utilisateur puisse revoir la photo de son repas dans son historique — nécessiterait une migration Prisma (`MealLog.photoUrl`).
+3. **Validation** : type MIME image whitelisté (`image/jpeg`, `image/png`, `image/webp`), taille max (ex: 5MB) avant envoi à OpenAI — les modèles vision ont aussi des limites de taille/résolution côté API à respecter.
+4. **Rate limiting** : les appels vision sont généralement plus lents/coûteux que le texte seul — réutiliser `checkAnalysisRateLimit` (20/jour) ou évaluer un quota séparé si le coût par requête s'avère significativement plus élevé.
+5. **Timeout** : réutiliser le wrapper `createChatCompletion()` (`src/services/ai.service.ts`) et son timeout de 25s — à revalider empiriquement, les appels vision peuvent être plus lents que les complétions texte pures et nécessiter un timeout dédié plus généreux.
+6. **UI** : bouton "Scanner une photo" dans `MealInput.tsx` à côté du textarea, `<input type="file" accept="image/*" capture="environment">` pour l'accès caméra mobile natif.
+7. **API** : soit étendre `POST /api/v1/meal-logs` pour accepter un champ image optionnel (JSON base64 ou multipart), soit un nouvel endpoint dédié `POST /api/v1/meal-logs/scan` — à trancher à l'implémentation selon la complexité de validation souhaitée.
 
 ---
 
