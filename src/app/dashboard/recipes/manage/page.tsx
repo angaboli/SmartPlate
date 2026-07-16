@@ -76,13 +76,15 @@ export default function RecipeManagePage() {
     if (!accessToken) return;
     const params = new URLSearchParams();
     if (statusFilter !== 'all') params.set('status', statusFilter);
+    params.set('limit', '100');
 
     try {
       const res = await fetch(`/api/v1/recipes?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error('Failed');
-      setRecipes(await res.json());
+      const { data } = await res.json();
+      setRecipes(data);
     } catch {
       toast.error(t('manage.failedLoad'));
     } finally {
