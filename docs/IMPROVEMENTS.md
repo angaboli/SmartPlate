@@ -124,7 +124,7 @@ Le constat initial ("`next/image` refusera de charger les domaines Instagram/Tik
 
 ## Backlog — Stockage d'objets (Cloudflare R2)
 
-> **Statut** : planifié, non implémenté. Credentials déjà ajoutés (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` dans `.env`/`.env.example`). À implémenter quand le besoin produit se confirme — ce plan sert de point de départ, pas d'engagement de calendrier.
+> **Statut** : 🟡 v1 implémentée (2026-07-16) — upload d'images de recettes fonctionnel. Reste : avatar UI, migration import, nettoyage objets orphelins (voir détail ci-dessous).
 
 ### Objectif
 
@@ -150,14 +150,17 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 6. **`next.config.ts`** — ajouter le domaine R2 public (ou domaine custom) à `images.remotePatterns` une fois le bucket configuré.
 7. **Schéma Prisma** — pas de migration obligatoire pour la v1 (les champs `imageUrl`/`avatarUrl` existants acceptent déjà n'importe quelle URL). À envisager plus tard si le nettoyage des objets orphelins (recette supprimée mais image jamais effacée de R2) devient un problème : soit un job de nettoyage périodique (cron Vercel, comme `cleanup-rate-limits`), soit une table `Asset` dédiée trackant chaque objet et son propriétaire.
 
-### Découpage suggéré (quand ce sera priorisé)
+### Découpage — état d'avancement
 
-1. `src/lib/storage.ts` (client R2 + presign) + tests avec le SDK mocké.
-2. `POST /api/v1/uploads/presign` + validations + rate limiting.
-3. UI d'upload sur `RecipeForm.tsx` (remplacer le champ URL texte actuel par un vrai upload avec preview) et sur la page profil (avatar).
-4. Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle.
-5. `next.config.ts` whitelist + nettoyage éventuel des anciens domaines externes une fois la migration import faite.
-6. **UX à corriger dans la même passe** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent actuellement `ImageWithFallback` même quand `recipe.imageUrl` est `null` (l'utilisateur l'a signalé) — ça montre l'icône d'erreur de `ImageWithFallback` par défaut plutôt que de masquer la zone image. À corriger quand le re-upload/re-hébergement R2 est fait : soit ne pas rendre le bloc image du tout si `imageUrl` est vide, soit s'assurer que toute recette a une image (upload obligatoire ou image par défaut de la catégorie).
+1. ~~`src/lib/storage.ts` (client R2 + presign)~~ — ✅ Fait.
+2. ~~`POST /api/v1/uploads/presign` + validations + rate limiting~~ — ✅ Fait (whitelist MIME, RBAC via `canEditRecipe`/`requireRole`, 30 uploads/heure/utilisateur, 9 tests). Taille max (5MB) validée côté client uniquement pour l'instant (pas de revalidation serveur après upload — voir point 4 ci-dessous).
+3. ~~UI d'upload sur `RecipeForm.tsx`~~ — ✅ Fait (bouton upload + preview + remplacer/retirer). **Reste** : UI d'avatar sur la page profil — le backend/hook (`purpose: 'avatar'`) le supporte déjà, mais `RecipeForm.tsx` est le seul consommateur pour l'instant.
+4. Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle — **pas fait**.
+5. ~~`next.config.ts` whitelist~~ — ✅ Fait (domaine `pub-53d4a03402a24c5b8c1a6db7c1d0b56b.r2.dev`, le domaine r2.dev par défaut — le domaine du projet est géré par Hostinger, pas Cloudflare, donc pas de domaine custom pour l'instant). Nettoyage des anciens domaines externes une fois la migration import faite (point 4) — **pas fait**.
+6. **UX** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent toujours `ImageWithFallback` même quand `recipe.imageUrl` est `null` — **pas encore corrigé**, à faire avec la migration import (point 4).
+7. **Nouveau, découvert à l'implémentation** : pas de job de nettoyage pour `recipes/pending/{userId}-{uuid}.ext` — si un utilisateur uploade une image puis abandonne la création de la recette (ne soumet jamais le formulaire), l'objet reste orphelin dans R2 indéfiniment. À traiter avec le nettoyage d'objets orphelins déjà noté au point "Schéma Prisma" ci-dessus (cron périodique ou table `Asset`).
+
+**Configuration requise en production** : `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `NEXT_PUBLIC_R2_PUBLIC_URL` doivent être ajoutées aux variables d'environnement Vercel (vérifié que le build réussit avec ou sans ces variables — rien n'y accède au chargement du module, seulement à l'intérieur des handlers de route — mais l'upload échouera silencieusement en prod tant qu'elles n'y sont pas).
 
 ---
 
