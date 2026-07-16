@@ -67,16 +67,20 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 `SECURITY.md` a été entièrement réécrit pour être exact, avec une checklist M9 qui distingue clairement ce qui est fait de ce qui ne l'est pas (CORS, complexité mot de passe, caps taille/redirect import, Sentry).
 
-### 6. Couverture de tests concentrée sur un tiers du code
-15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limite explicitement `coverage.include` à ces deux dossiers :
-- **0 test d'intégration** sur les 26 routes API (`src/app/api/v1/**/route.ts`) — alors que `docs/TESTING.md` en documente le pattern.
-- **0 test de composant** React (`src/components/**`, 60+ fichiers).
-- **0 test E2E** — Playwright est documenté dans `TESTING.md` comme stack cible mais n'est jamais installé (absent de `devDependencies`).
+### 6. Couverture de tests concentrée sur un tiers du code — 🟡 Partiellement résolu (2026-07-16)
+15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limitait explicitement `coverage.include` à ces deux dossiers, avec **0 test** sur `src/lib/rbac.ts`, `src/services/user.service.ts`, et les 26 routes API — alors que RBAC/admin est la surface la plus sensible du projet.
 
-**Action, par ordre de priorité** :
-1. Étendre `coverage.include` à `src/app/api/v1/**` pour au moins mesurer ce qui existe.
-2. Ajouter des tests d'intégration sur la surface la plus sensible : auth (login/refresh/logout), RBAC (`submit`/`review`/`admin/users`), rate limiting.
-3. Si budget dispo : installer Playwright pour 2-3 parcours critiques (login, log meal + analyse IA, import de recette).
+**Fait** :
+- `coverage.include` étendu à `src/app/api/v1/**`.
+- `src/lib/__tests__/rbac.test.ts` (nouveau, 10 tests, 100% de couverture sur `rbac.ts`, précédemment 0%) — couvre `requireRole`, `canEditRecipe`, `canManagePublicationStatus`, `canManageUsers`.
+- `src/services/__tests__/user.service.test.ts` (nouveau, 7 tests, précédemment 0% de couverture) — couvre `changeUserRole` (auto-démotion bloquée, rôle invalide rejeté, utilisateur introuvable) et `getProfile`/`listUsers`.
+- Tests d'intégration au niveau route (mock du service + `getCurrentUser`, appel direct du handler exporté avec un `NextRequest` construit) pour `auth/login`, `auth/refresh`, `auth/logout` (succès, 401, 400, 429 rate-limit) et `admin/users/[id]/role` (401 non-authentifié, 403 non-admin, 200 admin, 400 rôle invalide) — 15 tests au total sur 4 routes.
+- Suite complète : 163 → **195 tests**, tous verts (`tsc --noEmit`, `eslint`, `vitest run` vérifiés).
+
+**Reste à faire** :
+- Tests d'intégration sur le reste des 26 routes (recipes CRUD, cook-later, imports, meal-logs, planner) — seules les 4 routes auth/RBAC les plus sensibles ont été couvertes dans cette passe.
+- **0 test de composant** React (`src/components/**`, 60+ fichiers) — toujours pas traité.
+- **0 test E2E** — Playwright toujours documenté dans `TESTING.md` comme stack cible mais jamais installé. Si budget dispo : 2-3 parcours critiques (login, log meal + analyse IA, import de recette).
 **Effort** : M à L selon l'ambition.
 
 ### 7. Aucun suivi d'erreurs en production
@@ -165,7 +169,7 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 1. ~~**Sprint doc-cleanup** (P0-1, P1-5, P2-11)~~ — ✅ Fait (2026-07-15/16) : les 6 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`, `SECURITY.md`) corrigés.
 2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
 3. ~~**P0-3** (timeout OpenAI)~~ — ✅ Fait (2026-07-15).
-4. **Sprint tests critiques** (P1-6, priorité 1-2 seulement) — sécuriser auth/RBAC/rate-limit avant d'ajouter de nouvelles features.
+4. ~~**Sprint tests critiques** (P1-6, priorité 1-2)~~ — 🟡 Fait pour le cœur RBAC/auth (2026-07-16) : `rbac.ts` et `user.service.ts` testés (0% → 100%/65-100%), 4 routes auth/RBAC couvertes. Reste les autres routes (recipes/imports/planner/meal-logs) et Playwright (priorité 3).
 5. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
 6. Le reste (P2-8, P2-9, P3, + les gaps réels découverts en P1-5 : complexité mot de passe, caps taille/redirect import) peut être traité au fil de l'eau selon la charge produit réelle.
 7. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
