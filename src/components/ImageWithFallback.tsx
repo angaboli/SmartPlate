@@ -4,13 +4,21 @@ const ERROR_IMG_SRC =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODgiIGhlaWdodD0iODgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzLjciPjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiByeD0iNiIvPjxwYXRoIGQ9Im0xNiA1OCAxNi0xOCAzMiAzMiIvPjxjaXJjbGUgY3g9IjUzIiBjeT0iMzUiIHI9IjciLz48L3N2Zz4KCg=='
 
 export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+  const { src, alt, style, className, ...rest } = props
+
   const [didError, setDidError] = useState(false)
+  // Track the src an error was recorded for — without this, once one src
+  // fails to load, every later src (even a valid one) stays stuck on the
+  // fallback forever, since this component doesn't remount on src change.
+  const [erroredSrc, setErroredSrc] = useState<typeof src>(undefined)
+  if (src !== erroredSrc && didError) {
+    setDidError(false)
+  }
 
   const handleError = () => {
     setDidError(true)
+    setErroredSrc(src)
   }
-
-  const { src, alt, style, className, ...rest } = props
 
   return didError || !src ? (
     <div
