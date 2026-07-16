@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
+import { Loader2, Upload, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useUploadImage } from '@/hooks/useUpload';
 import type { RecipeInput, RecipeDTO } from '@/hooks/useRecipes';
 
 const categories = ['Regular', 'SafariTaste', 'Dessert', 'Breakfast', 'Snack'];
@@ -87,7 +91,24 @@ export function RecipeForm({
 
   const [titleError, setTitleError] = useState('');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadImage = useUploadImage();
+
   const isAdmin = userRole === 'admin';
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    uploadImage.mutate(
+      { file, purpose: 'recipe-image', recipeId: initialData?.id },
+      {
+        onSuccess: (publicUrl) => setImageUrl(publicUrl),
+        onError: (error) => toast.error(error.message || t('recipeForm.imageUploadFailed')),
+      },
+    );
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -140,15 +161,48 @@ export function RecipeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Shared: Image URL */}
+      {/* Shared: Image upload */}
       <div className="space-y-2">
-        <Label htmlFor="imageUrl">{t('recipeForm.imageUrl')}</Label>
-        <Input
-          id="imageUrl"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://..."
+        <Label htmlFor="imageUpload">{t('recipeForm.imageUrl')}</Label>
+        <input
+          ref={fileInputRef}
+          id="imageUpload"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleFileSelected}
         />
+        <div className="flex items-center gap-3">
+          {imageUrl && (
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border">
+              <ImageWithFallback
+                src={imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setImageUrl('')}
+                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={uploadImage.isPending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploadImage.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            {imageUrl ? t('recipeForm.imageReplace') : t('recipeForm.imageUpload')}
+          </Button>
+        </div>
       </div>
 
       {/* Shared: Category + Goal */}
