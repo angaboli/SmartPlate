@@ -104,11 +104,10 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 **Action** : ajouter une pagination cursor-based ou offset-based avant que le volume de recettes ne devienne un problème (seuil suggéré : avant la mise en prod publique, pas après).
 **Effort** : S.
 
-### 10. Domaines d'images non whitelistés pour les recettes importées
-`next.config.ts` n'autorise que `images.unsplash.com` dans `images.remotePatterns`. Les recettes importées depuis Instagram/TikTok/YouTube stockent une `imageUrl` scrapée (Open Graph), mais `next/image` refusera de charger ces domaines tant qu'ils ne sont pas explicitement whitelistés — risque concret de recettes importées affichées sans image en prod.
+### 10. ~~Domaines d'images non whitelistés pour les recettes importées~~ — ❌ Faux positif, corrigé (2026-07-16)
+Le constat initial ("`next/image` refusera de charger les domaines Instagram/TikTok/YouTube non whitelistés") supposait que les images de recettes passaient par `next/image`. En vérifiant le rendu réel : **aucun** des 4 endroits qui affichent `recipe.imageUrl` (`RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx`, `src/app/recipes/[id]/page.tsx`) n'utilise `next/image` — tous passent par `ImageWithFallback`, qui rend une balise `<img>` brute (confirmé par les warnings ESLint `@next/next/no-img-element` sur ce fichier). La restriction `images.remotePatterns` de `next.config.ts` ne s'applique donc jamais à ces images — pas de bug ici.
 
-**Action** : soit whitelister dynamiquement les domaines des providers supportés, soit passer par un proxy d'images (ex: reencodage server-side), soit désactiver l'optimisation Next Image pour ces cas précis (`unoptimized`).
-**Effort** : S.
+**Effet de bord réel** (différent du problème initialement documenté) : en utilisant `<img>` au lieu de `next/image`, ces images n'ont aucune optimisation (pas de redimensionnement responsive, pas de conversion WebP/AVIF automatique, pas de lazy-loading géré par Next). C'est un compromis délibéré de `ImageWithFallback` (gérer un `onError` de fallback simplement), pas un bug — à revisiter seulement si la performance des images devient un problème mesuré.
 
 ### 11. ~~Documents produit obsolètes en plus des docs techniques~~ — ✅ Résolu (2026-07-15)
 `USER_GUIDE.md` décrivait encore un Cook Later "en session" (persistance locale) et un mode hors-ligne inexistant — corrigé pour refléter la persistance DB (M4) et la synchronisation multi-appareil.
