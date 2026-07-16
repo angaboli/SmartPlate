@@ -10,7 +10,7 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      include: ['src/services/**', 'src/lib/**'],
+      include: ['src/services/**', 'src/lib/**', 'src/app/api/v1/**'],
     },
   },
 });
