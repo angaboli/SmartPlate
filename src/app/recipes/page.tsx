@@ -10,18 +10,37 @@ import { RecipeGridSkeleton } from '@/components/skeletons';
 import { ImportRecipeDialog } from '@/components/ImportRecipeDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRecipes } from '@/hooks/useRecipes';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+
 export default function RecipesPage() {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [showSafariTasteOnly, setShowSafariTasteOnly] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const { data: recipes = [], isLoading, error } = useRecipes({
+  const filters = {
     search: searchQuery || undefined,
     goal: selectedGoal || undefined,
     category: showSafariTasteOnly ? 'SafariTaste' : undefined,
-  });
+  };
+
+  const { data, isLoading, error } = useRecipes(filters, page);
+  const recipes = data?.data ?? [];
+  const meta = data?.meta;
+
+  function updateFilters(update: () => void) {
+    update();
+    setPage(1);
+  }
 
   const goals = [
     { id: 'balanced', label: t('recipes.goal.balanced'), icon: '⚖️' },
@@ -62,13 +81,13 @@ export default function RecipesPage() {
             <Input
               placeholder={t('recipes.search')}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => updateFilters(() => setSearchQuery(e.target.value))}
               className="pl-10 bg-input-background"
             />
           </div>
           <Button
             variant="outline"
-            onClick={() => setShowSafariTasteOnly(!showSafariTasteOnly)}
+            onClick={() => updateFilters(() => setShowSafariTasteOnly(!showSafariTasteOnly))}
             className={showSafariTasteOnly ? 'border-[#8A6A4F] bg-[#8A6A4F]/10' : ''}
           >
             <SlidersHorizontal className="mr-2 h-4 w-4" />
@@ -81,7 +100,7 @@ export default function RecipesPage() {
           <Button
             variant={selectedGoal === null ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSelectedGoal(null)}
+            onClick={() => updateFilters(() => setSelectedGoal(null))}
             className={selectedGoal === null ? 'bg-primary' : ''}
           >
             {t('recipes.allGoals')}
@@ -91,7 +110,7 @@ export default function RecipesPage() {
               key={goal.id}
               variant={selectedGoal === goal.id ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedGoal(goal.id)}
+              onClick={() => updateFilters(() => setSelectedGoal(goal.id))}
               className={selectedGoal === goal.id ? 'bg-primary' : ''}
             >
               <span className="mr-1.5">{goal.icon}</span>
@@ -138,7 +157,7 @@ export default function RecipesPage() {
           {/* All Recipes */}
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">
-              {t('recipes.allRecipes')} ({recipes.length})
+              {t('recipes.allRecipes')} ({meta?.total ?? recipes.length})
             </h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {recipes.map((recipe) => (
@@ -149,6 +168,49 @@ export default function RecipesPage() {
               ))}
             </div>
           </div>
+
+          {meta && meta.totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    aria-disabled={page <= 1}
+                    className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page > 1) setPage(page - 1);
+                    }}
+                  />
+                </PaginationItem>
+                {Array.from({ length: meta.totalPages }, (_, i) => i + 1).map((p) => (
+                  <PaginationItem key={p}>
+                    <PaginationLink
+                      href="#"
+                      isActive={p === page}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPage(p);
+                      }}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    aria-disabled={page >= meta.totalPages}
+                    className={page >= meta.totalPages ? 'pointer-events-none opacity-50' : ''}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page < meta.totalPages) setPage(page + 1);
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
 
           {recipes.length === 0 && (
             <div className="rounded-xl border border-dashed bg-secondary/30 p-12 text-center">

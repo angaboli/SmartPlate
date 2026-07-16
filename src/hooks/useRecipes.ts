@@ -31,16 +31,31 @@ export interface RecipeDTO {
   updatedAt: string;
 }
 
-async function fetchRecipes(filters: RecipeFilters): Promise<RecipeDTO[]> {
+export interface RecipesPage {
+  data: RecipeDTO[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+async function fetchRecipes(
+  filters: RecipeFilters,
+  page: number,
+  limit: number,
+): Promise<RecipesPage> {
   const params = new URLSearchParams();
   if (filters.search) params.set('search', filters.search);
   if (filters.category) params.set('category', filters.category);
   if (filters.goal) params.set('goal', filters.goal);
   if (filters.aiRecommended !== undefined)
     params.set('aiRecommended', String(filters.aiRecommended));
+  params.set('page', String(page));
+  params.set('limit', String(limit));
 
-  const qs = params.toString();
-  const res = await fetchWithAuth(`/api/v1/recipes${qs ? `?${qs}` : ''}`);
+  const res = await fetchWithAuth(`/api/v1/recipes?${params.toString()}`);
   if (res.status === 401) throw new Error('Unauthorized');
   if (!res.ok) throw new Error('Failed to fetch recipes');
   return res.json();
@@ -53,10 +68,11 @@ async function fetchRecipeById(id: string): Promise<RecipeDTO> {
   return res.json();
 }
 
-export function useRecipes(filters: RecipeFilters = {}) {
+export function useRecipes(filters: RecipeFilters = {}, page = 1, limit = 20) {
   return useQuery({
-    queryKey: ['recipes', filters],
-    queryFn: () => fetchRecipes(filters),
+    queryKey: ['recipes', filters, page, limit],
+    queryFn: () => fetchRecipes(filters, page, limit),
+    placeholderData: (previous) => previous,
   });
 }
 

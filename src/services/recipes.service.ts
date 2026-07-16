@@ -16,6 +16,21 @@ export interface RecipeFilters {
   status?: RecipeStatus;
 }
 
+export interface Pagination {
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 const recipeInclude = {
   ingredients: { orderBy: { sortOrder: 'asc' as const } },
   steps: { orderBy: { sortOrder: 'asc' as const } },
@@ -26,7 +41,8 @@ const recipeInclude = {
 export async function listRecipes(
   filters: RecipeFilters = {},
   user?: JwtPayload | null,
-) {
+  pagination: Pagination = { page: 1, limit: 20 },
+): Promise<PaginatedResult<Prisma.RecipeGetPayload<{ include: typeof recipeInclude }>>> {
   const where: Prisma.RecipeWhereInput = {};
 
   if (filters.search) {
@@ -58,11 +74,28 @@ export async function listRecipes(
     where.status = 'published';
   }
 
-  return db.recipe.findMany({
-    where,
-    include: recipeInclude,
-    orderBy: { createdAt: 'desc' },
-  });
+  const { page, limit } = pagination;
+
+  const [data, total] = await Promise.all([
+    db.recipe.findMany({
+      where,
+      include: recipeInclude,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    db.recipe.count({ where }),
+  ]);
+
+  return {
+    data,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  };
 }
 
 // ─── Get recipe by ID ────────────────────────────────

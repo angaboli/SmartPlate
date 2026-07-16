@@ -49,6 +49,30 @@ describe('listRecipes', () => {
     const callArgs = db.recipe.findMany.mock.calls[0][0];
     expect(callArgs.where.OR).toBeDefined();
   });
+
+  it('applies skip/take from pagination and returns meta', async () => {
+    db.recipe.findMany.mockResolvedValue([{ id: 'r1' }]);
+    db.recipe.count.mockResolvedValue(45);
+
+    const result = await listRecipes({}, adminUser, { page: 3, limit: 20 });
+
+    expect(db.recipe.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 40, take: 20 }),
+    );
+    expect(result.meta).toEqual({ page: 3, limit: 20, total: 45, totalPages: 3 });
+  });
+
+  it('defaults to page 1, limit 20 when no pagination is given', async () => {
+    db.recipe.findMany.mockResolvedValue([]);
+    db.recipe.count.mockResolvedValue(0);
+
+    const result = await listRecipes({}, adminUser);
+
+    expect(db.recipe.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0, take: 20 }),
+    );
+    expect(result.meta.totalPages).toBe(1);
+  });
 });
 
 describe('getRecipeById', () => {

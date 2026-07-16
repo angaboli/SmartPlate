@@ -24,9 +24,12 @@ export async function GET(request: NextRequest) {
       status: (searchParams.get('status') as RecipeStatus) || undefined,
     };
 
-    const recipes = await listRecipes(filters, user);
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 20));
 
-    return NextResponse.json(recipes);
+    const result = await listRecipes(filters, user, { page, limit });
+
+    return NextResponse.json(result);
   } catch (error) {
     return handleApiError(error);
   }
