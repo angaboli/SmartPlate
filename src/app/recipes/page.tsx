@@ -24,6 +24,7 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [showSafariTasteOnly, setShowSafariTasteOnly] = useState(false);
+  const [showAiRecommendedOnly, setShowAiRecommendedOnly] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -31,6 +32,7 @@ export default function RecipesPage() {
     search: searchQuery || undefined,
     goal: selectedGoal || undefined,
     category: showSafariTasteOnly ? 'SafariTaste' : undefined,
+    aiRecommended: showAiRecommendedOnly ? true : undefined,
   };
 
   const { data, isLoading, error } = useRecipes(filters, page);
@@ -93,6 +95,14 @@ export default function RecipesPage() {
             <SlidersHorizontal className="mr-2 h-4 w-4" />
             {t('recipes.safariTasteOnly')}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => updateFilters(() => setShowAiRecommendedOnly(!showAiRecommendedOnly))}
+            className={showAiRecommendedOnly ? 'border-primary bg-primary/10' : ''}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {t('recipes.aiRecommendedOnly')}
+          </Button>
         </div>
 
         {/* Goal Filters */}
@@ -133,27 +143,6 @@ export default function RecipesPage() {
       {/* Recipes Content */}
       {!isLoading && !error && (
         <>
-          {/* AI Recommended Section */}
-          {recipes.some((r) => r.aiRecommended) && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold">{t('recipes.aiRecommended')}</h2>
-              </div>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {recipes
-                  .filter((recipe) => recipe.aiRecommended)
-                  .map((recipe) => (
-                    <RecipeCard
-                      key={recipe.id}
-                      recipe={recipe}
-
-                    />
-                  ))}
-              </div>
-            </div>
-          )}
-
           {/* All Recipes */}
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">
