@@ -203,6 +203,11 @@ export function RecipeForm({
             {imageUrl ? t('recipeForm.imageReplace') : t('recipeForm.imageUpload')}
           </Button>
         </div>
+        <Input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder={t('recipeForm.imageUrlPlaceholder')}
+        />
       </div>
 
       {/* Shared: Category + Goal */}

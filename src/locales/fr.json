@@ -254,6 +254,7 @@
   "recipeForm.imageUpload": "Ajouter une image",
   "recipeForm.imageReplace": "Remplacer l'image",
   "recipeForm.imageUploadFailed": "Échec de l'envoi de l'image",
+  "recipeForm.imageUrlPlaceholder": "Ou collez un lien d'image (https://...)",
   "recipeForm.category": "Catégorie",
   "recipeForm.goal": "Objectif",
   "recipeForm.goalNone": "Aucun",
