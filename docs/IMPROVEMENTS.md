@@ -83,11 +83,10 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 - **0 test E2E** — Playwright toujours documenté dans `TESTING.md` comme stack cible mais jamais installé. Si budget dispo : 2-3 parcours critiques (login, log meal + analyse IA, import de recette).
 **Effort** : M à L selon l'ambition.
 
-### 7. Aucun suivi d'erreurs en production
-`SENTRY_DSN` est mentionné comme variable optionnelle (`docs/SETUP.md`, `docs/DEPLOYMENT.md`) mais jamais câblé dans le code (pas de dépendance Sentry). Avec des appels LLM et du scraping HTML tiers en prod, les échecs silencieux (quota OpenAI dépassé, parsing cassé) ne remontent qu'aux logs pino de Vercel, difficiles à surveiller activement.
+### 7. ~~Aucun suivi d'erreurs en production~~ — ✅ Résolu (2026-07-16)
+`SENTRY_DSN` était mentionné comme variable optionnelle mais jamais câblé (pas de dépendance Sentry) — les échecs silencieux (quota OpenAI, parsing cassé) ne remontaient qu'aux logs pino de Vercel.
 
-**Action** : intégrer Sentry (ou équivalent) au minimum sur les endpoints IA (`meal-logs`, `planner/generate`, `planner/adjust`) et imports.
-**Effort** : S-M.
+`@sentry/nextjs` installé et câblé app-wide (pas seulement IA/imports) : `src/instrumentation.ts` (server + edge), `src/instrumentation-client.ts` (client + navigation), `src/app/global-error.tsx` (erreurs React racine), `next.config.ts` wrappé via `withSentryConfig`. Le wizard interactif (`npx @sentry/wizard`) n'a pas pu aboutir dans cet environnement (login navigateur non détecté) — configuration faite manuellement contre l'org/projet Sentry créés par l'utilisateur (`mizi-0j` / `javascript-nextjs`). **Piège évité** : la CSP `connect-src 'self'` de `next.config.ts` aurait silencieusement bloqué tous les événements Sentry — ajout du host d'ingestion à `connect-src`. Vérifié de bout en bout : un événement de test réel envoyé et confirmé livré (`Sentry.flush()` → `true`), build et 195 tests toujours verts.
 
 ---
 
@@ -170,7 +169,7 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
 3. ~~**P0-3** (timeout OpenAI)~~ — ✅ Fait (2026-07-15).
 4. ~~**Sprint tests critiques** (P1-6, priorité 1-2)~~ — 🟡 Fait pour le cœur RBAC/auth (2026-07-16) : `rbac.ts` et `user.service.ts` testés (0% → 100%/65-100%), 4 routes auth/RBAC couvertes. Reste les autres routes (recipes/imports/planner/meal-logs) et Playwright (priorité 3).
-5. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
+5. ~~**Sprint observabilité** (P1-7)~~ — ✅ Fait (2026-07-16) : Sentry installé app-wide.
 6. Le reste (P2-8, P2-9, P3, + les gaps réels découverts en P1-5 : complexité mot de passe, caps taille/redirect import) peut être traité au fil de l'eau selon la charge produit réelle.
 7. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
 

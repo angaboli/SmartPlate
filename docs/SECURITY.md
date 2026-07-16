@@ -178,4 +178,4 @@ pnpm audit                              # Full tree, including dev tooling
 - [ ] CORS policy (not needed yet — single-origin client; revisit if a mobile/separate client is added)
 - [ ] Password complexity requirements beyond length
 - [ ] Import response size/redirect caps
-- [ ] Error tracking (Sentry) — see [IMPROVEMENTS.md](./IMPROVEMENTS.md)
+- [x] Error tracking (Sentry) — `@sentry/nextjs`, see `src/instrumentation.ts` / `src/instrumentation-client.ts`
