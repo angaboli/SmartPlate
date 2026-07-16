@@ -92,11 +92,10 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 ## P2 — Dette technique / hygiène
 
-### 8. Dépendances installées mais inutilisées — 🟡 Décidé, pas encore fait
-`react-dnd` + `react-dnd-html5-backend` sont dans `package.json` mais `docs/ROADMAP.md` confirme explicitement (M7) : *"Drag-and-drop reordering is not implemented (react-dnd installed but unused)"*.
+### 8. ~~Dépendances installées mais inutilisées~~ — ✅ Résolu (2026-07-16)
+`react-dnd` + `react-dnd-html5-backend` étaient dans `package.json` depuis M7 mais jamais utilisées.
 
-**Décision (2026-07-16)** : implémenter le vrai drag-and-drop dans `WeeklyPlanner.tsx` (pas retirer la dépendance) — reste à faire.
-**Effort** : M.
+Drag-and-drop implémenté dans `WeeklyPlanner.tsx` (déplacer un repas d'un jour à l'autre) : `MealCard` (`useDrag`) et `DayMealsGrid` (`useDrop`) extraits en composants dédiés (nécessaire — les hooks ne peuvent pas être appelés dans un callback `.map()`), branché sur la mutation `useUpdateMeal` déjà existante côté `dashboard/page.tsx` (aucun changement backend nécessaire, `PATCH /api/v1/planner/meals/:itemId` acceptait déjà `dayIndex`).
 
 ### 9. ~~Pas de pagination sur `GET /api/v1/recipes`~~ — ✅ Résolu (2026-07-16)
 `src/services/recipes.service.ts` ne contenait aucun `skip`/`take`/paramètre de page.
