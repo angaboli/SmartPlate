@@ -133,6 +133,20 @@ export default function DashboardPage() {
     });
   };
 
+  const handleMoveMeal = (mealId: string, newDayIndex: number) => {
+    updateMealMutation.mutate(
+      { itemId: mealId, data: { dayIndex: newDayIndex } },
+      {
+        onSuccess: () => {
+          toast.success(t('dashboard.mealUpdated'));
+        },
+        onError: (error) => {
+          toast.error(error.message || t('dashboard.failedUpdate'));
+        },
+      },
+    );
+  };
+
   const handleSaveMeal = (data: {
     name: string;
     calories?: number;
@@ -387,6 +401,7 @@ export default function DashboardPage() {
             onAddMeal={handleAddMeal}
             onEditMeal={handleEditMeal}
             onDeleteMeal={handleDeleteMeal}
+            onMoveMeal={handleMoveMeal}
             onOptimizeWithAI={handleOptimizePlan}
             isOptimizing={adjustPlanMutation.isPending}
           />
