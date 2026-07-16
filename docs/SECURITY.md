@@ -1,7 +1,7 @@
 # SmartPlate — Security Baseline
 
-> **Version**: 1.0
-> **Last updated**: 2026-01-28
+> **Version**: 2.0
+> **Last updated**: 2026-07-16
 
 ---
 
@@ -9,130 +9,114 @@
 
 | Threat | Risk Level | Mitigation |
 |---|---|---|
-| Credential stuffing | High | Rate limiting on auth endpoints (5/min) |
+| Credential stuffing | High | Rate limiting on auth endpoints (DB-backed, see below) |
 | SQL injection | High | Prisma ORM (parameterized queries) |
-| XSS (stored) | High | Sanitize user-generated content (recipe imports) |
-| JWT token theft | Medium | Short-lived access tokens (15min), httpOnly cookies |
-| Social link abuse | Medium | Rate limiting on imports (10/hour), URL validation |
-| LLM prompt injection | Medium | Input sanitization, output validation, no system prompt leakage |
+| XSS (stored) | High | React auto-escapes all rendered text (no `dangerouslySetInnerHTML` on user content) + length limits via Zod; no active HTML-sanitization library is installed — see [Input Validation](#input-validation) |
+| JWT token theft | Medium | 24h access token, httpOnly cookie, revocable 7-day refresh token stored in DB |
+| Social link abuse | Medium | Rate limiting on imports (10/hour/user), Zod URL validation |
+| LLM prompt injection | Medium | Input placed in a delimited data section, output validated against Zod schemas |
 | CSRF | Low | SameSite cookies, token-based auth |
-| Denial of service | Medium | Global rate limiting, queue backpressure |
+| Denial of service | Medium | Per-endpoint DB-backed rate limiting; no global/IP-wide limiter |
 
 ---
 
 ## Authentication Security
 
 ### Password Policy
-- Minimum 8 characters
-- At least 1 uppercase letter
-- At least 1 number
-- Hashed with bcrypt (cost factor 12)
-- Never stored in plaintext
-- Never returned in API responses
+- Minimum 8 characters, maximum 72 (bcrypt's own limit) — enforced by `registerSchema` in `src/lib/validations/auth.ts`
+- Hashed with bcrypt
+- Never stored in plaintext, never returned in API responses
+- **Note**: there is currently no uppercase/number/symbol complexity requirement enforced — only length.
 
 ### JWT Configuration
-- **Access token**: 15 minutes expiry, signed with `JWT_SECRET`
+- **Access token**: 24 hours expiry, signed with `JWT_SECRET` (see `src/lib/auth.ts`)
 - **Refresh token**: 7 days expiry, signed with `JWT_REFRESH_SECRET`
 - Refresh tokens stored in database (revocable)
-- Logout invalidates refresh token
-- Token rotation on refresh (old token invalidated)
+- Logout invalidates the refresh token
+- JWT payload includes the user's `role`, used for RBAC checks (`src/lib/rbac.ts`)
 
 ### Session Security
-- Access tokens sent as httpOnly cookies (web) or Authorization header (mobile)
-- SameSite=Strict for cookies
-- Secure flag in production (HTTPS only)
-- Auto-refresh flow prevents token exposure in URLs
+- Access token sent as an httpOnly cookie, validated by `src/proxy.ts` (Next.js 16 middleware convention) on protected routes
+- `src/proxy.ts` redirects unauthenticated users away from `/dashboard/*` and `/profile/*`, and authenticated users away from `/login`/`/register`
 
 ---
 
 ## Input Validation
 
 ### API Layer
-- All endpoints validated with Zod schemas
+- All endpoints validated with Zod schemas (`src/lib/validations/`)
 - Validation runs before any business logic
-- Failed validation returns 422 with field-level errors
+- Failed validation returns 400 with field-level errors (via `ValidationError` / `handleApiError`, see `src/lib/errors.ts`)
 - No raw SQL queries (Prisma handles parameterization)
 
-### Import URL Validation
-- Must be valid HTTP/HTTPS URL
+### Import URL Validation (`src/services/import-extractor.ts`, `src/lib/validations/import.ts`)
+- Must pass Zod's `.url()` check (syntactically valid URL) — this does **not** restrict to `http(s)://` specifically; `fetch()` itself will simply fail on unsupported schemes (`javascript:`, `data:`) rather than an explicit allowlist
 - Maximum URL length: 2048 characters
-- Blocked protocols: `javascript:`, `data:`, `file:`
-- Provider detection via URL pattern matching
-- Fetch timeout: 10 seconds
-- Maximum response body: 5MB
-- Follow redirects: maximum 3 hops
+- Fetch timeout: 15 seconds (`AbortSignal.timeout(15_000)`)
+- Provider detection via URL pattern matching (Instagram/TikTok/YouTube/Other)
+- **Gap**: no maximum response body size cap and no explicit redirect-hop limit are currently enforced — tracked in [IMPROVEMENTS.md](./IMPROVEMENTS.md)
 
-### User-Generated Content
-- Recipe titles: max 200 characters, strip HTML
-- Recipe descriptions: max 2000 characters, strip HTML
-- Ingredient/step text: max 500 characters, strip HTML
-- Meal descriptions: max 1000 characters, strip HTML
-- Sanitization library: DOMPurify (server-side)
+### User-Generated Content Length Limits (Zod, not HTML sanitization)
+- Recipe title: max 200 characters
+- Recipe description: max 2000 characters
+- Ingredient text: max 500 characters (max 100 per recipe)
+- Step text: max 2000 characters (max 50 per recipe)
+- Meal log description (`mealText`): max 2000 characters
+- These are length limits only — there is no DOMPurify/sanitize-html step. Safety currently relies on React escaping all of this content as plain text when rendered (verified: the only `dangerouslySetInnerHTML` usage in the codebase is `src/components/ui/chart.tsx`, which injects CSS custom properties, not user content).
 
 ---
 
 ## Rate Limiting
 
-| Endpoint Group | Limit | Window | Scope |
+All rate limiting is DB-backed (`src/lib/rate-limit.ts` + the `rate_limit_attempts` table, or a dedicated counter query against the relevant table), not a dedicated library or Redis. There is no global/IP-wide rate limiter — each limit below is per-endpoint.
+
+| Endpoint | Limit | Window | Scope |
 |---|---|---|---|
-| Auth (login/register) | 5 requests | 1 minute | Per IP |
-| Auth (refresh) | 10 requests | 1 minute | Per IP |
-| Import (POST) | 10 requests | 1 hour | Per user |
-| AI endpoints | 20 requests | 1 hour | Per user |
-| General API | 100 requests | 1 minute | Per user |
+| `POST /auth/login` | 10 attempts | 15 minutes | Per IP |
+| `POST /auth/register` | 5 attempts | 1 hour | Per IP |
+| `POST /auth/refresh` | 30 attempts | 1 hour | Per IP |
+| `POST /imports/extract`, `POST /imports` | 10 requests | 1 hour | Per user |
+| `POST /meal-logs` (AI analysis) | 20 requests | 1 day | Per user |
+| `POST /planner/generate` | 5 requests | 1 day | Per user |
 | Health check | Unlimited | — | — |
 
-Implementation: `@nestjs/throttler` with Redis-backed store.
+A daily cron (`GET /api/v1/cron/cleanup-rate-limits`, configured in `vercel.json`) purges old rate-limit records.
 
 ---
 
 ## HTTP Security Headers
 
-Applied via `helmet` middleware:
+Applied via `next.config.ts`'s `headers()` function (no `helmet` dependency — this is a Next.js project, not Express):
 
 ```
-X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
-X-XSS-Protection: 0 (rely on CSP instead)
-Strict-Transport-Security: max-age=63072000; includeSubDomains
-Content-Security-Policy: default-src 'self'; img-src 'self' https:; ...
+X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
 Permissions-Policy: camera=(), microphone=(), geolocation=()
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+X-DNS-Prefetch-Control: on
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
 ```
 
 ---
 
 ## CORS Policy
 
-### Development
-```
-Allowed origins: http://localhost:3001
-Allowed methods: GET, POST, PATCH, DELETE
-Allowed headers: Content-Type, Authorization, Accept-Language
-Credentials: true
-```
-
-### Production
-```
-Allowed origins: https://smartplate.ai (exact domain)
-Same methods and headers
-Credentials: true
-```
+**No CORS configuration currently exists** in `next.config.ts` or the route handlers. This is acceptable today because the only client is the same-origin Next.js web app itself (no separate frontend domain, no mobile app calling the API directly yet). If a mobile app or a separately-hosted frontend is added, a real CORS policy will need to be implemented at that point — see [IMPROVEMENTS.md](./IMPROVEMENTS.md).
 
 ---
 
 ## AI/LLM Security
 
 ### Prompt Injection Prevention
-- User input is always placed in a clearly delimited data section
+- User input is always placed in a clearly delimited data section of the prompt
 - System prompts are not exposed to users
-- LLM output is validated against Zod schemas before use
-- Fallback responses if validation fails
-- No user-facing raw LLM output (always structured/parsed)
+- LLM output is validated against Zod schemas before use (`src/services/ai.service.ts`)
+- No user-facing raw LLM output — always structured/parsed JSON
+- 25-second client-side timeout on all OpenAI calls, converted to a clean `503` on timeout instead of an opaque platform-level failure (see `docs/ARCHITECTURE.md` § Why No Queue)
 
 ### Output Safety
-- Nutritional advice includes disclaimer text
-- AI-generated meal plans are recommendations, not medical advice
+- AI-generated meal plans and nutrition analysis are recommendations, not medical advice
 - Calorie/nutrient values are estimates
 
 ---
@@ -141,21 +125,16 @@ Credentials: true
 
 ### Sensitive Data
 - Passwords: bcrypt hashed, never logged
-- JWT secrets: environment variables only
-- Database credentials: environment variables only
-- API keys: environment variables only
-- User emails: stored encrypted at rest (Neon handles this)
+- JWT secrets, database credentials, `OPENAI_API_KEY`: environment variables only, never in code
 
 ### Environment Variables
 - `.env` is git-ignored
-- `.env.example` contains variable names without values
-- Production secrets managed via deployment platform (not in code)
+- `.env.example` documents variable names without real values
+- Production secrets managed via the deployment platform (Vercel), not committed
 
 ### Logging
-- Structured JSON logs (pino)
-- Never log: passwords, tokens, API keys, full request bodies
-- Log: request method, path, status code, duration, user ID (if authenticated)
-- Error logs include stack traces but sanitize user data
+- Structured JSON logs (pino, `src/lib/logger.ts`)
+- Errors are logged with `logger.error({ err: error }, ...)` — request bodies are not logged by default
 
 ---
 
@@ -163,41 +142,40 @@ Credentials: true
 
 ### Audit
 ```bash
-pnpm audit                    # Check for known vulnerabilities
-pnpm audit --fix              # Auto-fix where possible
+pnpm audit --prod --audit-level=high   # What CI runs — production deps only
+pnpm audit                              # Full tree, including dev tooling
 ```
 
 ### Policy
-- Run `pnpm audit` in CI pipeline
-- No `critical` or `high` vulnerabilities allowed in production
-- Review `moderate` vulnerabilities case-by-case
-- Keep dependencies updated monthly
+- `pnpm audit --prod --audit-level=high` runs in CI (`.github/workflows/ci.yml`) and fails the build on any high/critical finding in **production** dependencies — dev-tooling-only findings (e.g. inside `vite`/`vitest`) do not block the pipeline
+- Moderate/low findings in production deps are reviewed case-by-case, not auto-blocking
+- See [IMPROVEMENTS.md](./IMPROVEMENTS.md) for the CVE remediation history (next, jspdf, undici, lodash)
 
 ---
 
 ## Checklist by Milestone
 
-### M2 (Auth)
-- [ ] Password hashing with bcrypt
-- [ ] JWT access + refresh token flow
-- [ ] Rate limiting on auth endpoints
-- [ ] Input validation on registration
+### M2 (Auth) — Done
+- [x] Password hashing with bcrypt
+- [x] JWT access + refresh token flow
+- [x] Rate limiting on auth endpoints
+- [x] Input validation on registration
 
-### M5 (Imports)
-- [ ] URL validation and sanitization
-- [ ] Rate limiting on import endpoint
-- [ ] Fetch timeout and size limits
-- [ ] Content sanitization of extracted data
+### M5 (Imports) — Done
+- [x] URL validation (Zod) and length limits
+- [x] Rate limiting on import endpoints
+- [x] Fetch timeout (15s)
+- [ ] Response body size cap and redirect-hop limit — not implemented, see [IMPROVEMENTS.md](./IMPROVEMENTS.md)
 
-### M6 (AI)
-- [ ] Prompt injection prevention
-- [ ] LLM output validation
-- [ ] No system prompt exposure
+### M6 (AI) — Done
+- [x] Prompt injection prevention (delimited input, no system prompt leakage)
+- [x] LLM output validation (Zod)
+- [x] Explicit timeout + clean error on AI call failure
 
-### M9 (Hardening)
-- [ ] All security headers active
-- [ ] CORS locked to production domain
-- [ ] Full rate limiting coverage
-- [ ] Structured logging (no sensitive data)
-- [ ] Dependency audit clean
-- [ ] OpenAPI docs protected or rate-limited
+### M9 (Hardening) — In progress
+- [x] Security headers active (`next.config.ts`)
+- [x] Dependency audit gate in CI
+- [ ] CORS policy (not needed yet — single-origin client; revisit if a mobile/separate client is added)
+- [ ] Password complexity requirements beyond length
+- [ ] Import response size/redirect caps
+- [ ] Error tracking (Sentry) — see [IMPROVEMENTS.md](./IMPROVEMENTS.md)
