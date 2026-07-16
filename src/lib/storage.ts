@@ -14,6 +14,11 @@ const r2Client = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
   },
+  // R2 doesn't support the AWS SDK v3's default request checksums
+  // (x-amz-checksum-crc32 / x-amz-sdk-checksum-algorithm) — leaving this
+  // on the default ('WHEN_SUPPORTED') breaks the presigned URL's
+  // signature and R2 rejects the upload with a 403.
+  requestChecksumCalculation: 'WHEN_REQUIRED',
 });
 
 const BUCKET = process.env.R2_BUCKET_NAME || '';
