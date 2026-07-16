@@ -55,15 +55,17 @@ Vérifié après upgrade : `tsc --noEmit`, `eslint .`, `vitest run` (163 tests),
 
 ## P1 — Sécurité & qualité
 
-### 5. `docs/SECURITY.md` décrit des protections absentes du code
-- CORS restreint en prod (`https://smartplate.ai` uniquement) : aucune config CORS trouvée dans `next.config.ts` ni dans les route handlers.
-- Rate limiting via `@nestjs/throttler` : le projet n'est pas NestJS. Le rate limiting réel est fait via `src/lib/rate-limit.ts` + table Postgres `RateLimitAttempt` — ça fonctionne, mais le doc référence la mauvaise techno.
-- Sanitisation DOMPurify des contenus utilisateur : **aucune dépendance `dompurify`/`sanitize-html`** dans `package.json`.
+### 5. ~~`docs/SECURITY.md` décrit des protections absentes du code~~ — ✅ Résolu (2026-07-16)
+En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écarts que prévu sont apparus :
+- CORS "restreint en prod" : aucune config CORS nulle part → corrigé (documenté comme non implémenté, acceptable tant qu'il n'y a qu'un client web same-origin).
+- Rate limiting via `@nestjs/throttler` : le projet n'est pas NestJS ; le vrai mécanisme est DB-backed (`src/lib/rate-limit.ts` + compteurs par table) → corrigé, **et les valeurs elles-mêmes étaient fausses** : login réel = 10/15min/IP (doc disait 5/min), register = 5/heure/IP, refresh = 30/heure/IP, analyse IA = 20/**jour** (doc disait /heure), génération planner = 5/jour (absent du doc), et le "General API: 100/min" global n'existe pas du tout.
+- Sanitisation DOMPurify : aucune dépendance installée → corrigé (le contenu est rendu comme texte React auto-échappé, pas de sanitisation HTML active — risque réel faible mais le doc ne doit pas prétendre l'inverse).
+- **JWT access token** : documenté à 15min, en réalité **24h** (`src/lib/auth.ts`).
+- **Politique de mot de passe** : documentée avec majuscule+chiffre obligatoires, en réalité seule la longueur (8-72 car.) est vérifiée (`src/lib/validations/auth.ts`).
+- **Timeout fetch import** : documenté à 10s, en réalité 15s ; les limites "5MB max" et "3 hops max redirect" documentées n'existent pas dans `import-extractor.ts` (gap réel, pas juste une erreur de doc — ajouté à la checklist M9 de `SECURITY.md`).
+- **Headers HTTP** : documentés via `helmet`, en réalité via `next.config.ts` `headers()` (pas de dépendance helmet).
 
-**Constat nuancé sur la sanitisation** : recherche de `dangerouslySetInnerHTML` sur tout `src/` → un seul usage, dans `src/components/ui/chart.tsx`, pour injecter des variables CSS de thème (pas du contenu utilisateur, risque nul). Le contenu de recettes importées (titres/descriptions scrapées via cheerio) est rendu comme texte React classique, donc auto-échappé — la promesse DOMPurify est donc moins urgente qu'annoncée, mais le doc ne doit pas prétendre qu'elle existe.
-
-**Action** : corriger `SECURITY.md` pour refléter l'implémentation réelle (rate limiting DB-based, pas de CORS actif car un seul client web), et si un client mobile ou un domaine séparé est prévu, implémenter réellement une politique CORS dans `next.config.ts` ou les route handlers.
-**Effort** : S (doc) → M (si CORS réel nécessaire).
+`SECURITY.md` a été entièrement réécrit pour être exact, avec une checklist M9 qui distingue clairement ce qui est fait de ce qui ne l'est pas (CORS, complexité mot de passe, caps taille/redirect import, Sentry).
 
 ### 6. Couverture de tests concentrée sur un tiers du code
 15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limite explicitement `coverage.include` à ces deux dossiers :
@@ -160,12 +162,12 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 
 ## Plan d'exécution suggéré
 
-1. ~~**Sprint doc-cleanup** (P0-1, P2-11)~~ — ✅ Fait (2026-07-15) : les 5 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`) corrigés. Reste **P1-5** (wording `SECURITY.md`, non traité dans cette passe).
+1. ~~**Sprint doc-cleanup** (P0-1, P1-5, P2-11)~~ — ✅ Fait (2026-07-15/16) : les 6 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`, `SECURITY.md`) corrigés.
 2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
 3. ~~**P0-3** (timeout OpenAI)~~ — ✅ Fait (2026-07-15).
 4. **Sprint tests critiques** (P1-6, priorité 1-2 seulement) — sécuriser auth/RBAC/rate-limit avant d'ajouter de nouvelles features.
 5. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
-6. Le reste (P1-5, P2-8, P2-9, P3) peut être traité au fil de l'eau selon la charge produit réelle.
+6. Le reste (P2-8, P2-9, P3, + les gaps réels découverts en P1-5 : complexité mot de passe, caps taille/redirect import) peut être traité au fil de l'eau selon la charge produit réelle.
 7. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
 
 ---
