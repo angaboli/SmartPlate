@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Plus, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Sunrise, Sun, Moon, Apple } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MealInputProps {
@@ -19,10 +19,10 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
   const [selectedMealType, setSelectedMealType] = useState('lunch');
 
   const mealTypes = [
-    { id: 'breakfast', label: t('mealInput.breakfast'), icon: '🌅' },
-    { id: 'lunch', label: t('mealInput.lunch'), icon: '☀️' },
-    { id: 'dinner', label: t('mealInput.dinner'), icon: '🌙' },
-    { id: 'snacks', label: t('mealInput.snacks'), icon: '🍎' },
+    { id: 'breakfast', label: t('mealInput.breakfast'), icon: Sunrise },
+    { id: 'lunch', label: t('mealInput.lunch'), icon: Sun },
+    { id: 'dinner', label: t('mealInput.dinner'), icon: Moon },
+    { id: 'snacks', label: t('mealInput.snacks'), icon: Apple },
   ];
 
   const quickAddItems = [
@@ -59,7 +59,7 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
                 onClick={() => setSelectedMealType(type.id)}
                 className={selectedMealType === type.id ? 'bg-primary' : ''}
               >
-                <span className="mr-2">{type.icon}</span>
+                <type.icon className="mr-2 h-4 w-4" />
                 {type.label}
               </Button>
             ))}

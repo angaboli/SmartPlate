@@ -5,7 +5,7 @@ import { RecipeCard } from '@/components/RecipeCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, SlidersHorizontal, Sparkles, Download } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, Download, Scale, Dumbbell, Leaf, Zap } from 'lucide-react';
 import { RecipeGridSkeleton } from '@/components/skeletons';
 import { ImportRecipeDialog } from '@/components/ImportRecipeDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -45,10 +45,10 @@ export default function RecipesPage() {
   }
 
   const goals = [
-    { id: 'balanced', label: t('recipes.goal.balanced'), icon: '⚖️' },
-    { id: 'high-protein', label: t('recipes.goal.highProtein'), icon: '💪' },
-    { id: 'light', label: t('recipes.goal.light'), icon: '🌿' },
-    { id: 'energy-boost', label: t('recipes.goal.energyBoost'), icon: '⚡' },
+    { id: 'balanced', label: t('recipes.goal.balanced'), icon: Scale },
+    { id: 'high-protein', label: t('recipes.goal.highProtein'), icon: Dumbbell },
+    { id: 'light', label: t('recipes.goal.light'), icon: Leaf },
+    { id: 'energy-boost', label: t('recipes.goal.energyBoost'), icon: Zap },
   ];
 
   return (
@@ -123,7 +123,7 @@ export default function RecipesPage() {
               onClick={() => updateFilters(() => setSelectedGoal(goal.id))}
               className={selectedGoal === goal.id ? 'bg-primary' : ''}
             >
-              <span className="mr-1.5">{goal.icon}</span>
+              <goal.icon className="mr-1.5 h-4 w-4" />
               {goal.label}
             </Button>
           ))}

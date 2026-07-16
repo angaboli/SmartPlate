@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2, Download } from 'lucide-react';
+import { Calendar, RefreshCw, ShoppingCart, Plus, Pencil, Trash2, Sparkles, Loader2, Download, Sunrise, Sun, Moon, Apple } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { generatePlannerPDF } from '@/lib/generatePDF';
 import { toast } from 'sonner';
@@ -58,10 +58,10 @@ export function WeeklyPlanner({
   };
 
   const mealTypeIcons = {
-    breakfast: '🌅',
-    lunch: '☀️',
-    snack: '🍎',
-    dinner: '🌙',
+    breakfast: Sunrise,
+    lunch: Sun,
+    snack: Apple,
+    dinner: Moon,
   };
 
   const mealTypeOrder: Record<string, number> = {
@@ -146,7 +146,9 @@ export function WeeklyPlanner({
             </div>
 
             <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-              {sortMeals(day.meals).map((meal) => (
+              {sortMeals(day.meals).map((meal) => {
+                const MealIcon = mealTypeIcons[meal.type];
+                return (
                 <div
                   key={meal.id}
                   className={`group relative rounded-lg border p-3 transition-all hover:shadow-md ${
@@ -154,7 +156,7 @@ export function WeeklyPlanner({
                   }`}
                 >
                     <div className="flex items-start gap-2 pr-16">
-                    <span className="text-lg">{mealTypeIcons[meal.type]}</span>
+                    <MealIcon className="h-4 w-4 shrink-0" />
                     <div className="flex-1 space-y-1">
                       <p className="text-xs font-medium uppercase opacity-70">
                         {t(`tag.${meal.type}`)}
@@ -186,7 +188,8 @@ export function WeeklyPlanner({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
               {day.meals.length === 0 && (
                 <div className="col-span-full py-4 text-center text-sm text-muted-foreground">
                   {t('planner.noMeals')}{' '}

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { User, Target, AlertCircle, Heart, TrendingUp, ChefHat, Plus, X } from 'lucide-react';
+import { User, Target, AlertCircle, Heart, TrendingUp, TrendingDown, ChefHat, Plus, X, Dumbbell, Scale, Zap } from 'lucide-react';
 import { ProfileSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CookLaterList } from '@/components/CookLaterList';
@@ -64,10 +64,10 @@ export default function ProfilePage() {
   }, [profile]);
 
   const goals = [
-    { id: 'weight-loss', label: t('profile.goal.weightLoss'), icon: '📉' },
-    { id: 'muscle-gain', label: t('profile.goal.muscleGain'), icon: '💪' },
-    { id: 'maintain', label: t('profile.goal.maintain'), icon: '⚖️' },
-    { id: 'energy', label: t('profile.goal.energy'), icon: '⚡' },
+    { id: 'weight-loss', label: t('profile.goal.weightLoss'), icon: TrendingDown },
+    { id: 'muscle-gain', label: t('profile.goal.muscleGain'), icon: Dumbbell },
+    { id: 'maintain', label: t('profile.goal.maintain'), icon: Scale },
+    { id: 'energy', label: t('profile.goal.energy'), icon: Zap },
   ];
 
   const toggleAllergy = (allergy: string) => {
@@ -317,7 +317,7 @@ export default function ProfilePage() {
                       : 'hover:border-primary/50'
                   }`}
                 >
-                  <span className="text-3xl">{goal.icon}</span>
+                  <goal.icon className="h-8 w-8 text-primary" />
                   <div className="flex-1">
                     <h3 className="font-semibold">{goal.label}</h3>
                   </div>
