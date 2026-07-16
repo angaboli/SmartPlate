@@ -159,6 +159,13 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 5. ~~`next.config.ts` whitelist~~ — ✅ Fait (domaine `pub-53d4a03402a24c5b8c1a6db7c1d0b56b.r2.dev`, le domaine r2.dev par défaut — le domaine du projet est géré par Hostinger, pas Cloudflare, donc pas de domaine custom pour l'instant). Nettoyage des anciens domaines externes une fois la migration import faite (point 4) — **pas fait**.
 6. **UX** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent toujours `ImageWithFallback` même quand `recipe.imageUrl` est `null` — **pas encore corrigé**, à faire avec la migration import (point 4).
 7. **Nouveau, découvert à l'implémentation** : pas de job de nettoyage pour `recipes/pending/{userId}-{uuid}.ext` — si un utilisateur uploade une image puis abandonne la création de la recette (ne soumet jamais le formulaire), l'objet reste orphelin dans R2 indéfiniment. À traiter avec le nettoyage d'objets orphelins déjà noté au point "Schéma Prisma" ci-dessus (cron périodique ou table `Asset`).
+8. **Prérequis manuel obligatoire, découvert en testant en local (2026-07-16)** : le bucket R2 doit avoir une **policy CORS** configurée côté Cloudflare (Dashboard → R2 → bucket → Settings → CORS Policy) pour autoriser le `PUT` direct navigateur→R2 — sans ça, le preflight échoue (`No 'Access-Control-Allow-Origin' header`) et l'upload est bloqué, quel que soit le code. Exemple de policy :
+   ```json
+   [{ "AllowedOrigins": ["http://localhost:3000", "https://<domaine-prod>"], "AllowedMethods": ["PUT", "GET"], "AllowedHeaders": ["*"], "MaxAgeSeconds": 3600 }]
+   ```
+   Ce n'est pas quelque chose que le code peut résoudre — c'est une config Cloudflare à faire une fois par environnement (localhost + domaine de prod).
+
+**Ajout au champ "Configuration requise en production" ci-dessus** : la policy CORS du bucket doit aussi inclure le domaine de production, pas seulement `localhost:3000`.
 
 **Configuration requise en production** : `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `NEXT_PUBLIC_R2_PUBLIC_URL` doivent être ajoutées aux variables d'environnement Vercel (vérifié que le build réussit avec ou sans ces variables — rien n'y accède au chargement du module, seulement à l'intérieur des handlers de route — mais l'upload échouera silencieusement en prod tant qu'elles n'y sont pas).
 
