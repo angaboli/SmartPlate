@@ -12,7 +12,7 @@ Ce document liste les écarts concrets constatés entre le code tel qu'il existe
 
 - **26 routes API** sous `src/app/api/v1/**` (auth, admin, recipes, cook-later, imports, meal-logs, planner, health, cron).
 - **RBAC** (user/editor/admin) + workflow de publication de recettes déjà en place (`src/lib/rbac.ts`).
-- **IA** : appels OpenAI (GPT-4o-mini) **synchrones**, directement dans les services (`src/services/ai.service.ts`, `meal-log.service.ts`, `planner.service.ts`) — aucune file d'attente, aucun worker.
+- **IA** : appels OpenAI (GPT-4o-mini) **synchrones**, directement dans les services (`src/services/ai.service.ts`, `meal-log.service.ts`, `planner.service.ts`) — aucune file d'attente, aucun worker ; timeout client de 25s avec erreur 503 propre en cas de dépassement.
 - **i18n** : 480 clés EN/FR strictement synchronisées (`scripts/check-translations.ts`).
 - **Tests** : 15 fichiers, uniquement unitaires sur `src/lib/**` et `src/services/**` (`vitest.config.ts` ne mesure la couverture que sur ces deux dossiers).
 - **CI** (`\.github/workflows/ci.yml`) : install → **audit (`--prod --audit-level=high`)** → lint → typecheck → test → build.
@@ -21,31 +21,20 @@ Ce document liste les écarts concrets constatés entre le code tel qu'il existe
 
 ## P0 — Cohérence & fiabilité immédiate
 
-### 1. La documentation d'architecture décrit un système qui n'existe pas
-`docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/SETUP.md` et `docs/DEPLOYMENT.md` décrivent un pipeline **Redis + BullMQ + `workers/`** (import, ai-analysis, ai-planner) avec polling frontend toutes les 2s.
+### 1. ~~La documentation d'architecture décrit un système qui n'existe pas~~ — ✅ Résolu (2026-07-15)
+`docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/SETUP.md` et `docs/DEPLOYMENT.md` décrivaient un pipeline **Redis + BullMQ + `workers/`** (import, ai-analysis, ai-planner) avec polling frontend toutes les 2s, qui n'a jamais existé (`docs/ROADMAP.md` confirme pour M5 : *"Import Feature (DB-backed, No Redis)"*).
 
-Réalité : aucune dépendance `bullmq`/`redis` dans `package.json`, aucun dossier `workers/`. Le ROADMAP.md le confirme lui-même pour M5 : *"Import Feature (DB-backed, No Redis)"*. Les appels IA sont `await`és directement dans le handler de route (voir `src/app/api/v1/meal-logs/route.ts:16`).
-
-Autres divergences dans les mêmes docs :
-- `middleware.ts` documenté vs fichier réel `src/proxy.ts` (convention **Next.js 16**, qui a renommé middleware → proxy — donc le code est à jour, c'est le doc qui est en retard).
-- Routes documentées `/users/me`, `/saved-recipes` vs routes réelles `/api/v1/me`, `/api/v1/cook-later`.
-- Node 20 LTS documenté (`SETUP.md`) vs Node 22 en CI et Node 24 en local.
-
-**Risque** : un nouveau contributeur (ou un agent IA) qui suit ces docs va installer Redis inutilement, chercher des fichiers qui n'existent pas, et faire de mauvais choix d'architecture.
-
-**Action** : passe de nettoyage documentaire — retirer/rectifier les sections Redis/BullMQ/workers dans `ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md` ; corriger l'inventaire de routes ; aligner la version Node. `USER_GUIDE.md` a le même problème (décrit un Cook Later "en session uniquement", alors qu'il est persistant en DB depuis M4).
-**Effort** : M (documentation uniquement, pas de code).
+Les 5 documents (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`) ont été réécrits pour refléter l'implémentation réelle : appels IA/import synchrones (avec le garde-fou de timeout du point 3 ci-dessous), `src/proxy.ts` (convention Next.js 16) au lieu de `middleware.ts`, inventaire de routes réel (`/api/v1/me`, `/api/v1/cook-later`, etc.), Node 22+, et statut M7/M8 marqués "Done" (ils l'étaient déjà en pratique). `USER_GUIDE.md` ne décrit plus un Cook Later "en session" ni un mode hors-ligne inexistant.
 
 ### 2. ~~`"next": "latest"` dans `package.json`~~ — ✅ Résolu (2026-07-15)
 `"next"` est maintenant épinglé en dur à `16.2.10` (voir aussi le point 4 : ce bump corrige au passage 7 CVE high sur `next`, dont plusieurs bypass de Middleware/Proxy — pertinent puisque `src/proxy.ts` gère la protection des routes). `engines.node` (`>=22`) et `packageManager` (`pnpm@11.11.0`) ajoutés à `package.json`.
 
 **Attention pnpm 9 vs 11** : `pnpm-workspace.yaml` utilise `allowBuilds`, une fonctionnalité pnpm 10/11 — pnpm 9 (utilisé jusqu'ici en CI) plante dessus (`ERROR packages field missing or empty`). `.github/workflows/ci.yml` a été corrigé pour laisser `pnpm/action-setup@v4` lire la version depuis `packageManager` au lieu de forcer `version: 9`, pour rester synchronisé automatiquement avec ce champ à l'avenir.
 
-### 3. Appels OpenAI synchrones sans garde-fou de timeout
-`createMealLog`, `generateWeeklyPlan`/`adjustWeeklyPlan`, `import extract` appellent l'API OpenAI en bloquant la réponse HTTP. Sur Vercel, les fonctions serverless ont une limite d'exécution (10s en Hobby, configurable en Pro) — si OpenAI répond lentement, la requête échoue sans retry ni statut de job consultable, contrairement à ce que `ARCHITECTURE.md` promet encore ("Frontend polls... every 2 seconds").
+### 3. ~~Appels OpenAI synchrones sans garde-fou de timeout~~ — ✅ Résolu (2026-07-15)
+`createMealLog`, `generateWeeklyPlan`/`adjustWeeklyPlan` appelaient l'API OpenAI en bloquant la réponse HTTP sans timeout explicite (le SDK OpenAI défaut à 10 minutes) — sur Vercel, la plateforme aurait tué la fonction serverless en premier, avec une erreur opaque plutôt qu'un message clair.
 
-**Action** : au minimum, documenter le choix "synchrone, acceptable à l'échelle actuelle" avec un timeout explicite côté `ai.service.ts` + message d'erreur clair au frontend. Si la latence devient un problème réel en prod, envisager une file légère serverless-friendly (Vercel Queues, Inngest, QStash) plutôt que de réintroduire Redis.
-**Effort** : S (doc) → M (si file d'attente ajoutée).
+`src/services/ai.service.ts` a maintenant un timeout client explicite de 25s (`AI_TIMEOUT_MS`) sur les 4 appels `openai.chat.completions.create()` (via un wrapper `createChatCompletion()`), qui convertit un timeout OpenAI (`APIConnectionTimeoutError`) en `AppError` 503 avec un message clair ("The AI is taking too long to respond. Please try again."), remonté proprement au frontend par `handleApiError`. L'architecture reste synchrone (documenté dans `ARCHITECTURE.md`) ; si la latence devient un problème réel en prod, envisager une file légère serverless-friendly (Vercel Queues, Inngest, QStash) plutôt que de réintroduire Redis.
 
 ### 4. ~~CI sans audit de dépendances~~ — ✅ Résolu (2026-07-15)
 `docs/SECURITY.md` impose `pnpm audit` en politique obligatoire ("No critical or high vulnerabilities allowed in production"), mais `.github/workflows/ci.yml` ne l'exécutait jamais.
@@ -116,10 +105,8 @@ Vérifié après upgrade : `tsc --noEmit`, `eslint .`, `vitest run` (163 tests),
 **Action** : soit whitelister dynamiquement les domaines des providers supportés, soit passer par un proxy d'images (ex: reencodage server-side), soit désactiver l'optimisation Next Image pour ces cas précis (`unoptimized`).
 **Effort** : S.
 
-### 11. Documents produit obsolètes en plus des docs techniques
-`USER_GUIDE.md` décrit encore un Cook Later "en session" et un import "simulé" — obsolète depuis M4/M5. À traiter dans la même passe que le point P0-1.
-
-**Effort** : S.
+### 11. ~~Documents produit obsolètes en plus des docs techniques~~ — ✅ Résolu (2026-07-15)
+`USER_GUIDE.md` décrivait encore un Cook Later "en session" (persistance locale) et un mode hors-ligne inexistant — corrigé pour refléter la persistance DB (M4) et la synchronisation multi-appareil.
 
 ---
 
@@ -173,12 +160,13 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 
 ## Plan d'exécution suggéré
 
-1. **Sprint doc-cleanup** (P0-1 — partiel : `SETUP.md`/`DEPLOYMENT.md` faits, reste `ARCHITECTURE.md`/`PLAN.md`/`USER_GUIDE.md` ; P1-5, P2-11) — aucun risque de régression, gros gain de clarté pour la suite. Peut être fait par un agent en une passe.
+1. ~~**Sprint doc-cleanup** (P0-1, P2-11)~~ — ✅ Fait (2026-07-15) : les 5 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`) corrigés. Reste **P1-5** (wording `SECURITY.md`, non traité dans cette passe).
 2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
-3. **Sprint tests critiques** (P1-6, priorité 1-2 seulement) — sécuriser auth/RBAC/rate-limit avant d'ajouter de nouvelles features.
-4. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
-5. Le reste (P2-8, P2-9, P3) peut être traité au fil de l'eau selon la charge produit réelle.
-6. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
+3. ~~**P0-3** (timeout OpenAI)~~ — ✅ Fait (2026-07-15).
+4. **Sprint tests critiques** (P1-6, priorité 1-2 seulement) — sécuriser auth/RBAC/rate-limit avant d'ajouter de nouvelles features.
+5. **Sprint observabilité** (P1-7) — activer Sentry sur les chemins IA/imports.
+6. Le reste (P1-5, P2-8, P2-9, P3) peut être traité au fil de l'eau selon la charge produit réelle.
+7. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
 
 ---
 
