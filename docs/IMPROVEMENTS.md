@@ -67,21 +67,21 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 `SECURITY.md` a été entièrement réécrit pour être exact, avec une checklist M9 qui distingue clairement ce qui est fait de ce qui ne l'est pas (CORS, complexité mot de passe, caps taille/redirect import, Sentry).
 
-### 6. Couverture de tests concentrée sur un tiers du code — 🟡 Partiellement résolu (2026-07-16)
-15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limitait explicitement `coverage.include` à ces deux dossiers, avec **0 test** sur `src/lib/rbac.ts`, `src/services/user.service.ts`, et les 26 routes API — alors que RBAC/admin est la surface la plus sensible du projet.
+### 6. Couverture de tests concentrée sur un tiers du code — 🟡 Largement résolu côté routes API (2026-07-17)
+15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limitait explicitement `coverage.include` à ces deux dossiers, avec **0 test** sur `src/lib/rbac.ts`, `src/services/user.service.ts`, et les 28 routes API — alors que RBAC/admin est la surface la plus sensible du projet.
 
-**Fait** :
+**Fait (2026-07-16)** :
 - `coverage.include` étendu à `src/app/api/v1/**`.
-- `src/lib/__tests__/rbac.test.ts` (nouveau, 10 tests, 100% de couverture sur `rbac.ts`, précédemment 0%) — couvre `requireRole`, `canEditRecipe`, `canManagePublicationStatus`, `canManageUsers`.
-- `src/services/__tests__/user.service.test.ts` (nouveau, 7 tests, précédemment 0% de couverture) — couvre `changeUserRole` (auto-démotion bloquée, rôle invalide rejeté, utilisateur introuvable) et `getProfile`/`listUsers`.
-- Tests d'intégration au niveau route (mock du service + `getCurrentUser`, appel direct du handler exporté avec un `NextRequest` construit) pour `auth/login`, `auth/refresh`, `auth/logout` (succès, 401, 400, 429 rate-limit) et `admin/users/[id]/role` (401 non-authentifié, 403 non-admin, 200 admin, 400 rôle invalide) — 15 tests au total sur 4 routes.
-- Suite complète : 163 → **195 tests**, tous verts (`tsc --noEmit`, `eslint`, `vitest run` vérifiés).
+- `src/lib/__tests__/rbac.test.ts` (10 tests, 100% de couverture sur `rbac.ts`, précédemment 0%).
+- `src/services/__tests__/user.service.test.ts` (7 tests, précédemment 0%) — `changeUserRole`, `getProfile`/`listUsers`.
+- Tests d'intégration sur 4 routes auth/RBAC (`auth/login`, `auth/refresh`, `auth/logout`, `admin/users/[id]/role`) — 15 tests.
+
+**Fait (2026-07-17)** : toutes les routes API restantes couvertes, même pattern d'intégration (mock du/des service(s) + `getCurrentUser`/`requireAuth`, appel direct du handler exporté avec un `NextRequest`/`params` construits) — recipes CRUD + submit/review/status (5 routes, 30 tests), cook-later + imports (4 routes, 20 tests), meal-logs + scan + summary (3 routes, 14 tests), planner + generate/adjust/meals/groceries (6 routes, 24 tests), admin/users + auth/register + me (3 routes, 13 tests), et health + les 2 crons (3 routes, 8 tests, y compris le cas `CRON_SECRET` absent/incorrect). **Les 28 routes API ont maintenant au moins un test.** Suite complète : 195 → **347 tests**, tous verts (`tsc --noEmit`, `eslint`, `vitest run`, build de prod vérifiés).
 
 **Reste à faire** :
-- Tests d'intégration sur le reste des 26 routes (recipes CRUD, cook-later, imports, meal-logs, planner) — seules les 4 routes auth/RBAC les plus sensibles ont été couvertes dans cette passe.
 - **0 test de composant** React (`src/components/**`, 60+ fichiers) — toujours pas traité.
 - **0 test E2E** — Playwright toujours documenté dans `TESTING.md` comme stack cible mais jamais installé. Si budget dispo : 2-3 parcours critiques (login, log meal + analyse IA, import de recette).
-**Effort** : M à L selon l'ambition.
+**Effort restant** : M (composants) à L (E2E) selon l'ambition.
 
 ### 7. ~~Aucun suivi d'erreurs en production~~ — ✅ Résolu (2026-07-16)
 `SENTRY_DSN` était mentionné comme variable optionnelle mais jamais câblé (pas de dépendance Sentry) — les échecs silencieux (quota OpenAI, parsing cassé) ne remontaient qu'aux logs pino de Vercel.
