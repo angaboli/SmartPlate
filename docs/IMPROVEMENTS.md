@@ -204,6 +204,23 @@ Ce point nécessite un plan dédié (pas juste un découpage de fichier) avant d
 
 ---
 
+## Backlog — Qualité d'extraction des imports (scraping)
+
+> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17).
+
+### Problème constaté
+
+`extractFromOpenGraph()` dans `src/services/import-extractor.ts` (déclenché quand la page importée n'a pas de JSON-LD `@type: "Recipe"` — typiquement les posts Instagram/TikTok, dont la légende contient souvent titre + ingrédients + préparation dans un seul bloc de texte) met tout le contenu brut dans `title`/`description`, avec `ingredients: []` et `steps: []` (`isPartial: true`). Résultat pour l'utilisateur : un import où le titre contient la recette entière au lieu d'un vrai titre, et les champs ingrédients/étapes vides à remplir à la main.
+
+### Piste à explorer
+
+Séparer titre / ingrédients / préparation à partir du texte brut de la légende plutôt que de tout laisser dans `title` :
+- Heuristiques de parsing de texte (détection de listes à puces/numérotées pour les ingrédients, mots-clés "ingrédients"/"préparation"/"étapes" comme séparateurs de sections, première ligne ou phrase courte comme titre) — gain rapide mais fragile selon le format de légende.
+- Ou passer par l'IA déjà utilisée ailleurs dans l'app (`src/services/ai.service.ts`, GPT-4o-mini) pour structurer le texte brut en `{ title, ingredients[], steps[] }` — plus robuste face à des formats de légende variés, mais ajoute un appel IA (coût + latence + rate limiting) au flux d'import qui est aujourd'hui purement déterministe (parsing HTML, pas d'IA).
+- Dans tous les cas, garder `isPartial: true` tant que la confiance dans le parsing n'est pas établie, pour que l'UI d'import continue de signaler à l'utilisateur de vérifier/compléter manuellement.
+
+---
+
 ## Backlog — Scan photo d'un repas (AI Coach)
 
 > **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-16).
