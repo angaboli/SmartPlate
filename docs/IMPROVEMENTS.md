@@ -242,22 +242,36 @@ Second gap découvert en creusant : `reviewRecipe()` (`src/services/recipes.serv
 
 ## Backlog — Scan photo d'un repas (AI Coach)
 
-> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-16).
+> **Statut** : ✅ v1 implémentée (2026-07-17), **confirmée par un appel réel à l'API OpenAI** (script de fumée exécutant `analyzeMealPhoto()` avec une vraie clé API — réponse JSON valide reçue et conforme au schéma Zod). Éphémère par choix explicite de l'utilisateur : la photo n'est jamais persistée (ni R2 ni DB), seule l'analyse textuelle l'est.
+
+### Ce qui a été fait
+
+1. **`analyzeMealPhoto()`** (`src/services/ai.service.ts`) — appelle `gpt-4o-mini` avec un message multi-part (`{ type: 'text' }` + `{ type: 'image_url', image_url: { url: <data URL base64> } }`), prompt dédié (`buildPhotoSystemPrompt`) qui demande explicitement d'identifier les aliments visibles et d'estimer les portions à partir de l'image. Le schéma de sortie `MealPhotoAnalysisResultSchema` étend `MealAnalysisResultSchema` avec un champ `mealDescription` (résumé en une phrase généré par l'IA à partir de la photo) — utilisé comme `MealLog.mealText` puisque l'utilisateur n'a rien tapé.
+2. **Éphémère, pas de dépendance R2** — l'image est encodée en base64 côté client (`FileReader.readAsDataURL`) et envoyée directement dans le corps JSON de la requête ; jamais écrite sur disque ni uploadée nulle part. Option v2 (persister via R2 + `MealLog.photoUrl`) laissée de côté par choix explicite de l'utilisateur, pas un blocage technique.
+3. **Validation MIME/taille — whitelist différente de celle des uploads R2** : `image/jpeg`, `image/png`, `image/webp`, 2MB max. **Important** : ce n'est PAS la même whitelist que `src/lib/validations/upload.ts` (jpeg/avif/webp) — OpenAI Vision n'accepte pas l'AVIF, donc réutiliser la whitelist R2 aurait cassé le scan pour toute photo AVIF. Validée côté client (`useMealLog.ts`) et re-validée côté serveur après décodage base64 (`parseImageDataUrl()` dans `meal-log.service.ts` — vérifie le MIME déclaré dans le data URL et la taille réelle des octets décodés, pas seulement la taille de la chaîne base64, avant de dépenser un appel OpenAI).
+4. **Rate limiting** : réutilise `checkAnalysisRateLimit` (20/jour, partagé avec l'analyse texte) — pas de quota séparé pour l'instant, à revisiter si le coût par requête vision s'avère significativement plus élevé en pratique.
+5. **Timeout** : réutilise `createChatCompletion()` et son timeout de 25s, sans changement — pas de lenteur particulière constatée lors du test de fumée.
+6. **UI** : bouton "Scanner une photo" dans `MealInput.tsx` à côté du bouton "Analyser avec l'IA", `<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment">` pour l'accès caméra mobile natif. Validation MIME/taille immédiate côté composant (toast d'erreur) avant même d'appeler le hook.
+7. **API** : nouvel endpoint dédié `POST /api/v1/meal-logs/scan` (plutôt qu'étendre `POST /api/v1/meal-logs`) — évite un corps de requête polymorphe (texte vs photo) avec des champs conditionnellement requis sur la même route.
+8. **Tests** : `createMealLogFromPhoto` (4 tests : succès, data URL malformée, MIME refusé, taille dépassée) dans `meal-log.service.test.ts` ; `scanMealPhotoSchema` (5 tests) dans `validations/__tests__/meal-log.test.ts`. `ai.service.ts` reste non testé unitairement (comme le reste du fichier, appels OpenAI réels) — validé à la place par le script de fumée en conditions réelles.
+
+---
+
+## Backlog — Carrousel de recettes mises en avant sous le hero (page d'accueil)
+
+> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17).
 
 ### Objectif
 
-Permettre de logger un repas en prenant/uploadant une photo au lieu de (ou en plus de) taper une description texte dans `MealInput.tsx`. L'IA identifie les aliments visibles sur la photo et produit la même analyse structurée (nutriments, équilibre, suggestions) que le flux texte actuel.
+Sur `src/app/page.tsx`, juste sous la section Hero (ligne ~44), ajouter un slider/carrousel affichant quelques éléments (recettes) choisis manuellement par un admin — pas une sélection automatique (ex: `aiRecommended`, plus récent, plus populaire), mais une mise en avant éditoriale contrôlée.
 
-### Approche technique proposée
+### Approche technique à explorer
 
-1. **Pas de nouveau modèle IA nécessaire** — `gpt-4o-mini` (déjà utilisé dans `src/services/ai.service.ts`) accepte des entrées image via le content-block `image_url` de l'API Chat Completions d'OpenAI. Nouvelle fonction `analyzeMealPhoto(imageBase64, mealType, ctx)` réutilisant `MealAnalysisResultSchema` (même schéma Zod de sortie que `analyzeMeal`), avec un prompt adapté ("identifie les aliments visibles, estime les portions...").
-2. **v1 sans dépendance à R2** — envoyer l'image en base64 directement dans la requête à OpenAI, sans la persister nulle part (l'analyse textuelle résultante est sauvegardée dans `MealLog` comme aujourd'hui, pas la photo elle-même). Évite de bloquer cette fonctionnalité sur le chantier R2.
-   - **v2 (après R2)** : uploader la photo vers R2 (réutiliser le flux presigned upload du backlog R2 ci-dessus) et stocker son URL sur `MealLog` pour que l'utilisateur puisse revoir la photo de son repas dans son historique — nécessiterait une migration Prisma (`MealLog.photoUrl`).
-3. **Validation** : type MIME image whitelisté (`image/jpeg`, `image/png`, `image/webp`), taille max (ex: 5MB) avant envoi à OpenAI — les modèles vision ont aussi des limites de taille/résolution côté API à respecter.
-4. **Rate limiting** : les appels vision sont généralement plus lents/coûteux que le texte seul — réutiliser `checkAnalysisRateLimit` (20/jour) ou évaluer un quota séparé si le coût par requête s'avère significativement plus élevé.
-5. **Timeout** : réutiliser le wrapper `createChatCompletion()` (`src/services/ai.service.ts`) et son timeout de 25s — à revalider empiriquement, les appels vision peuvent être plus lents que les complétions texte pures et nécessiter un timeout dédié plus généreux.
-6. **UI** : bouton "Scanner une photo" dans `MealInput.tsx` à côté du textarea, `<input type="file" accept="image/*" capture="environment">` pour l'accès caméra mobile natif.
-7. **API** : soit étendre `POST /api/v1/meal-logs` pour accepter un champ image optionnel (JSON base64 ou multipart), soit un nouvel endpoint dédié `POST /api/v1/meal-logs/scan` — à trancher à l'implémentation selon la complexité de validation souhaitée.
+1. **Marquer un contenu comme "en vedette"** — option simple : réutiliser le pattern déjà existant sur `Recipe` (`aiRecommended: Boolean` dans `prisma/schema.prisma`) en ajoutant un champ similaire, ex. `featured: Boolean @default(false)` + `featuredOrder: Int?` pour contrôler l'ordre d'affichage dans le slider (nécessiterait une migration Prisma, même mécanique que celle faite pour `Recipe.mealTypes`/`SavedRecipe.tags` le 2026-07-17).
+2. **UI admin** — un toggle "Mettre en vedette" quelque part dans `src/app/dashboard/recipes/manage/page.tsx` (la page de gestion des recettes déjà réservée aux editor/admin) ou dans `RecipeForm.tsx` lui-même (visible seulement si `isAdmin`, même pattern que le champ "Status"). Prévoir une limite raisonnable du nombre d'éléments en vedette simultanément (ex: 5-8) pour que le slider reste lisible.
+3. **Composant slider** — pas de librairie de carrousel dans les dépendances actuelles (`package.json`) ; à choisir : une implémentation maison légère (scroll horizontal + boutons précédent/suivant, cohérent avec le reste de l'UI shadcn) ou une librairie dédiée (embla-carousel, déjà utilisée par certains composants shadcn/ui — à vérifier si `src/components/ui/` en contient déjà une variante inutilisée).
+4. **API** — `GET /api/v1/recipes` accepte déjà un objet `RecipeFilters` (`src/services/recipes.service.ts`) ; ajouter `featured?: boolean` au filtre plutôt que créer un nouvel endpoint dédié, cohérent avec le filtre `aiRecommended` existant.
+5. **RBAC** — seul editor/admin doit pouvoir modifier `featured` (réutiliser `requireRole`/`canManagePublicationStatus` déjà en place), mais le champ doit être lisible publiquement (page d'accueil non authentifiée).
 
 ---
 
