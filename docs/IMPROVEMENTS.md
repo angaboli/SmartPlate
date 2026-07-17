@@ -110,6 +110,9 @@ Le constat initial ("`next/image` refusera de charger les domaines Instagram/Tik
 ### 11. ~~Documents produit obsolètes en plus des docs techniques~~ — ✅ Résolu (2026-07-15)
 `USER_GUIDE.md` décrivait encore un Cook Later "en session" (persistance locale) et un mode hors-ligne inexistant — corrigé pour refléter la persistance DB (M4) et la synchronisation multi-appareil.
 
+### 12. ~~`prisma generate` uniquement en `postinstall` — build Vercel cassé après une migration de schéma~~ — ✅ Résolu (2026-07-17)
+Après le changement de schéma `Recipe.mealTypes`/`SavedRecipe.tags` (commit `790f09c`), le build de production Vercel a échoué avec `Type error: Object literal may only specify known properties, but 'tags' does not exist ... Did you mean to write 'tag'?` — alors que le code et `prisma/schema.prisma` étaient corrects (vérifié : build local propre après `prisma generate` + `next build`). Cause : `package.json` ne lançait `prisma generate` que via `"postinstall"` ; le cache de dépendances de Vercel (restauré quand le lockfile n'a pas changé) peut sauter la ré-exécution de `postinstall`, laissant un `@prisma/client` généré **avant** la migration de schéma — le build type-check alors contre des types obsolètes. Corrigé en ajoutant `prisma generate` directement dans le script `"build"` (`"build": "prisma generate && next build"`), qui s'exécute toujours, indépendamment du cache d'install. **Leçon retenue** : sur Vercel + pnpm + Prisma, ne jamais compter uniquement sur `postinstall` pour la génération du client après une migration de schéma — l'ajouter explicitement au script `build`.
+
 ---
 
 ## P3 — Amélioration produit / scaling (non bloquant)
