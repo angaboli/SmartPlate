@@ -8,6 +8,7 @@ export interface ProfileDTO {
   id: string;
   email: string;
   name: string | null;
+  avatarUrl: string | null;
   role: string;
   settings: {
     language: string;
@@ -39,6 +40,7 @@ export async function getProfile(userId: string): Promise<ProfileDTO> {
     id: user.id,
     email: user.email,
     name: user.name,
+    avatarUrl: user.avatarUrl,
     role: user.role,
     settings: {
       language: s?.language ?? 'en',
@@ -60,6 +62,7 @@ export async function getProfile(userId: string): Promise<ProfileDTO> {
 
 export interface UpdateProfileInput {
   name?: string;
+  avatarUrl?: string | null;
   settings?: {
     language?: string;
     goal?: string;
@@ -84,10 +87,13 @@ export async function updateProfile(
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User not found');
 
-  if (data.name !== undefined) {
+  if (data.name !== undefined || data.avatarUrl !== undefined) {
     await db.user.update({
       where: { id: userId },
-      data: { name: data.name },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
+      },
     });
   }
 

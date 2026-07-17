@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
+  avatarUrl: z.string().trim().url().max(2048).nullable().optional(),
   settings: z
     .object({
       language: z.enum(['en', 'fr']).optional(),

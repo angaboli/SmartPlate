@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('@/lib/db', () => import('../../lib/__mocks__/db'));
 
 import { db } from '../../lib/__mocks__/db';
-import { changeUserRole, listUsers, getProfile } from '../user.service';
+import { changeUserRole, listUsers, getProfile, updateProfile } from '../user.service';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -83,5 +83,55 @@ describe('getProfile', () => {
     expect(profile.settings.goal).toBe('maintain');
     expect(profile.settings.calorieTarget).toBe(2000);
     expect(profile.settings.allergies).toEqual([]);
+  });
+
+  it('exposes avatarUrl from the user record', async () => {
+    db.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      email: 'u1@test.com',
+      name: 'User One',
+      avatarUrl: 'https://pub-xxx.r2.dev/avatars/u1/pic.jpg',
+      role: 'user',
+      settings: null,
+    });
+
+    const profile = await getProfile('u1');
+
+    expect(profile.avatarUrl).toBe('https://pub-xxx.r2.dev/avatars/u1/pic.jpg');
+  });
+});
+
+describe('updateProfile', () => {
+  it('throws NotFoundError when the user does not exist', async () => {
+    db.user.findUnique.mockResolvedValue(null);
+    await expect(updateProfile('missing', { name: 'X' })).rejects.toThrow('User not found');
+  });
+
+  it('updates avatarUrl alongside name in a single db.user.update call', async () => {
+    db.user.findUnique
+      .mockResolvedValueOnce({ id: 'u1' })
+      .mockResolvedValueOnce({ id: 'u1', email: 'u1@test.com', name: 'New Name', avatarUrl: 'https://pub-xxx.r2.dev/a.jpg', role: 'user', settings: null });
+    db.user.update.mockResolvedValue({});
+
+    await updateProfile('u1', { name: 'New Name', avatarUrl: 'https://pub-xxx.r2.dev/a.jpg' });
+
+    expect(db.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { name: 'New Name', avatarUrl: 'https://pub-xxx.r2.dev/a.jpg' },
+    });
+  });
+
+  it('allows clearing the avatar by passing null', async () => {
+    db.user.findUnique
+      .mockResolvedValueOnce({ id: 'u1' })
+      .mockResolvedValueOnce({ id: 'u1', email: 'u1@test.com', name: 'X', avatarUrl: null, role: 'user', settings: null });
+    db.user.update.mockResolvedValue({});
+
+    await updateProfile('u1', { avatarUrl: null });
+
+    expect(db.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { avatarUrl: null },
+    });
   });
 });

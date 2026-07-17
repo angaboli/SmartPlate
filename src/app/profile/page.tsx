@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { User, Target, AlertCircle, Heart, TrendingUp, TrendingDown, ChefHat, Plus, X, Dumbbell, Scale, Zap } from 'lucide-react';
+import { User, Target, AlertCircle, Heart, TrendingUp, TrendingDown, ChefHat, Plus, X, Dumbbell, Scale, Zap, Camera, Loader2 } from 'lucide-react';
 import { ProfileSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CookLaterList } from '@/components/CookLaterList';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
+import { useUploadImage } from '@/hooks/useUpload';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
@@ -21,6 +23,9 @@ export default function ProfilePage() {
 
   // ─── Profile tab state
   const [name, setName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const uploadAvatar = useUploadImage();
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
@@ -47,6 +52,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!profile) return;
     setName(profile.name ?? '');
+    setAvatarUrl(profile.avatarUrl);
     setAge(profile.settings.age?.toString() ?? '');
     setWeight(profile.settings.weightKg?.toString() ?? '');
     setHeight(profile.settings.heightCm?.toString() ?? '');
@@ -95,10 +101,25 @@ export default function ProfilePage() {
     (a) => !predefinedAllergies.includes(a),
   );
 
+  function handleAvatarSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    uploadAvatar.mutate(
+      { file, purpose: 'avatar' },
+      {
+        onSuccess: (publicUrl) => setAvatarUrl(publicUrl),
+        onError: (error) => toast.error(error.message || t('recipeForm.imageUploadFailed')),
+      },
+    );
+  }
+
   function handleSaveProfile() {
     updateProfile.mutate(
       {
         name,
+        avatarUrl,
         settings: {
           age: age ? parseInt(age, 10) : null,
           weightKg: weight ? parseFloat(weight) : null,
@@ -166,9 +187,36 @@ export default function ProfilePage() {
         <TabsContent value="profile" className="space-y-6">
           <div className="rounded-xl border bg-card p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-10 w-10 text-primary" />
-              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarSelected}
+              />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadAvatar.isPending}
+                className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10"
+              >
+                {avatarUrl ? (
+                  <ImageWithFallback
+                    src={avatarUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-10 w-10 text-primary" />
+                )}
+                <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                  {uploadAvatar.isPending ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                  ) : (
+                    <Camera className="h-6 w-6 text-white" />
+                  )}
+                </span>
+              </button>
               <div>
                 <h2 className="text-xl font-semibold">{t('profile.yourProfile')}</h2>
                 <p className="text-sm text-muted-foreground">
