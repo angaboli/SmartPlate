@@ -26,13 +26,34 @@ const BUCKET = process.env.R2_BUCKET_NAME || '';
 export async function getUploadUrl(
   key: string,
   contentType: string,
+  contentLength: number,
 ): Promise<string> {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
     ContentType: contentType,
+    ContentLength: contentLength,
   });
   return getSignedUrl(r2Client, command, { expiresIn: PRESIGN_EXPIRY_SECONDS });
+}
+
+// Server-side direct upload (no presigned URL) — used when the server
+// itself holds the bytes already, e.g. re-hosting a scraped import image.
+// Client uploads go through getUploadUrl() instead so binaries never
+// transit a Vercel serverless function.
+export async function uploadObject(
+  key: string,
+  body: Buffer,
+  contentType: string,
+): Promise<void> {
+  await r2Client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  );
 }
 
 export function getPublicUrl(key: string): string {

@@ -6,13 +6,7 @@ import { getRecipeById } from '@/services/recipes.service';
 import { getUploadUrl, getPublicUrl } from '@/lib/storage';
 import { checkRateLimit, recordAttempt } from '@/lib/rate-limit';
 import { handleApiError, AuthError, ForbiddenError, NotFoundError } from '@/lib/errors';
-import { presignUploadSchema } from '@/lib/validations/upload';
-
-const MIME_EXTENSIONS: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-};
+import { presignUploadSchema, MIME_EXTENSIONS } from '@/lib/validations/upload';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +14,7 @@ export async function POST(request: NextRequest) {
     if (!user) throw new AuthError('Unauthorized');
 
     const body = await request.json();
-    const { contentType, purpose, recipeId } = presignUploadSchema.parse(body);
+    const { contentType, fileSize, purpose, recipeId } = presignUploadSchema.parse(body);
 
     await checkRateLimit({
       identifier: user.sub,
@@ -50,7 +44,7 @@ export async function POST(request: NextRequest) {
       key = `avatars/${user.sub}/${randomUUID()}.${ext}`;
     }
 
-    const uploadUrl = await getUploadUrl(key, contentType);
+    const uploadUrl = await getUploadUrl(key, contentType, fileSize);
     const publicUrl = getPublicUrl(key);
 
     return NextResponse.json({ uploadUrl, publicUrl, key });

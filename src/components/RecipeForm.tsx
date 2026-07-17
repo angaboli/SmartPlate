@@ -168,7 +168,7 @@ export function RecipeForm({
           ref={fileInputRef}
           id="imageUpload"
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/avif,image/webp"
           className="hidden"
           onChange={handleFileSelected}
         />

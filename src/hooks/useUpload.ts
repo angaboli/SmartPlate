@@ -2,9 +2,9 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_SIZE_BYTES } from '@/lib/validations/upload';
 
-export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-export const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_SIZE_BYTES };
 
 interface UploadImageInput {
   file: File;
@@ -13,17 +13,17 @@ interface UploadImageInput {
 }
 
 async function uploadImage({ file, purpose, recipeId }: UploadImageInput): Promise<string> {
-  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(file.type)) {
-    throw new Error('Only JPEG, PNG, and WebP images are allowed');
+  if (!(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(file.type)) {
+    throw new Error('Only JPEG, AVIF, and WebP images are allowed');
   }
   if (file.size > MAX_UPLOAD_SIZE_BYTES) {
-    throw new Error('Image must be smaller than 5MB');
+    throw new Error('Image must be smaller than 2MB');
   }
 
   const presignRes = await fetchWithAuth('/api/v1/uploads/presign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contentType: file.type, purpose, recipeId }),
+    body: JSON.stringify({ contentType: file.type, fileSize: file.size, purpose, recipeId }),
   });
   if (!presignRes.ok) {
     const body = await presignRes.json().catch(() => ({}));

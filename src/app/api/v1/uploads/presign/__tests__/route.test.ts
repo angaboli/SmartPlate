@@ -40,7 +40,7 @@ describe('POST /api/v1/uploads/presign', () => {
   it('returns 401 when unauthenticated', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
 
-    const res = await POST(makeRequest({ contentType: 'image/jpeg', purpose: 'avatar' }));
+    const res = await POST(makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'avatar' }));
 
     expect(res.status).toBe(401);
   });
@@ -48,7 +48,18 @@ describe('POST /api/v1/uploads/presign', () => {
   it('returns 400 for a disallowed content type', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
 
-    const res = await POST(makeRequest({ contentType: 'image/gif', purpose: 'avatar' }));
+    const res = await POST(makeRequest({ contentType: 'image/gif', fileSize: 1000, purpose: 'avatar' }));
+
+    expect(res.status).toBe(400);
+    expect(getUploadUrl).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the declared file size exceeds the 2MB limit', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
+
+    const res = await POST(
+      makeRequest({ contentType: 'image/jpeg', fileSize: 2 * 1024 * 1024 + 1, purpose: 'avatar' }),
+    );
 
     expect(res.status).toBe(400);
     expect(getUploadUrl).not.toHaveBeenCalled();
@@ -57,18 +68,19 @@ describe('POST /api/v1/uploads/presign', () => {
   it('allows any authenticated user to presign an avatar upload', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
 
-    const res = await POST(makeRequest({ contentType: 'image/png', purpose: 'avatar' }));
+    const res = await POST(makeRequest({ contentType: 'image/avif', fileSize: 1000, purpose: 'avatar' }));
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(body.publicUrl).toBe('https://pub-xxx.r2.dev/some/key.jpg');
     expect(vi.mocked(getUploadUrl).mock.calls[0][0]).toMatch(/^avatars\/u1\//);
+    expect(vi.mocked(getUploadUrl).mock.calls[0][2]).toBe(1000);
   });
 
   it('returns 403 when a regular user tries to presign a new recipe image (no recipeId)', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
 
-    const res = await POST(makeRequest({ contentType: 'image/jpeg', purpose: 'recipe-image' }));
+    const res = await POST(makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'recipe-image' }));
 
     expect(res.status).toBe(403);
     expect(getUploadUrl).not.toHaveBeenCalled();
@@ -77,7 +89,7 @@ describe('POST /api/v1/uploads/presign', () => {
   it('allows an editor to presign a new recipe image (no recipeId)', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ sub: 'e1', email: 'e@test.com', role: 'editor' });
 
-    const res = await POST(makeRequest({ contentType: 'image/jpeg', purpose: 'recipe-image' }));
+    const res = await POST(makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'recipe-image' }));
 
     expect(res.status).toBe(200);
     expect(vi.mocked(getUploadUrl).mock.calls[0][0]).toMatch(/^recipes\/pending\/e1-/);
@@ -88,7 +100,7 @@ describe('POST /api/v1/uploads/presign', () => {
     vi.mocked(getRecipeById).mockResolvedValue(null);
 
     const res = await POST(
-      makeRequest({ contentType: 'image/jpeg', purpose: 'recipe-image', recipeId: 'r1' }),
+      makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'recipe-image', recipeId: 'r1' }),
     );
 
     expect(res.status).toBe(404);
@@ -99,7 +111,7 @@ describe('POST /api/v1/uploads/presign', () => {
     vi.mocked(getRecipeById).mockResolvedValue({ id: 'r1', authorId: 'someone-else' } as never);
 
     const res = await POST(
-      makeRequest({ contentType: 'image/jpeg', purpose: 'recipe-image', recipeId: 'r1' }),
+      makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'recipe-image', recipeId: 'r1' }),
     );
 
     expect(res.status).toBe(403);
@@ -110,7 +122,7 @@ describe('POST /api/v1/uploads/presign', () => {
     vi.mocked(getRecipeById).mockResolvedValue({ id: 'r1', authorId: 'u1' } as never);
 
     const res = await POST(
-      makeRequest({ contentType: 'image/jpeg', purpose: 'recipe-image', recipeId: 'r1' }),
+      makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'recipe-image', recipeId: 'r1' }),
     );
 
     expect(res.status).toBe(200);
@@ -123,7 +135,7 @@ describe('POST /api/v1/uploads/presign', () => {
       new AppError('Too many requests. Please try again later.', 429),
     );
 
-    const res = await POST(makeRequest({ contentType: 'image/jpeg', purpose: 'avatar' }));
+    const res = await POST(makeRequest({ contentType: 'image/jpeg', fileSize: 1000, purpose: 'avatar' }));
 
     expect(res.status).toBe(429);
     expect(getUploadUrl).not.toHaveBeenCalled();
