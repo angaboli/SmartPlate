@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -66,4 +67,43 @@ export function getPublicUrl(key: string): string {
 
 export async function deleteObject(key: string): Promise<void> {
   await r2Client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+}
+
+export interface R2Object {
+  key: string;
+  lastModified: Date;
+}
+
+export async function listObjects(prefix: string): Promise<R2Object[]> {
+  const objects: R2Object[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const result = await r2Client.send(
+      new ListObjectsV2Command({
+        Bucket: BUCKET,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    for (const obj of result.Contents ?? []) {
+      if (obj.Key && obj.LastModified) {
+        objects.push({ key: obj.Key, lastModified: obj.LastModified });
+      }
+    }
+    continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return objects;
+}
+
+// Reverses getPublicUrl() — returns the R2 object key referenced by a
+// stored imageUrl/avatarUrl, or null if that URL isn't one of ours
+// (e.g. a manually pasted external link, or the un-rehosted fallback
+// from a failed import re-host).
+export function extractKeyFromPublicUrl(url: string): string | null {
+  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  if (!base) return null;
+  const prefix = `${base.replace(/\/$/, '')}/`;
+  return url.startsWith(prefix) ? url.slice(prefix.length) : null;
 }
