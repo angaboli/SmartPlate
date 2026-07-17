@@ -44,7 +44,7 @@ export interface SaveImportInput {
   calories?: number | null;
   ingredients: string[];
   steps: string[];
-  tag?: string | null;
+  tags?: string[];
 }
 
 export async function saveImport(userId: string, data: SaveImportInput) {
@@ -118,7 +118,7 @@ export async function saveImport(userId: string, data: SaveImportInput) {
       data: {
         userId,
         recipeId: recipe.id,
-        tag: data.tag || null,
+        tags: data.tags ?? [],
       },
       include: {
         recipe: {

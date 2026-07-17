@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request);
     const body = await request.json();
-    const { recipeId, tag } = saveCookLaterSchema.parse(body);
+    const { recipeId, tags } = saveCookLaterSchema.parse(body);
 
-    const saved = await saveRecipe(user.sub, recipeId, tag);
+    const saved = await saveRecipe(user.sub, recipeId, tags);
     return NextResponse.json(saved, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

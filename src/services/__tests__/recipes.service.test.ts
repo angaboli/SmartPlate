@@ -117,6 +117,19 @@ describe('createRecipe', () => {
       }),
     );
   });
+
+  it('passes mealTypes through to the recipe data (a dish can suit more than one meal)', async () => {
+    const input = { title: 'Tabbouleh', mealTypes: ['lunch', 'dinner'] as ('lunch' | 'dinner')[] };
+    db.recipe.create.mockResolvedValue({ id: 'r1', ...input, status: 'draft' });
+
+    await createRecipe(input, 'u1');
+
+    expect(db.recipe.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ mealTypes: ['lunch', 'dinner'] }),
+      }),
+    );
+  });
 });
 
 describe('updateRecipe', () => {

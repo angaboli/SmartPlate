@@ -7,14 +7,19 @@ describe('saveCookLaterSchema', () => {
     expect(result.recipeId).toBe('abc123');
   });
 
-  it('accepts input with tag', () => {
-    const result = saveCookLaterSchema.parse({ recipeId: 'abc123', tag: 'favorites' });
-    expect(result.tag).toBe('favorites');
+  it('accepts input with tags', () => {
+    const result = saveCookLaterSchema.parse({ recipeId: 'abc123', tags: ['favorites'] });
+    expect(result.tags).toEqual(['favorites']);
   });
 
-  it('accepts null tag', () => {
-    const result = saveCookLaterSchema.parse({ recipeId: 'abc123', tag: null });
-    expect(result.tag).toBeNull();
+  it('accepts multiple tags', () => {
+    const result = saveCookLaterSchema.parse({ recipeId: 'abc123', tags: ['lunch', 'dinner'] });
+    expect(result.tags).toEqual(['lunch', 'dinner']);
+  });
+
+  it('accepts an empty tags array', () => {
+    const result = saveCookLaterSchema.parse({ recipeId: 'abc123', tags: [] });
+    expect(result.tags).toEqual([]);
   });
 
   it('rejects empty recipeId', () => {
@@ -25,15 +30,21 @@ describe('saveCookLaterSchema', () => {
     expect(() => saveCookLaterSchema.parse({})).toThrow();
   });
 
-  it('rejects tag exceeding 50 characters', () => {
+  it('rejects a tag exceeding 50 characters', () => {
     expect(() =>
-      saveCookLaterSchema.parse({ recipeId: 'abc', tag: 'a'.repeat(51) }),
+      saveCookLaterSchema.parse({ recipeId: 'abc', tags: ['a'.repeat(51)] }),
+    ).toThrow();
+  });
+
+  it('rejects more than 10 tags', () => {
+    expect(() =>
+      saveCookLaterSchema.parse({ recipeId: 'abc', tags: Array(11).fill('x') }),
     ).toThrow();
   });
 
   it('trims tag whitespace', () => {
-    const result = saveCookLaterSchema.parse({ recipeId: 'abc', tag: '  favorites  ' });
-    expect(result.tag).toBe('favorites');
+    const result = saveCookLaterSchema.parse({ recipeId: 'abc', tags: ['  favorites  '] });
+    expect(result.tags).toEqual(['favorites']);
   });
 });
 
@@ -47,17 +58,17 @@ describe('updateCookLaterSchema', () => {
     expect(result.isCooked).toBe(true);
   });
 
-  it('accepts tag update', () => {
-    const result = updateCookLaterSchema.parse({ tag: 'weeknight' });
-    expect(result.tag).toBe('weeknight');
+  it('accepts tags update', () => {
+    const result = updateCookLaterSchema.parse({ tags: ['weeknight'] });
+    expect(result.tags).toEqual(['weeknight']);
   });
 
-  it('accepts null tag', () => {
-    const result = updateCookLaterSchema.parse({ tag: null });
-    expect(result.tag).toBeNull();
+  it('accepts an empty tags array (clearing)', () => {
+    const result = updateCookLaterSchema.parse({ tags: [] });
+    expect(result.tags).toEqual([]);
   });
 
-  it('rejects tag exceeding 50 characters', () => {
-    expect(() => updateCookLaterSchema.parse({ tag: 'a'.repeat(51) })).toThrow();
+  it('rejects a tag exceeding 50 characters', () => {
+    expect(() => updateCookLaterSchema.parse({ tags: ['a'.repeat(51)] })).toThrow();
   });
 });

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const mealTypeSchema = z.array(z.enum(['breakfast', 'lunch', 'dinner', 'snack'])).max(4);
+
 export const createRecipeSchema = z
   .object({
     title: z.string().trim().max(200).optional(),
@@ -12,6 +14,7 @@ export const createRecipeSchema = z
     servings: z.number().int().min(1).max(100).optional(),
     calories: z.number().int().min(0).max(10000).optional(),
     category: z.string().trim().max(100).optional(),
+    mealTypes: mealTypeSchema.optional(),
     goal: z.string().trim().max(100).optional(),
     ingredients: z
       .array(z.string().trim().max(500))
@@ -45,6 +48,7 @@ export const updateRecipeSchema = z.object({
   servings: z.number().int().min(1).max(100).nullable().optional(),
   calories: z.number().int().min(0).max(10000).nullable().optional(),
   category: z.string().trim().max(100).optional(),
+  mealTypes: mealTypeSchema.optional(),
   goal: z.string().trim().max(100).optional(),
   ingredients: z
     .array(z.string().trim().max(500))

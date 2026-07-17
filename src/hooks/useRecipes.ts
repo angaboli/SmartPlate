@@ -16,6 +16,7 @@ export interface RecipeDTO {
   servings: number | null;
   calories: number | null;
   category: string;
+  mealTypes: string[];
   goal: string | null;
   aiRecommended: boolean;
   isImported: boolean;
@@ -97,6 +98,7 @@ export interface RecipeInput {
   servings?: number;
   calories?: number;
   category?: string;
+  mealTypes?: string[];
   goal?: string;
   ingredients?: string[];
   ingredientsFr?: string[];

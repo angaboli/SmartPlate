@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       calories: data.calories ?? null,
       ingredients: data.ingredients,
       steps: data.steps,
-      tag: data.tag ?? null,
+      tags: data.tags ?? [],
     });
 
     return NextResponse.json(result, { status: 201 });

@@ -21,7 +21,7 @@ export async function listSavedRecipes(userId: string) {
 export async function saveRecipe(
   userId: string,
   recipeId: string,
-  tag?: string | null,
+  tags?: string[],
 ) {
   // Only published recipes can be saved
   const recipe = await db.recipe.findUnique({
@@ -34,7 +34,7 @@ export async function saveRecipe(
   }
 
   return db.savedRecipe.create({
-    data: { userId, recipeId, tag },
+    data: { userId, recipeId, tags: tags ?? [] },
     include: savedRecipeInclude,
   });
 }
@@ -48,7 +48,7 @@ export async function unsaveRecipe(userId: string, recipeId: string) {
 export async function updateSavedRecipe(
   userId: string,
   savedId: string,
-  updates: { tag?: string | null; isCooked?: boolean },
+  updates: { tags?: string[]; isCooked?: boolean },
 ) {
   return db.savedRecipe.update({
     where: { id: savedId, userId },

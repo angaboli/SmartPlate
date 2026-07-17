@@ -108,10 +108,14 @@ export function CookLaterList() {
                     </div>
                   </div>
 
-                  {saved.tag && (
-                    <Badge variant="secondary" className="w-fit">
-                      {t(`tag.${saved.tag}`)}
-                    </Badge>
+                  {saved.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {saved.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="w-fit">
+                          {t(`tag.${tag}`)}
+                        </Badge>
+                      ))}
+                    </div>
                   )}
 
                   {recipe.ingredients.length > 0 && (

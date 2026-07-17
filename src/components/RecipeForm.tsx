@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +16,7 @@ import type { RecipeInput, RecipeDTO } from '@/hooks/useRecipes';
 
 const categories = ['Regular', 'SafariTaste', 'Dessert', 'Breakfast', 'Snack'];
 const goals = ['balanced', 'high-protein', 'light', 'energy-boost'];
+const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 
 const goalLabelKeys: Record<string, string> = {
   balanced: 'recipes.goal.balanced',
@@ -86,6 +88,7 @@ export function RecipeForm({
     initialData?.calories?.toString() ?? '',
   );
   const [category, setCategory] = useState(initialData?.category ?? 'Regular');
+  const [mealTypes, setMealTypes] = useState<string[]>(initialData?.mealTypes ?? []);
   const [goal, setGoal] = useState(initialData?.goal ?? '');
   const [status, setStatus] = useState(initialData?.status ?? 'draft');
 
@@ -150,6 +153,7 @@ export function RecipeForm({
       servings: servings ? parseInt(servings, 10) : undefined,
       calories: calories ? parseInt(calories, 10) : undefined,
       category,
+      mealTypes,
       goal: goal || undefined,
       ingredients: enIngredients.length ? enIngredients : undefined,
       ingredientsFr: frIngredients.length ? frIngredients : undefined,
@@ -263,6 +267,29 @@ export function RecipeForm({
             </select>
           </div>
         )}
+      </div>
+
+      {/* Shared: Meal Type (multi-select) */}
+      <div className="space-y-2">
+        <Label>{t('recipeForm.mealType')}</Label>
+        <div className="flex flex-wrap gap-2">
+          {mealTypeOptions.map((mealType) => (
+            <Badge
+              key={mealType}
+              variant={mealTypes.includes(mealType) ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() =>
+                setMealTypes((prev) =>
+                  prev.includes(mealType)
+                    ? prev.filter((m) => m !== mealType)
+                    : [...prev, mealType],
+                )
+              }
+            >
+              {t(`tag.${mealType}`)}
+            </Badge>
+          ))}
+        </div>
       </div>
 
       {/* Shared: Prep, Cook, Servings, Calories */}

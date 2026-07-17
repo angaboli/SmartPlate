@@ -83,6 +83,22 @@ describe('createRecipeSchema', () => {
   it('rejects calories exceeding 10000', () => {
     expect(() => createRecipeSchema.parse({ title: 'Test', calories: 10001 })).toThrow();
   });
+
+  it('accepts multiple meal types', () => {
+    const data = { title: 'Tabbouleh', mealTypes: ['lunch', 'dinner'] };
+    const result = createRecipeSchema.parse(data);
+    expect(result.mealTypes).toEqual(['lunch', 'dinner']);
+  });
+
+  it('rejects an invalid meal type', () => {
+    const data = { title: 'Test', mealTypes: ['brunch'] };
+    expect(() => createRecipeSchema.parse(data)).toThrow();
+  });
+
+  it('rejects more than 4 meal types', () => {
+    const data = { title: 'Test', mealTypes: ['breakfast', 'lunch', 'dinner', 'snack', 'breakfast'] };
+    expect(() => createRecipeSchema.parse(data)).toThrow();
+  });
 });
 
 describe('updateRecipeSchema', () => {
@@ -102,6 +118,11 @@ describe('updateRecipeSchema', () => {
 
   it('rejects invalid values same as create', () => {
     expect(() => updateRecipeSchema.parse({ title: 'a'.repeat(201) })).toThrow();
+  });
+
+  it('accepts clearing meal types with an empty array', () => {
+    const result = updateRecipeSchema.parse({ mealTypes: [] });
+    expect(result.mealTypes).toEqual([]);
   });
 });
 

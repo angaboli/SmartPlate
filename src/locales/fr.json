@@ -256,6 +256,7 @@
   "recipeForm.imageUploadFailed": "Échec de l'envoi de l'image",
   "recipeForm.imageUrlPlaceholder": "Ou collez un lien d'image (https://...)",
   "recipeForm.category": "Catégorie",
+  "recipeForm.mealType": "Type de repas",
   "recipeForm.goal": "Objectif",
   "recipeForm.goalNone": "Aucun",
   "recipeForm.prepMin": "Prépa (min)",

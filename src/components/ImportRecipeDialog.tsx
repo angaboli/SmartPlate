@@ -42,7 +42,7 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
   const [editablePrepTime, setEditablePrepTime] = useState('');
   const [editableIngredients, setEditableIngredients] = useState('');
   const [editableSteps, setEditableSteps] = useState('');
-  const [selectedTag, setSelectedTag] = useState<RecipeTag | undefined>(undefined);
+  const [selectedTags, setSelectedTags] = useState<RecipeTag[]>([]);
 
   const extractMutation = useExtractRecipe();
   const saveMutation = useSaveImport();
@@ -122,7 +122,7 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
         servings: fetchedRecipe.servings,
         ingredients,
         steps,
-        tag: selectedTag || null,
+        tags: selectedTags,
       },
       {
         onSuccess: () => {
@@ -145,7 +145,7 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
     setEditablePrepTime('');
     setEditableIngredients('');
     setEditableSteps('');
-    setSelectedTag(undefined);
+    setSelectedTags([]);
     extractMutation.reset();
     saveMutation.reset();
     onOpenChange(false);
@@ -280,9 +280,13 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
                     {(['breakfast', 'lunch', 'dinner', 'snack'] as RecipeTag[]).map((tag) => (
                       <Badge
                         key={tag}
-                        variant={selectedTag === tag ? 'default' : 'outline'}
+                        variant={selectedTags.includes(tag) ? 'default' : 'outline'}
                         className="cursor-pointer"
-                        onClick={() => setSelectedTag(selectedTag === tag ? undefined : tag)}
+                        onClick={() =>
+                          setSelectedTags((prev) =>
+                            prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag],
+                          )
+                        }
                       >
                         {t(`tag.${tag}`)}
                       </Badge>

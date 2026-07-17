@@ -7,7 +7,7 @@ export interface SavedRecipeDTO {
   id: string;
   userId: string;
   recipeId: string;
-  tag: string | null;
+  tags: string[];
   isCooked: boolean;
   createdAt: string;
   recipe: {
@@ -41,7 +41,7 @@ async function fetchSavedRecipes(): Promise<SavedRecipeDTO[]> {
 
 async function saveRecipeApi(data: {
   recipeId: string;
-  tag?: string;
+  tags?: string[];
 }): Promise<SavedRecipeDTO> {
   const res = await fetchWithAuth('/api/v1/cook-later', {
     method: 'POST',
@@ -67,7 +67,7 @@ async function unsaveRecipeApi(recipeId: string): Promise<void> {
 
 async function updateSavedRecipeApi(data: {
   savedId: string;
-  updates: { tag?: string | null; isCooked?: boolean };
+  updates: { tags?: string[]; isCooked?: boolean };
 }): Promise<SavedRecipeDTO> {
   const res = await fetchWithAuth(`/api/v1/cook-later/${data.savedId}`, {
     method: 'PATCH',

@@ -26,7 +26,7 @@ export interface SaveImportInput {
   calories?: number | null;
   ingredients: string[];
   steps: string[];
-  tag?: string | null;
+  tags?: string[];
 }
 
 function getAuthHeader(): Record<string, string> {

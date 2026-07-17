@@ -112,6 +112,7 @@ model Recipe {
   servings       Int?
   calories       Int?
   category       String       @default("Regular")
+  mealTypes      MealType[]   @default([])
   goal           String?
   aiRecommended  Boolean      @default(false)
   isImported     Boolean      @default(false)
@@ -169,7 +170,7 @@ model SavedRecipe {
   recipeId  String
   recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
-  tag       String?
+  tags      String[] @default([])
   isCooked  Boolean  @default(false)
   createdAt DateTime @default(now())
 

@@ -15,7 +15,7 @@ export const saveImportSchema = z.object({
   calories: z.number().int().min(0).max(10000).nullable().optional(),
   ingredients: z.array(z.string().trim().max(500)).max(100),
   steps: z.array(z.string().trim().max(2000)).max(50),
-  tag: z.string().trim().max(50).nullable().optional(),
+  tags: z.array(z.string().trim().max(50)).max(10).optional(),
 });
 
 export type ExtractImportInput = z.infer<typeof extractImportSchema>;

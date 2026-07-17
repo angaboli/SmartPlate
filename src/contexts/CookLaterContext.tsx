@@ -16,8 +16,8 @@ export function useCookLater() {
   const unsaveRecipeMutation = useUnsaveRecipe();
   const updateMutation = useUpdateSavedRecipe();
 
-  const saveRecipe = (recipeId: string, tag?: string) => {
-    saveRecipeMutation.mutate({ recipeId, tag });
+  const saveRecipe = (recipeId: string, tags?: string[]) => {
+    saveRecipeMutation.mutate({ recipeId, tags });
   };
 
   const unsaveRecipe = (recipeId: string) => {

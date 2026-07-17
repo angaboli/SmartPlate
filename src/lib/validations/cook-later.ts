@@ -2,11 +2,11 @@ import { z } from 'zod';
 
 export const saveCookLaterSchema = z.object({
   recipeId: z.string().min(1, 'recipeId is required'),
-  tag: z.string().trim().max(50).nullable().optional(),
+  tags: z.array(z.string().trim().max(50)).max(10).optional(),
 });
 
 export const updateCookLaterSchema = z.object({
-  tag: z.string().trim().max(50).nullable().optional(),
+  tags: z.array(z.string().trim().max(50)).max(10).optional(),
   isCooked: z.boolean().optional(),
 });
 

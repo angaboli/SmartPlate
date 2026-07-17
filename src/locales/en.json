@@ -256,6 +256,7 @@
   "recipeForm.imageUploadFailed": "Failed to upload image",
   "recipeForm.imageUrlPlaceholder": "Or paste an image link (https://...)",
   "recipeForm.category": "Category",
+  "recipeForm.mealType": "Meal Type",
   "recipeForm.goal": "Goal",
   "recipeForm.goalNone": "None",
   "recipeForm.prepMin": "Prep (min)",

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import type { Prisma, RecipeStatus } from '@prisma/client';
+import type { Prisma, RecipeStatus, MealType } from '@prisma/client';
 import type { JwtPayload } from '@/lib/auth';
 import {
   NotFoundError,
@@ -137,6 +137,7 @@ export interface CreateRecipeInput {
   servings?: number;
   calories?: number;
   category?: string;
+  mealTypes?: MealType[];
   goal?: string;
   ingredients?: string[];
   ingredientsFr?: string[];
@@ -188,6 +189,7 @@ export interface UpdateRecipeInput {
   servings?: number | null;
   calories?: number | null;
   category?: string;
+  mealTypes?: MealType[];
   goal?: string;
   ingredients?: string[];
   ingredientsFr?: string[];
