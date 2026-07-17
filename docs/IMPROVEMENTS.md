@@ -144,8 +144,8 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 2. **Flux d'upload recommandé : presigned URL, pas de proxy binaire par la route Next.js** — le client demande une URL de upload signée (`POST /api/v1/uploads/presign`, body `{ contentType, purpose: 'recipe-image' | 'avatar' }`), reçoit une URL PUT signée à durée de vie courte (~5 min), upload directement vers R2 depuis le navigateur, puis confirme l'URL finale au backend (`PATCH /api/v1/recipes/:id` avec la nouvelle `imageUrl`, ou `PATCH /api/v1/me` pour l'avatar). Évite de faire transiter des fichiers binaires par les fonctions serverless Vercel (limites de taille de payload/temps d'exécution).
 3. **Structure des clés objet** — `recipes/{recipeId}/{uuid}.{ext}`, `avatars/{userId}/{uuid}.{ext}` — préfixes par domaine pour faciliter le nettoyage/les règles de lifecycle R2 plus tard.
 4. **Validation côté API avant de signer l'upload** :
-   - Type MIME whitelisté (`image/jpeg`, `image/png`, `image/webp`) pour les images ; whitelist distincte si documents génériques un jour.
-   - Taille max (ex: 5MB images) — à valider côté client ET revalider une fois l'objet uploadé (ex: `HEAD` sur l'objet R2 après upload, rejeter/supprimer si hors limite).
+   - Type MIME whitelisté (`image/jpeg`, `image/avif`, `image/webp` — décision produit du 2026-07-17, PNG retiré/AVIF ajouté) pour les images ; whitelist distincte si documents génériques un jour.
+   - Taille max (2MB images, décision produit du 2026-07-17, anciennement 5MB) — validée côté client ET verrouillée côté serveur via `ContentLength` sur la commande S3 présignée (voir point 2 ci-dessous).
    - Auth + RBAC : seul le propriétaire de la recette (ou editor/admin, cf. `src/lib/rbac.ts`) peut obtenir une URL d'upload pour cette recette.
    - Rate limiting réutilisant `src/lib/rate-limit.ts` (même mécanisme DB-based que imports/AI), ex. 20 uploads/heure/utilisateur.
 5. **Accès public vs privé** — bucket en lecture publique (ou domaine custom Cloudflare) pour les images de recettes (déjà du contenu public une fois la recette publiée) ; si des documents privés arrivent un jour (ex. export PDF partagé avec expiration), utiliser des URLs signées en lecture (GET presigned) plutôt qu'un bucket public.
@@ -155,12 +155,12 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 ### Découpage — état d'avancement
 
 1. ~~`src/lib/storage.ts` (client R2 + presign)~~ — ✅ Fait.
-2. ~~`POST /api/v1/uploads/presign` + validations + rate limiting~~ — ✅ Fait (whitelist MIME, RBAC via `canEditRecipe`/`requireRole`, 30 uploads/heure/utilisateur, 9 tests). Taille max (5MB) validée côté client uniquement pour l'instant (pas de revalidation serveur après upload — voir point 4 ci-dessous).
+2. ~~`POST /api/v1/uploads/presign` + validations + rate limiting~~ — ✅ Fait (whitelist MIME `image/jpeg`/`image/avif`/`image/webp`, RBAC via `canEditRecipe`/`requireRole`, 30 uploads/heure/utilisateur). Taille max **2MB** (décision produit 2026-07-17, anciennement 5MB/PNG) — désormais validée côté client (`useUpload.ts`) ET verrouillée côté serveur : le presign accepte un `fileSize` déclaré, rejeté par le schéma Zod s'il dépasse 2MB, et passé comme `ContentLength` à la commande S3 présignée pour que R2 refuse tout PUT dont le `Content-Length` réel ne correspond pas. Constantes centralisées dans `src/lib/validations/upload.ts` (`ALLOWED_UPLOAD_MIME_TYPES`, `MAX_UPLOAD_SIZE_BYTES`, `MIME_EXTENSIONS`) pour éviter la duplication front/back.
 3. ~~UI d'upload sur `RecipeForm.tsx`~~ — ✅ Fait (bouton upload + preview + remplacer/retirer). ~~UI d'avatar sur la page profil~~ — ✅ Fait (2026-07-17) : avatar cliquable réutilisant `useUploadImage()`/`purpose: 'avatar'`, preview via `ImageWithFallback` avec overlay caméra au survol, persisté sur le bouton "Save Changes" de l'onglet comme le champ `name` (pas d'écriture immédiate à l'upload). `avatarUrl` ajouté à `ProfileDTO`/`UpdateProfileInput`/`updateProfileSchema`, combiné dans le même `db.user.update` que `name`.
-4. Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle — **pas fait**.
-5. ~~`next.config.ts` whitelist~~ — ✅ Fait (domaine `pub-53d4a03402a24c5b8c1a6db7c1d0b56b.r2.dev`, le domaine r2.dev par défaut — le domaine du projet est géré par Hostinger, pas Cloudflare, donc pas de domaine custom pour l'instant). Nettoyage des anciens domaines externes une fois la migration import faite (point 4) — **pas fait**.
-6. **UX** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent toujours `ImageWithFallback` même quand `recipe.imageUrl` est `null` — **pas encore corrigé**, à faire avec la migration import (point 4).
-7. **Nouveau, découvert à l'implémentation** : pas de job de nettoyage pour `recipes/pending/{userId}-{uuid}.ext` — si un utilisateur uploade une image puis abandonne la création de la recette (ne soumet jamais le formulaire), l'objet reste orphelin dans R2 indéfiniment. À traiter avec le nettoyage d'objets orphelins déjà noté au point "Schéma Prisma" ci-dessus (cron périodique ou table `Asset`).
+4. ~~Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle~~ — ✅ Fait (2026-07-17). `extractRecipeFromUrl()` télécharge l'image scrapée côté serveur (10s timeout) après extraction JSON-LD/Open Graph, valide MIME (whitelist) + taille (2MB, via `Content-Length` puis re-vérifié sur les octets réels reçus — un hébergeur externe peut mentir sur l'en-tête), et la re-uploade vers R2 sous `recipes/imports/{uuid}.{ext}` via le nouveau `uploadObject()` server-side (PUT direct, pas de presign — le serveur a déjà les octets). **Best-effort avec repli gracieux** : toute erreur (fetch échoué, type non supporté, trop lourd) fait retomber sur l'URL source d'origine plutôt que de faire échouer l'import — `ImageWithFallback` gère déjà l'affichage cassé le cas échéant. 5 tests dédiés dans `src/services/__tests__/import-extractor.test.ts` (jusqu'ici ce module n'avait aucun test).
+5. ~~`next.config.ts` whitelist~~ — ✅ Fait (domaine `pub-53d4a03402a24c5b8c1a6db7c1d0b56b.r2.dev`, le domaine r2.dev par défaut — le domaine du projet est géré par Hostinger, pas Cloudflare, donc pas de domaine custom pour l'instant). Nettoyage des anciens domaines externes whitelistés — **pas fait**, à évaluer maintenant que la migration import (point 4) est en place : `ImageWithFallback` utilise un `<img>` brut donc `images.remotePatterns` ne bloque rien à l'affichage, seule l'implémentation actuelle du re-hosting réduit la dépendance aux domaines externes en pratique (pas une garantie stricte tant que le fallback best-effort existe).
+6. **UX** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent toujours `ImageWithFallback` même quand `recipe.imageUrl` est `null` — **pas encore corrigé**.
+7. **Nouveau, découvert à l'implémentation** : pas de job de nettoyage pour `recipes/pending/{userId}-{uuid}.ext` — si un utilisateur uploade une image puis abandonne la création de la recette (ne soumet jamais le formulaire), l'objet reste orphelin dans R2 indéfiniment. **Aggravé par le point 4** : chaque appel à `POST /api/v1/imports/extract` (preview, avant que l'utilisateur ne confirme l'import) re-héberge maintenant l'image scrapée sous `recipes/imports/{uuid}.ext` — un utilisateur qui prévisualise plusieurs URLs sans jamais sauvegarder laisse un objet orphelin par preview. Prochain item du backlog utilisateur ; à traiter avec le nettoyage d'objets orphelins déjà noté au point "Schéma Prisma" ci-dessus (cron périodique ou table `Asset` trackant chaque clé + son statut d'attachement).
 8. **Prérequis manuel obligatoire, découvert en testant en local (2026-07-16)** : le bucket R2 doit avoir une **policy CORS** configurée côté Cloudflare (Dashboard → R2 → bucket → Settings → CORS Policy) pour autoriser le `PUT` direct navigateur→R2 — sans ça, le preflight échoue (`No 'Access-Control-Allow-Origin' header`) et l'upload est bloqué, quel que soit le code. Exemple de policy :
    ```json
    [{ "AllowedOrigins": ["http://localhost:3000", "https://<domaine-prod>"], "AllowedMethods": ["PUT", "GET"], "AllowedHeaders": ["*"], "MaxAgeSeconds": 3600 }]
@@ -173,6 +173,34 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 
 11. ~~**CORS origine `www.` manquante**~~ — ✅ Résolu (2026-07-16). La policy CORS du bucket listait `https://smartplate.fr` mais le site sert depuis `https://www.smartplate.fr` — deux origines distinctes pour CORS (correspondance exacte). Ajouté les deux variantes à `AllowedOrigins`.
 12. ~~**CI cassée par `@sentry/nextjs` → build Vercel bloqué en silence**~~ — ✅ Résolu (2026-07-16). L'ajout de `@sentry/nextjs` a introduit `picomatch` vulnérable (ReDoS, via son plugin Rollup de sourcemaps) qui a fait échouer le gate `pnpm audit --prod --audit-level=high` en CI — et donc **skippé** lint/typecheck/test/build sur tous les commits suivants. Symptôme trompeur en prod : le bouton "Redeploy" du dashboard Vercel moulinait ~5 min puis échouait en 502, sans lien évident avec la CI. Corrigé via un override `picomatch: '>=4.0.4'` dans `pnpm-workspace.yaml` (même mécanisme que `undici`/`lodash`). **Leçon retenue** : si un déploiement Vercel refuse de démarrer/échoue sans log clair, vérifier en premier le statut du dernier run CI GitHub Actions sur `main` — un audit de sécurité rouge bloque silencieusement toute la chaîne.
+
+---
+
+## Backlog — Refonte de la page Coach IA (`/dashboard`)
+
+> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17) — à traiter plus tard avec un plan élaboré séparément, ne pas implémenter directement à partir de ce résumé.
+
+### Problème constaté
+
+Sur `src/app/dashboard/page.tsx`, la page mélange trois usages différents dans un seul scroll vertical : (1) les stats/graphiques de suivi (cartes stats lignes ~202-256, `WeeklyProgressChart` ligne 259), (2) l'entrée de repas + analyse IA (`MealInput`/`AIAnalysisCard`, section ~288-316), (3) le planificateur hebdomadaire (`WeeklyPlanner`, section ~319-409). Deux problèmes remontés par l'utilisateur :
+1. **Les graphiques en tête de page ne sont pas clairs quand il n'y a pas encore de données** (nouvel utilisateur, ou juste un jour sans log) — `WeeklyProgressChart` avec un `data` vide/plat ne communique pas "voici ce que tu peux faire ici", ce qui tue l'envie d'aller plus loin dès le premier écran.
+2. **L'objectif principal de la page (planifier + suivre ses repas) n'est pas visible en premier** — il faut scroller après des graphiques peu engageants pour atteindre les outils réellement actionnables (`MealInput`, `WeeklyPlanner`).
+
+### Suggestion de l'utilisateur (point de départ, pas une décision finale)
+
+Couper la page en deux :
+- **Une page "vue d'ensemble"** — les graphiques/stats actuels, repensés comme un résumé de planification et de suivi (avec un état vide explicite/pédagogique plutôt qu'un graphique plat), qui sert de point d'entrée pour comprendre où on en est.
+- **Une page "planifier & suivre"** — `MealInput`/`AIAnalysisCard` + `WeeklyPlanner`, l'outil d'action au quotidien, séparé de la page de compréhension.
+
+Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt qu'une seule page qui essaie de tout faire et dilue l'action derrière des graphiques peu engageants pour un nouvel utilisateur.
+
+### À faire avant implémentation
+
+Ce point nécessite un plan dédié (pas juste un découpage de fichier) avant de coder quoi que ce soit :
+- Définir précisément le contenu de chaque page (quels composants vont où, notamment `AIAnalysisCard` — reste-t-il sur la page d'action, ou un résumé apparaît-il aussi sur la vue d'ensemble ?).
+- Concevoir l'état vide de `WeeklyProgressChart`/des cartes stats pour un utilisateur sans historique — actuellement pas traité spécifiquement.
+- Décider de la navigation entre les deux pages (onglets sur `/dashboard` ? routes séparées type `/dashboard` + `/dashboard/plan` ? lien croisé proéminent ?) et de ce qui devient la destination par défaut après connexion.
+- Vérifier l'impact sur les clés i18n (`dashboard.*` dans `en.json`/`fr.json`) et sur `WeeklyPlannerSkeleton`/`ChartSkeleton`/`DashboardStatsSkeleton` (`src/components/skeletons`) qui devront probablement être répartis entre les deux pages.
 
 ---
 
