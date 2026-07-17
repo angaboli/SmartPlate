@@ -124,7 +124,7 @@ Le constat initial ("`next/image` refusera de charger les domaines Instagram/Tik
 
 ## Backlog — Stockage d'objets (Cloudflare R2)
 
-> **Statut** : 🟡 v1 implémentée et **confirmée fonctionnelle en production** (2026-07-17) — upload d'images de recettes opérationnel de bout en bout (dev + prod). Reste : avatar UI, migration import, nettoyage objets orphelins (voir détail ci-dessous).
+> **Statut** : 🟡 v1 implémentée et **confirmée fonctionnelle en production** (2026-07-17) — upload d'images de recettes et d'avatars opérationnel de bout en bout (dev + prod). Reste : migration import, nettoyage objets orphelins (voir détail ci-dessous).
 
 **Fin du fil de debug déploiement (2026-07-16→17)** : après les correctifs 9/10/11/12 ci-dessous, un dernier blocage n'avait rien à voir avec le code — une panne GitHub ("Degraded REST API Availability", commencée le 16/07 à 22:51 UTC) empêchait le webhook GitHub→Vercel de déclencher de nouveaux déploiements silencieusement (aucune tentative visible, pas même en échec). Résolu une fois l'incident GitHub terminé côté GitHub, sans action supplémentaire nécessaire. À garder en tête : si un déploiement Vercel git-triggered ne se déclenche plus du tout (pas d'entrée dans Deployments, même pas "failed"), vérifier https://www.githubstatus.com avant de chercher un bug côté projet.
 
@@ -156,7 +156,7 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 
 1. ~~`src/lib/storage.ts` (client R2 + presign)~~ — ✅ Fait.
 2. ~~`POST /api/v1/uploads/presign` + validations + rate limiting~~ — ✅ Fait (whitelist MIME, RBAC via `canEditRecipe`/`requireRole`, 30 uploads/heure/utilisateur, 9 tests). Taille max (5MB) validée côté client uniquement pour l'instant (pas de revalidation serveur après upload — voir point 4 ci-dessous).
-3. ~~UI d'upload sur `RecipeForm.tsx`~~ — ✅ Fait (bouton upload + preview + remplacer/retirer). **Reste** : UI d'avatar sur la page profil — le backend/hook (`purpose: 'avatar'`) le supporte déjà, mais `RecipeForm.tsx` est le seul consommateur pour l'instant.
+3. ~~UI d'upload sur `RecipeForm.tsx`~~ — ✅ Fait (bouton upload + preview + remplacer/retirer). ~~UI d'avatar sur la page profil~~ — ✅ Fait (2026-07-17) : avatar cliquable réutilisant `useUploadImage()`/`purpose: 'avatar'`, preview via `ImageWithFallback` avec overlay caméra au survol, persisté sur le bouton "Save Changes" de l'onglet comme le champ `name` (pas d'écriture immédiate à l'upload). `avatarUrl` ajouté à `ProfileDTO`/`UpdateProfileInput`/`updateProfileSchema`, combiné dans le même `db.user.update` que `name`.
 4. Migration progressive de l'extraction d'import (`src/services/import-extractor.ts`) pour re-héberger l'image scrapée vers R2 au lieu de stocker l'URL source telle quelle — **pas fait**.
 5. ~~`next.config.ts` whitelist~~ — ✅ Fait (domaine `pub-53d4a03402a24c5b8c1a6db7c1d0b56b.r2.dev`, le domaine r2.dev par défaut — le domaine du projet est géré par Hostinger, pas Cloudflare, donc pas de domaine custom pour l'instant). Nettoyage des anciens domaines externes une fois la migration import faite (point 4) — **pas fait**.
 6. **UX** : `RecipeCard.tsx`, `CookLaterList.tsx`, `src/app/page.tsx` et `src/app/recipes/[id]/page.tsx` affichent toujours `ImageWithFallback` même quand `recipe.imageUrl` est `null` — **pas encore corrigé**, à faire avec la migration import (point 4).
