@@ -145,6 +145,11 @@
   "mealInput.quickAdd": "Ajout rapide",
   "mealInput.analyzing": "Analyse en cours...",
   "mealInput.analyzeAI": "Analyser avec l'IA",
+  "mealInput.scanPhoto": "Scanner une photo",
+  "mealInput.scanning": "Analyse de la photo...",
+  "mealInput.photoInvalidType": "Seuls les formats JPEG, PNG et WebP sont autorisés",
+  "mealInput.photoTooLarge": "L'image doit faire moins de 2 Mo",
+  "mealInput.photoScanFailed": "Échec de l'analyse de la photo",
 
   "analysis.mealBalance": "Équilibre du repas",
   "analysis.balanceExcellent": "Excellent",

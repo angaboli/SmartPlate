@@ -288,6 +288,110 @@ export async function analyzeMeal(
   return validated;
 }
 
+// ─── Photo-based meal analysis ──────────────────────
+
+export const MealPhotoAnalysisResultSchema = MealAnalysisResultSchema.extend({
+  mealDescription: z.string().min(1).max(300),
+});
+
+export type MealPhotoAnalysisResult = z.infer<typeof MealPhotoAnalysisResultSchema>;
+
+function buildPhotoSystemPrompt(ctx: UserNutritionContext): string {
+  const restrictions: string[] = [];
+  if (ctx.vegetarian) restrictions.push('vegetarian');
+  if (ctx.vegan) restrictions.push('vegan');
+  if (ctx.glutenFree) restrictions.push('gluten-free');
+  if (ctx.dairyFree) restrictions.push('dairy-free');
+  if (ctx.allergies.length > 0) restrictions.push(`allergies: ${ctx.allergies.join(', ')}`);
+
+  const restrictionsText = restrictions.length > 0
+    ? `The user has these dietary restrictions: ${restrictions.join(', ')}.`
+    : 'The user has no specific dietary restrictions.';
+
+  const langInstruction = ctx.language === 'fr'
+    ? 'IMPORTANT: ALL text values in the JSON (mealDescription, balanceExplanation, nutrient names, suggestion titles, descriptions, missing items, overconsumption items) MUST be written in French.'
+    : 'All text values in the JSON must be written in English.';
+
+  const carbTargetG = Math.round((ctx.calorieTarget * 0.45) / 4);
+  const fatTargetG = Math.round((ctx.calorieTarget * 0.30) / 9);
+
+  return `You are a professional nutritionist AI. You are given a PHOTO of a meal. Identify every food visible, estimate portion sizes from the image, and analyze it in detail.
+
+Your analysis must be UNIQUE to what you actually see in the photo. Do NOT give generic advice — reference the specific foods you identified.
+
+Return a JSON object:
+{
+  "mealDescription": "<short 1-sentence description of the meal you see, e.g. 'Grilled chicken breast with steamed broccoli and brown rice'>",
+  "analysisData": {
+    "balance": "excellent" | "good" | "needs-improvement",
+    "balanceExplanation": "<1-2 sentences explaining WHY this meal has this balance rating, referencing the specific foods you see>",
+    "nutrients": [
+      { "name": "Protein", "value": <g>, "target": ${ctx.proteinTargetG}, "unit": "g" },
+      { "name": "Carbohydrates", "value": <g>, "target": ${carbTargetG}, "unit": "g" },
+      { "name": "Fats", "value": <g>, "target": ${fatTargetG}, "unit": "g" },
+      { "name": "Fiber", "value": <g>, "target": 25, "unit": "g" },
+      <add 2-4 MORE nutrients relevant to THIS specific meal, e.g. Iron, Calcium, Vitamin C, Sodium, Sugar, Omega-3, Vitamin A, Vitamin D, Potassium, Zinc — pick whichever are most notable for the foods you see>
+    ],
+    "missing": ["<specific nutrient or food group this meal lacks — be precise>"],
+    "overconsumption": ["<specific nutrient or food that is excessive in this meal — be precise>"]
+  },
+  "suggestions": [
+    { "type": "improve" | "swap" | "add", "title": "<short title>", "description": "<actionable suggestion referencing specific foods you see>" }
+  ],
+  "totalCalories": <estimated total calories as integer, based on visible portion sizes>
+}
+
+User profile:
+- Daily calorie target: ${ctx.calorieTarget} kcal
+- Protein target: ${ctx.proteinTargetG}g/day
+- Goal: ${ctx.goal}
+- ${restrictionsText}
+
+Rules:
+- ${langInstruction}
+- If the image does not clearly show a meal/food, still return your best-effort guess and mention the ambiguity briefly in mealDescription.
+- Estimate portions visually (plate/container size, typical serving sizes) and nutrients based on standard USDA/common food databases.
+- The "nutrients" array MUST have at least 6 entries: the 4 macros (Protein, Carbohydrates, Fats, Fiber) PLUS 2-4 micronutrients that are particularly relevant to the specific foods you see.
+- For micronutrient targets, use standard daily recommended values (e.g. Iron: 18mg, Calcium: 1000mg, Vitamin C: 90mg, Sodium: 2300mg).
+- Provide 3-6 suggestions. Each MUST reference specific foods from the photo. Use a mix of "improve", "swap", and "add" types.
+- "missing" should list 1-4 specific deficiencies. Be precise about what food or nutrient is lacking.
+- "overconsumption" should list items that are excessive (can be empty if the meal is well-balanced).
+- Return ONLY the JSON object, no markdown, no code blocks.`;
+}
+
+export async function analyzeMealPhoto(
+  imageDataUrl: string,
+  mealType: string,
+  userContext: UserNutritionContext,
+): Promise<MealPhotoAnalysisResult> {
+  const systemPrompt = buildPhotoSystemPrompt(userContext);
+
+  const response = await createChatCompletion({
+    model: 'gpt-4o-mini',
+    temperature: 0.7,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: `Meal type: ${mealType}\n\nAnalyze this meal from the photo.` },
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+        ],
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('AI returned an empty response');
+  }
+
+  const parsed = JSON.parse(content);
+  return MealPhotoAnalysisResultSchema.parse(parsed);
+}
+
 // ─── Weekly plan generation ─────────────────────
 
 export async function generateWeeklyPlan(

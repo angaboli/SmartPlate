@@ -16,6 +16,7 @@ import { DashboardStatsSkeleton, ChartSkeleton, WeeklyPlannerSkeleton } from '@/
 import { toast } from 'sonner';
 import {
   useAnalyzeMeal,
+  useScanMealPhoto,
   useDailySummary,
   type MealLogDTO,
 } from '@/hooks/useMealLog';
@@ -63,6 +64,7 @@ export default function DashboardPage() {
   }, []);
 
   const analyzeMutation = useAnalyzeMeal();
+  const scanPhotoMutation = useScanMealPhoto();
   const { data: summary } = useDailySummary();
   const { data: mealPlan, isLoading: planLoading } = useMealPlan(weekOffset);
   const generatePlanMutation = useGeneratePlan(weekOffset);
@@ -90,6 +92,20 @@ export default function DashboardPage() {
         },
         onError: (error) => {
           toast.error(error.message || t('dashboard.failedAnalyze'));
+        },
+      },
+    );
+  };
+
+  const handleScanPhoto = (file: File, mealType: string) => {
+    scanPhotoMutation.mutate(
+      { file, mealType },
+      {
+        onSuccess: (data) => {
+          setLatestLog(data);
+        },
+        onError: (error) => {
+          toast.error(error.message || t('mealInput.photoScanFailed'));
         },
       },
     );
@@ -293,7 +309,12 @@ export default function DashboardPage() {
               {t('dashboard.trackMealDesc')}
             </p>
           </div>
-          <MealInput onAnalyze={handleAnalyze} loading={analyzeMutation.isPending} />
+          <MealInput
+            onAnalyze={handleAnalyze}
+            onScanPhoto={handleScanPhoto}
+            loading={analyzeMutation.isPending}
+            scanning={scanPhotoMutation.isPending}
+          />
         </div>
 
         {analyzed && latestLog && (

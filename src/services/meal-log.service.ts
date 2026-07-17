@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { AppError, ValidationError } from '@/lib/errors';
-import { analyzeMeal, type UserNutritionContext } from './ai.service';
+import { analyzeMeal, analyzeMealPhoto, type UserNutritionContext } from './ai.service';
 import type { MealType } from '@prisma/client';
 
 const RATE_LIMIT_MAX = 20;
@@ -51,20 +51,12 @@ export function validateMealInput(mealText: string, mealType: string): { text: s
   return { text: trimmed, type: normalized as MealType };
 }
 
-// ─── Create meal log (analyze + persist) ────────────
+// ─── User context helper ────────────────────────────
 
-export async function createMealLog(
-  userId: string,
-  input: { mealText: string; mealType: string },
-) {
-  const { text, type } = validateMealInput(input.mealText, input.mealType);
+async function getUserNutritionContext(userId: string): Promise<UserNutritionContext> {
+  const settings = await db.userSettings.findUnique({ where: { userId } });
 
-  // Fetch user settings for AI context
-  const settings = await db.userSettings.findUnique({
-    where: { userId },
-  });
-
-  const userContext: UserNutritionContext = {
+  return {
     calorieTarget: settings?.calorieTarget ?? 2000,
     proteinTargetG: settings?.proteinTargetG ?? 60,
     goal: settings?.goal ?? 'maintain',
@@ -75,6 +67,17 @@ export async function createMealLog(
     allergies: settings?.allergies ?? [],
     language: settings?.language ?? 'en',
   };
+}
+
+// ─── Create meal log (analyze + persist) ────────────
+
+export async function createMealLog(
+  userId: string,
+  input: { mealText: string; mealType: string },
+) {
+  const { text, type } = validateMealInput(input.mealText, input.mealType);
+
+  const userContext = await getUserNutritionContext(userId);
 
   // Call AI
   const result = await analyzeMeal(text, type, userContext);
@@ -85,6 +88,67 @@ export async function createMealLog(
       userId,
       mealText: text,
       mealType: type,
+      analysis: {
+        analysisData: result.analysisData,
+        suggestions: result.suggestions,
+      },
+      totalCalories: result.totalCalories,
+    },
+  });
+
+  return mealLog;
+}
+
+// ─── Create meal log from a photo (analyze + persist) ───
+
+// OpenAI's vision input only accepts these raster formats (no AVIF, unlike
+// the R2 upload whitelist in src/lib/validations/upload.ts — this photo
+// never touches R2, it goes straight to the model as a data URL).
+const ALLOWED_MEAL_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_MEAL_PHOTO_SIZE_BYTES = 2 * 1024 * 1024; // 2MB, same cap as other uploads
+
+function parseImageDataUrl(dataUrl: string): { mimeType: string; buffer: Buffer } {
+  const match = dataUrl.match(/^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) {
+    throw new ValidationError('Invalid image data');
+  }
+  const [, mimeType, base64] = match;
+
+  if (!ALLOWED_MEAL_PHOTO_MIME_TYPES.includes(mimeType)) {
+    throw new ValidationError('Only JPEG, PNG, and WebP images are allowed');
+  }
+
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(base64, 'base64');
+  } catch {
+    throw new ValidationError('Invalid image data');
+  }
+
+  if (buffer.byteLength === 0 || buffer.byteLength > MAX_MEAL_PHOTO_SIZE_BYTES) {
+    throw new ValidationError('Image must be smaller than 2MB');
+  }
+
+  return { mimeType, buffer };
+}
+
+export async function createMealLogFromPhoto(
+  userId: string,
+  input: { imageDataUrl: string; mealType: MealType },
+) {
+  // Validates format/size up front so a malformed or oversized payload
+  // fails before spending an OpenAI vision call.
+  parseImageDataUrl(input.imageDataUrl);
+
+  const userContext = await getUserNutritionContext(userId);
+
+  const result = await analyzeMealPhoto(input.imageDataUrl, input.mealType, userContext);
+
+  const mealLog = await db.mealLog.create({
+    data: {
+      userId,
+      mealText: result.mealDescription,
+      mealType: input.mealType,
       analysis: {
         analysisData: result.analysisData,
         suggestions: result.suggestions,

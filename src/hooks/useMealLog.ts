@@ -89,6 +89,51 @@ async function analyzeMealApi(data: {
   return res.json();
 }
 
+// OpenAI's vision input only accepts these raster formats (no AVIF, unlike
+// the R2 upload whitelist in useUpload.ts — this photo never touches R2,
+// it goes straight to the model as a base64 data URL).
+export const ALLOWED_MEAL_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export const MAX_MEAL_PHOTO_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Failed to read image'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function scanMealPhotoApi(data: {
+  file: File;
+  mealType: string;
+}): Promise<MealLogDTO> {
+  const { file, mealType } = data;
+
+  if (!ALLOWED_MEAL_PHOTO_MIME_TYPES.includes(file.type)) {
+    throw new Error('Only JPEG, PNG, and WebP images are allowed');
+  }
+  if (file.size > MAX_MEAL_PHOTO_SIZE_BYTES) {
+    throw new Error('Image must be smaller than 2MB');
+  }
+
+  const imageDataUrl = await fileToDataUrl(file);
+
+  const res = await fetchWithAuth('/api/v1/meal-logs/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageDataUrl, mealType }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 429) {
+      throw new Error(body.error || 'Daily analysis limit reached. Try again tomorrow.');
+    }
+    throw new Error(body.error || 'Failed to analyze photo');
+  }
+  return res.json();
+}
+
 async function fetchMealLogs(date?: string): Promise<MealLogDTO[]> {
   const params = date ? `?date=${date}` : '';
   const res = await fetchWithAuth(`/api/v1/meal-logs${params}`);
@@ -116,6 +161,17 @@ export function useAnalyzeMeal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: analyzeMealApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meal-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['meal-summary'] });
+    },
+  });
+}
+
+export function useScanMealPhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: scanMealPhotoApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meal-logs'] });
       queryClient.invalidateQueries({ queryKey: ['meal-summary'] });

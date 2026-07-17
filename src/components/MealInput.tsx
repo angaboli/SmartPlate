@@ -1,22 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Plus, Loader2, Sunrise, Sun, Moon, Apple } from 'lucide-react';
+import { Sparkles, Plus, Loader2, Sunrise, Sun, Moon, Apple, Camera } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from 'sonner';
 
 interface MealInputProps {
   onAnalyze: (meal: string, mealType: string) => void;
+  onScanPhoto: (file: File, mealType: string) => void;
   loading?: boolean;
+  scanning?: boolean;
 }
 
-export function MealInput({ onAnalyze, loading }: MealInputProps) {
+export function MealInput({ onAnalyze, onScanPhoto, loading, scanning }: MealInputProps) {
   const { t } = useLanguage();
 
   const [mealText, setMealText] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('lunch');
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const mealTypes = [
     { id: 'breakfast', label: t('mealInput.breakfast'), icon: Sunrise },
@@ -44,6 +48,23 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
 
   const handleQuickAdd = (item: string) => {
     setMealText((prev) => (prev ? `${prev}, ${item}` : item));
+  };
+
+  const handlePhotoSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error(t('mealInput.photoInvalidType'));
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(t('mealInput.photoTooLarge'));
+      return;
+    }
+
+    onScanPhoto(file, selectedMealType);
   };
 
   return (
@@ -94,19 +115,45 @@ export function MealInput({ onAnalyze, loading }: MealInputProps) {
           </div>
         </div>
 
-        <Button
-          onClick={handleAnalyze}
-          size="lg"
-          className="w-full bg-primary hover:bg-primary/90"
-          disabled={!mealText.trim() || loading}
-        >
-          {loading ? (
-            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-          ) : (
-            <Sparkles className="h-5 w-5 mr-2" />
-          )}
-          {loading ? t('mealInput.analyzing') : t('mealInput.analyzeAI')}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            onClick={handleAnalyze}
+            size="lg"
+            className="flex-1 bg-primary hover:bg-primary/90"
+            disabled={!mealText.trim() || loading || scanning}
+          >
+            {loading ? (
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-5 w-5 mr-2" />
+            )}
+            {loading ? t('mealInput.analyzing') : t('mealInput.analyzeAI')}
+          </Button>
+
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            className="hidden"
+            onChange={handlePhotoSelected}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="flex-1"
+            disabled={loading || scanning}
+            onClick={() => photoInputRef.current?.click()}
+          >
+            {scanning ? (
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            ) : (
+              <Camera className="h-5 w-5 mr-2" />
+            )}
+            {scanning ? t('mealInput.scanning') : t('mealInput.scanPhoto')}
+          </Button>
+        </div>
       </div>
     </div>
   );
