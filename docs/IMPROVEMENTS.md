@@ -124,7 +124,9 @@ Le constat initial ("`next/image` refusera de charger les domaines Instagram/Tik
 
 ## Backlog — Stockage d'objets (Cloudflare R2)
 
-> **Statut** : 🟡 v1 implémentée (2026-07-16) — upload d'images de recettes fonctionnel. Reste : avatar UI, migration import, nettoyage objets orphelins (voir détail ci-dessous).
+> **Statut** : 🟡 v1 implémentée et **confirmée fonctionnelle en production** (2026-07-17) — upload d'images de recettes opérationnel de bout en bout (dev + prod). Reste : avatar UI, migration import, nettoyage objets orphelins (voir détail ci-dessous).
+
+**Fin du fil de debug déploiement (2026-07-16→17)** : après les correctifs 9/10/11/12 ci-dessous, un dernier blocage n'avait rien à voir avec le code — une panne GitHub ("Degraded REST API Availability", commencée le 16/07 à 22:51 UTC) empêchait le webhook GitHub→Vercel de déclencher de nouveaux déploiements silencieusement (aucune tentative visible, pas même en échec). Résolu une fois l'incident GitHub terminé côté GitHub, sans action supplémentaire nécessaire. À garder en tête : si un déploiement Vercel git-triggered ne se déclenche plus du tout (pas d'entrée dans Deployments, même pas "failed"), vérifier https://www.githubstatus.com avant de chercher un bug côté projet.
 
 ### Objectif
 
