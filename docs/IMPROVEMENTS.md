@@ -221,6 +221,25 @@ Séparer titre / ingrédients / préparation à partir du texte brut de la lége
 
 ---
 
+## Backlog — Les imports doivent toujours passer par une revue (même pour un admin)
+
+> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17).
+
+### Problème constaté
+
+`saveImport()` dans `src/services/import.service.ts` (lignes ~58-73) crée la recette importée directement avec `status: 'published'` et `publishedAt: new Date()` — **aucune revue n'a jamais lieu pour un import**, quel que soit le rôle de l'utilisateur qui importe (contrairement à la création manuelle via `RecipeForm`, qui démarre en `draft` et passe par `submitForReview()` → `reviewRecipe()`, cf. `src/services/recipes.service.ts` lignes 254-300+). L'utilisateur veut qu'un import soit toujours soumis à revue avant publication, **y compris si c'est un admin qui importe** — et que cette revue soit faite par quelqu'un d'autre que l'importeur (séparation des rôles), pas juste une case à cocher que l'importeur peut cocher lui-même.
+
+Second gap découvert en creusant : `reviewRecipe()` (`src/services/recipes.service.ts` ligne 277) vérifie seulement `canManagePublicationStatus(user)` (editor/admin) — il n'y a **aucune vérification que le reviewer diffère de l'auteur/importeur**. Un admin qui importe pourrait donc, même après ce changement, s'auto-approuver s'il a aussi les droits de revue. Les deux doivent être traités ensemble pour que la contrainte soit réelle.
+
+### Approche technique proposée
+
+1. **`saveImport()`** : changer `status: 'published'` / `publishedAt: new Date()` en `status: 'pending_review'` / `publishedAt: null` (même comportement que `submitForReview()`). Le `SavedRecipe` (ajout automatique à Cook Later) continue de fonctionner sans changement — `getRecipeById()` autorise déjà l'auteur à voir sa propre recette non publiée (`src/services/recipes.service.ts` lignes 103-125), donc l'utilisateur voit son import dans sa liste Cook Later même en attente de revue.
+2. **`reviewRecipe()`** : ajouter une vérification `recipe.authorId === user.sub` → `ForbiddenError` ("Cannot review your own recipe"/"submission"), en plus du check `canManagePublicationStatus` existant. Décider si cette règle s'applique à **toute** recette (pas seulement les imports) — cohérence : un editor qui crée une recette manuellement ne devrait probablement pas non plus pouvoir s'auto-publier, donc la même contrainte a du sens pour `RecipeForm` aussi, pas seulement pour l'import.
+3. **UX** : l'import ne montre plus "Ajouté à Cook Later" comme une confirmation de publication immédiate — prévoir un message clair ("En attente de revue") dans `ImportRecipeDialog.tsx`/`CookLaterList.tsx` pour que l'utilisateur comprenne que sa recette importée n'est pas encore visible publiquement.
+4. **Cas limite à trancher** : que se passe-t-il s'il n'y a qu'un seul editor/admin dans le système (donc personne d'autre ne peut jamais réviser) ? À décider si c'est acceptable en l'état (l'import reste bloqué en `pending_review` indéfiniment) ou s'il faut un garde-fou différent pour les tout petits déploiements.
+
+---
+
 ## Backlog — Scan photo d'un repas (AI Coach)
 
 > **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-16).
