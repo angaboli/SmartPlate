@@ -186,21 +186,24 @@ Sur `src/app/dashboard/page.tsx`, la page mélange trois usages différents dans
 1. **Les graphiques en tête de page ne sont pas clairs quand il n'y a pas encore de données** (nouvel utilisateur, ou juste un jour sans log) — `WeeklyProgressChart` avec un `data` vide/plat ne communique pas "voici ce que tu peux faire ici", ce qui tue l'envie d'aller plus loin dès le premier écran.
 2. **L'objectif principal de la page (planifier + suivre ses repas) n'est pas visible en premier** — il faut scroller après des graphiques peu engageants pour atteindre les outils réellement actionnables (`MealInput`, `WeeklyPlanner`).
 
-### Suggestion de l'utilisateur (point de départ, pas une décision finale)
+### Suggestion de l'utilisateur (point de départ, affinée depuis)
 
-Couper la page en deux :
-- **Une page "vue d'ensemble"** — les graphiques/stats actuels, repensés comme un résumé de planification et de suivi (avec un état vide explicite/pédagogique plutôt qu'un graphique plat), qui sert de point d'entrée pour comprendre où on en est.
-- **Une page "planifier & suivre"** — `MealInput`/`AIAnalysisCard` + `WeeklyPlanner`, l'outil d'action au quotidien, séparé de la page de compréhension.
+Première suggestion (2026-07-17) : couper la page en deux, une page "vue d'ensemble" (graphiques/stats) et une page combinée "planifier & suivre" (`MealInput`/`AIAnalysisCard` + `WeeklyPlanner`).
 
-Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt qu'une seule page qui essaie de tout faire et dilue l'action derrière des graphiques peu engageants pour un nouvel utilisateur.
+**Correction apportée par l'utilisateur (2026-07-17, même jour)** : suivre son repas (`MealInput`/`AIAnalysisCard`, y compris le scan photo ajouté depuis) et planifier ses repas à venir (`WeeklyPlanner`) sont deux usages distincts qui n'ont pas de raison d'être combinés sur une même page — "ça n'a pas de sens de le mettre dans planner et même pas d'intérêt". Le découpage à concevoir est donc plutôt en **trois** concepts séparés, pas deux :
+- **Vue d'ensemble** — graphiques/stats (résumé), avec un état vide explicite/pédagogique.
+- **Suivre** — logger ce qu'on a mangé (`MealInput`, saisie texte + scan photo, `AIAnalysisCard`).
+- **Planifier** — le planificateur hebdomadaire (`WeeklyPlanner`) et tout ce qui s'y rattache (génération IA, liste de courses).
+
+Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt qu'une seule page qui essaie de tout faire et dilue l'action derrière des graphiques peu engageants pour un nouvel utilisateur — et sans réintroduire le même problème en fusionnant deux usages qui n'ont pas de lien direct entre eux.
 
 ### À faire avant implémentation
 
 Ce point nécessite un plan dédié (pas juste un découpage de fichier) avant de coder quoi que ce soit :
 - Définir précisément le contenu de chaque page (quels composants vont où, notamment `AIAnalysisCard` — reste-t-il sur la page d'action, ou un résumé apparaît-il aussi sur la vue d'ensemble ?).
 - Concevoir l'état vide de `WeeklyProgressChart`/des cartes stats pour un utilisateur sans historique — actuellement pas traité spécifiquement.
-- Décider de la navigation entre les deux pages (onglets sur `/dashboard` ? routes séparées type `/dashboard` + `/dashboard/plan` ? lien croisé proéminent ?) et de ce qui devient la destination par défaut après connexion.
-- Vérifier l'impact sur les clés i18n (`dashboard.*` dans `en.json`/`fr.json`) et sur `WeeklyPlannerSkeleton`/`ChartSkeleton`/`DashboardStatsSkeleton` (`src/components/skeletons`) qui devront probablement être répartis entre les deux pages.
+- Décider de la navigation entre les (désormais trois) pages/sections (onglets sur `/dashboard` ? routes séparées type `/dashboard`, `/dashboard/track`, `/dashboard/plan` ? lien croisé proéminent ?) et de ce qui devient la destination par défaut après connexion.
+- Vérifier l'impact sur les clés i18n (`dashboard.*` dans `en.json`/`fr.json`) et sur `WeeklyPlannerSkeleton`/`ChartSkeleton`/`DashboardStatsSkeleton` (`src/components/skeletons`) qui devront probablement être répartis entre les pages.
 
 ---
 
