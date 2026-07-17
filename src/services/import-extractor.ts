@@ -1,4 +1,11 @@
 import * as cheerio from 'cheerio';
+import { randomUUID } from 'crypto';
+import { uploadObject, getPublicUrl } from '@/lib/storage';
+import {
+  ALLOWED_UPLOAD_MIME_TYPES,
+  MAX_UPLOAD_SIZE_BYTES,
+  MIME_EXTENSIONS,
+} from '@/lib/validations/upload';
 
 export interface ExtractedRecipe {
   title: string;
@@ -189,6 +196,51 @@ function extractFromOpenGraph(
 }
 
 /**
+ * Download a scraped image and re-host it on R2, instead of keeping a
+ * direct hotlink to the source (Instagram/TikTok/YouTube CDNs frequently
+ * block hotlinking, rotate URLs, or 403 for non-browser requests, which
+ * silently breaks the recipe's image later). Best-effort: any failure
+ * falls back to the original URL rather than blocking the import — the
+ * page's <img> already degrades gracefully via ImageWithFallback.
+ */
+async function rehostImage(imageUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(imageUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (compatible; SmartPlateBot/1.0; +https://smartplate.app)',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type')?.split(';')[0].trim();
+    if (
+      !contentType ||
+      !(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(contentType)
+    ) {
+      return null;
+    }
+
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && Number(contentLength) > MAX_UPLOAD_SIZE_BYTES) {
+      return null;
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_UPLOAD_SIZE_BYTES) return null;
+
+    const ext = MIME_EXTENSIONS[contentType as keyof typeof MIME_EXTENSIONS];
+    const key = `recipes/imports/${randomUUID()}.${ext}`;
+    await uploadObject(key, bytes, contentType);
+    return getPublicUrl(key);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Main extraction function: fetches a URL and extracts recipe data.
  *
  * Strategy:
@@ -220,9 +272,11 @@ export async function extractRecipeFromUrl(
   const html = await response.text();
   const $ = cheerio.load(html);
 
+  let extracted: ExtractedRecipe | null = null;
+
   // Strategy 1: JSON-LD
   const jsonLdScripts = $('script[type="application/ld+json"]');
-  for (let i = 0; i < jsonLdScripts.length; i++) {
+  outer: for (let i = 0; i < jsonLdScripts.length; i++) {
     try {
       const raw = $(jsonLdScripts[i]).html();
       if (!raw) continue;
@@ -239,7 +293,8 @@ export async function extractRecipeFromUrl(
           (Array.isArray(candidate['@type']) &&
             candidate['@type'].includes('Recipe'))
         ) {
-          return extractFromJsonLd(candidate, provider);
+          extracted = extractFromJsonLd(candidate, provider);
+          break outer;
         }
 
         // Inside @graph array
@@ -250,7 +305,8 @@ export async function extractRecipeFromUrl(
               (Array.isArray(node['@type']) &&
                 node['@type'].includes('Recipe'))
             ) {
-              return extractFromJsonLd(node, provider);
+              extracted = extractFromJsonLd(node, provider);
+              break outer;
             }
           }
         }
@@ -261,5 +317,14 @@ export async function extractRecipeFromUrl(
   }
 
   // Strategy 2: Open Graph fallback
-  return extractFromOpenGraph($, provider);
+  if (!extracted) {
+    extracted = extractFromOpenGraph($, provider);
+  }
+
+  if (extracted.imageUrl) {
+    const rehosted = await rehostImage(extracted.imageUrl);
+    if (rehosted) extracted.imageUrl = rehosted;
+  }
+
+  return extracted;
 }
