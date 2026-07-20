@@ -232,7 +232,16 @@ Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt q
 
 ## Backlog — Qualité d'extraction des imports (scraping)
 
-> **Statut** : ✅ Implémentée (2026-07-20), approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par deux appels réels à l'API OpenAI** (script de fumée : une légende bien structurée correctement découpée, une légende sans recette retournant des tableaux vides sans invention).
+> **Statut** : ✅ Implémentée (2026-07-20) pour Instagram/TikTok, approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par deux appels réels à l'API OpenAI** (script de fumée : une légende bien structurée correctement découpée, une légende sans recette retournant des tableaux vides sans invention). **Gap découvert le jour même pour YouTube — voir "Reste à faire" ci-dessous.**
+
+### Reste à faire — le fetch YouTube reste incomplet (`og:description` tronqué)
+
+**Signalé par l'utilisateur (2026-07-20)**, le jour même de l'implémentation ci-dessus : pour une URL YouTube, `extractFromOpenGraph()` utilise la balise `og:description` de la page — mais YouTube n'y met qu'un extrait tronqué de la description de la vidéo (les premières lignes), pas la description complète. Beaucoup de vidéos de recettes ont une intro avant la vraie section "INGRÉDIENTS"/"PRÉPARATION", qui se retrouve donc coupée avant même d'atteindre `structureRecipeCaption()` — l'IA reçoit un texte tronqué et ne peut structurer que ce qu'elle reçoit, elle n'y peut rien.
+
+**Pistes à explorer** (aucune tranchée) :
+- Scraper le JSON embarqué dans la page (`ytInitialData`, dans une balise `<script>`) pour en extraire la description complète — pas d'API key nécessaire, mais dépend d'un format interne non documenté par YouTube qui peut changer sans préavis (fragile, même risque que le scraping HTML classique mais moins stable dans le temps).
+- Utiliser l'API officielle YouTube Data API v3 (`videos.list`, champ `snippet.description`) — beaucoup plus robuste et stable, mais nécessite une clé API Google Cloud à provisionner (nouvelle dépendance externe, quota à surveiller même si le quota gratuit est généreux).
+- Dans tous les cas, une fois la description complète récupérée, elle doit passer par `structureRecipeCaption()` (déjà en place) exactement comme pour Instagram/TikTok — pas de nouveau prompt à écrire, juste une source de texte plus complète en entrée.
 
 ### Problème constaté
 
