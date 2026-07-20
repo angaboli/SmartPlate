@@ -6,6 +6,7 @@ import {
   MAX_UPLOAD_SIZE_BYTES,
   MIME_EXTENSIONS,
 } from '@/lib/validations/upload';
+import { structureRecipeCaption } from '@/services/ai.service';
 
 export interface ExtractedRecipe {
   title: string;
@@ -166,13 +167,23 @@ function extractFromJsonLd(
 }
 
 /**
- * Extract recipe data from Open Graph meta tags as fallback.
+ * Extract recipe data from Open Graph meta tags as fallback (typically
+ * Instagram/TikTok, whose caption — og:description — often has a title,
+ * ingredients, and steps all run together in one block of free text).
+ *
+ * Asks the AI to split that caption into a clean title/ingredients/steps
+ * (src/services/ai.service.ts's structureRecipeCaption) rather than
+ * dumping the whole caption into the title as before. Best-effort: any
+ * failure (timeout, rate limit, malformed JSON) falls back to the raw
+ * og:title with empty ingredients/steps — the exact behavior this had
+ * before the AI step existed — so this never turns a previously-working
+ * import into a failed one.
  */
-function extractFromOpenGraph(
+async function extractFromOpenGraph(
   $: cheerio.CheerioAPI,
   provider: ExtractedRecipe['provider'],
-): ExtractedRecipe {
-  const title =
+): Promise<ExtractedRecipe> {
+  const ogTitle =
     $('meta[property="og:title"]').attr('content')?.trim() ||
     $('title').text().trim() ||
     '';
@@ -181,6 +192,21 @@ function extractFromOpenGraph(
   const imageUrl =
     $('meta[property="og:image"]').attr('content')?.trim() || null;
 
+  let title = ogTitle;
+  let ingredients: string[] = [];
+  let steps: string[] = [];
+
+  if (description) {
+    try {
+      const structured = await structureRecipeCaption(description);
+      if (structured.title) title = structured.title;
+      ingredients = structured.ingredients;
+      steps = structured.steps;
+    } catch {
+      // Fall through with the raw og:title and empty ingredients/steps.
+    }
+  }
+
   return {
     title,
     description,
@@ -188,10 +214,10 @@ function extractFromOpenGraph(
     prepTimeMin: null,
     cookTimeMin: null,
     servings: null,
-    ingredients: [],
-    steps: [],
+    ingredients,
+    steps,
     provider,
-    isPartial: true,
+    isPartial: ingredients.length === 0 && steps.length === 0,
   };
 }
 
@@ -318,7 +344,7 @@ export async function extractRecipeFromUrl(
 
   // Strategy 2: Open Graph fallback
   if (!extracted) {
-    extracted = extractFromOpenGraph($, provider);
+    extracted = await extractFromOpenGraph($, provider);
   }
 
   if (extracted.imageUrl) {

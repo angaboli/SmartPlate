@@ -525,3 +525,65 @@ Return a JSON object:
   const parsed = JSON.parse(content);
   return GroceryListResultSchema.parse(parsed);
 }
+
+// ─── Recipe caption structuring (import scraping fallback) ──
+
+// Social captions rarely run long; capping input keeps token cost/latency
+// bounded regardless of what a scraped og:description happens to contain.
+const MAX_CAPTION_INPUT_CHARS = 2000;
+
+const CaptionStructureResultSchema = z.object({
+  title: z.string(),
+  ingredients: z.array(z.string()),
+  steps: z.array(z.string()),
+});
+
+export type CaptionStructureResult = z.infer<typeof CaptionStructureResultSchema>;
+
+const CAPTION_STRUCTURE_SYSTEM_PROMPT = `You are a recipe caption parser for SmartPlate. You will be given a raw social media caption (e.g. from an Instagram or TikTok post) that may describe a recipe.
+
+Extract a clean, short recipe title, and split any ingredients from any preparation steps.
+
+Rules:
+- Ignore hashtags, emojis used purely as decoration, calls-to-action ("follow for more", "link in bio"), and unrelated commentary.
+- "title" must be a short, clean recipe name — never the full caption.
+- If the caption doesn't clearly contain ingredients and/or steps, return an empty array for that field rather than guessing.
+- Do not invent ingredients or steps that are not present in the text.
+- Preserve the original language of the caption in your output.
+- Return ONLY the JSON object, no markdown formatting, no code blocks.
+
+Return a JSON object with this exact structure:
+{
+  "title": "...",
+  "ingredients": ["..."],
+  "steps": ["..."]
+}`;
+
+/**
+ * Structures a raw social-media caption into a clean title/ingredients/steps
+ * shape. Used by the import-extraction Open Graph fallback (src/services/
+ * import-extractor.ts), which today only has an unstructured caption to work
+ * with — real JSON-LD recipe sites already provide structured data and never
+ * call this.
+ */
+export async function structureRecipeCaption(
+  rawText: string,
+): Promise<CaptionStructureResult> {
+  const response = await createChatCompletion({
+    model: 'gpt-4o-mini',
+    temperature: 0.2,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: CAPTION_STRUCTURE_SYSTEM_PROMPT },
+      { role: 'user', content: rawText.slice(0, MAX_CAPTION_INPUT_CHARS) },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error('AI returned an empty response');
+  }
+
+  const parsed = JSON.parse(content);
+  return CaptionStructureResultSchema.parse(parsed);
+}

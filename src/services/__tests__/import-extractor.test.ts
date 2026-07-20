@@ -4,9 +4,13 @@ vi.mock('@/lib/storage', () => ({
   uploadObject: vi.fn().mockResolvedValue(undefined),
   getPublicUrl: vi.fn((key: string) => `https://pub-xxx.r2.dev/${key}`),
 }));
+vi.mock('../ai.service', () => ({
+  structureRecipeCaption: vi.fn(),
+}));
 
 import { extractRecipeFromUrl } from '../import-extractor';
 import { uploadObject } from '@/lib/storage';
+import { structureRecipeCaption } from '../ai.service';
 
 const JSON_LD_HTML = (imageUrl: string) => `
 <html><head>
@@ -108,5 +112,68 @@ describe('extractRecipeFromUrl — image re-hosting', () => {
 
     expect(result.imageUrl).toBeNull();
     expect(uploadObject).not.toHaveBeenCalled();
+  });
+});
+
+const OG_ONLY_HTML = (description: string) => `
+<html><head>
+<meta property="og:title" content="Check out this dish 😍 #recipe #foodie" />
+<meta property="og:description" content="${description}" />
+</head><body></body></html>
+`;
+
+describe('extractRecipeFromUrl — caption structuring (Open Graph fallback)', () => {
+  it('structures the caption into a clean title/ingredients/steps and clears isPartial', async () => {
+    vi.mocked(structureRecipeCaption).mockResolvedValue({
+      title: 'Creamy Chicken Pasta',
+      ingredients: ['200g pasta', '2 chicken breasts'],
+      steps: ['Cook the pasta', 'Grill the chicken'],
+    });
+    mockFetchSequence([{ text: async () => OG_ONLY_HTML('Creamy chicken pasta! Ingredients: 200g pasta, 2 chicken breasts. Steps: cook pasta, grill chicken. #recipe') }]);
+
+    const result = await extractRecipeFromUrl('https://instagram.com/p/abc');
+
+    expect(structureRecipeCaption).toHaveBeenCalledWith(
+      expect.stringContaining('Ingredients: 200g pasta'),
+    );
+    expect(result.title).toBe('Creamy Chicken Pasta');
+    expect(result.ingredients).toEqual(['200g pasta', '2 chicken breasts']);
+    expect(result.steps).toEqual(['Cook the pasta', 'Grill the chicken']);
+    expect(result.isPartial).toBe(false);
+  });
+
+  it('falls back to the raw og:title and empty ingredients/steps when the AI call fails', async () => {
+    vi.mocked(structureRecipeCaption).mockRejectedValue(new Error('AI returned an empty response'));
+    mockFetchSequence([{ text: async () => OG_ONLY_HTML('Some caption text') }]);
+
+    const result = await extractRecipeFromUrl('https://instagram.com/p/abc');
+
+    expect(result.title).toBe('Check out this dish 😍 #recipe #foodie');
+    expect(result.ingredients).toEqual([]);
+    expect(result.steps).toEqual([]);
+    expect(result.isPartial).toBe(true);
+  });
+
+  it('does not call the AI when JSON-LD extraction already succeeded', async () => {
+    mockFetchSequence([{ text: async () => JSON_LD_HTML('https://scraped.example/pic.jpg') }, { ok: false, status: 403 }]);
+
+    await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(structureRecipeCaption).not.toHaveBeenCalled();
+  });
+
+  it('does not call the AI when there is no og:description to structure', async () => {
+    mockFetchSequence([
+      {
+        text: async () =>
+          '<html><head><meta property="og:title" content="A Recipe" /></head><body></body></html>',
+      },
+    ]);
+
+    const result = await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(structureRecipeCaption).not.toHaveBeenCalled();
+    expect(result.title).toBe('A Recipe');
+    expect(result.isPartial).toBe(true);
   });
 });
