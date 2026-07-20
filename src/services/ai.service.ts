@@ -12,6 +12,10 @@ const AI_TIMEOUT_MS = 25_000;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  // Overridable so Playwright E2E can point the server at a local mock —
+  // browser-level network mocking can't reach calls this app makes
+  // server-side. Unset in every real environment, so this is a no-op there.
+  baseURL: process.env.OPENAI_BASE_URL || undefined,
   timeout: AI_TIMEOUT_MS,
 });
 
