@@ -198,7 +198,7 @@ Ce chantier résout aussi le [point P2-10](#10-domaines-dimages-non-whitelistés
 
 ## Backlog — Refonte de la page Coach IA (`/dashboard`)
 
-> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17) — à traiter plus tard avec un plan élaboré séparément, ne pas implémenter directement à partir de ce résumé.
+> **Statut** : ✅ Implémentée (2026-07-20), vérifiée dans un vrai navigateur (voir "Ce qui a été fait" ci-dessous).
 
 ### Problème constaté
 
@@ -217,13 +217,16 @@ Première suggestion (2026-07-17) : couper la page en deux, une page "vue d'ense
 
 Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt qu'une seule page qui essaie de tout faire et dilue l'action derrière des graphiques peu engageants pour un nouvel utilisateur — et sans réintroduire le même problème en fusionnant deux usages qui n'ont pas de lien direct entre eux.
 
-### À faire avant implémentation
+### Ce qui a été fait
 
-Ce point nécessite un plan dédié (pas juste un découpage de fichier) avant de coder quoi que ce soit :
-- Définir précisément le contenu de chaque page (quels composants vont où, notamment `AIAnalysisCard` — reste-t-il sur la page d'action, ou un résumé apparaît-il aussi sur la vue d'ensemble ?).
-- Concevoir l'état vide de `WeeklyProgressChart`/des cartes stats pour un utilisateur sans historique — actuellement pas traité spécifiquement.
-- Décider de la navigation entre les (désormais trois) pages/sections (onglets sur `/dashboard` ? routes séparées type `/dashboard`, `/dashboard/track`, `/dashboard/plan` ? lien croisé proéminent ?) et de ce qui devient la destination par défaut après connexion.
-- Vérifier l'impact sur les clés i18n (`dashboard.*` dans `en.json`/`fr.json`) et sur `WeeklyPlannerSkeleton`/`ChartSkeleton`/`DashboardStatsSkeleton` (`src/components/skeletons`) qui devront probablement être répartis entre les pages.
+**Décisions prises avec l'utilisateur avant implémentation** : navigation par **onglets sur une seule route `/dashboard`** (pas de routes séparées) — même pattern que `src/app/profile/page.tsx` (`Tabs`/`TabsList`/`TabsTrigger`/`TabsContent`) ; la destination par défaut après connexion reste `/dashboard` (onglet "Overview" ouvert par défaut), aucun lien existant à changer.
+
+1. **`src/app/dashboard/page.tsx`** — tout le contenu existant réparti tel quel dans 3 `TabsContent` contrôlés par un état `activeTab` : `overview` (cartes stats + `WeeklyProgressChart` + bannière d'accueil), `track` (`MealInput`/`AIAnalysisCard`/`SmartSuggestions`, inchangé), `plan` (nav de semaine + `WeeklyPlanner` + `GroceryListDialog`/`AddEditMealDialog`, déplacés depuis le bas de page). Aucun changement aux hooks/mutations existants — seul l'endroit où leur JSX est rendu a bougé. Les clés de cache TanStack Query (`['meal-summary']`, `['meal-plan', weekOffset]`, etc.) ne sont scopées à aucune route/onglet, donc le split n'a aucun impact sur le cache.
+2. **`DashboardStatsSkeleton`/`ChartSkeleton`** (`src/components/skeletons.tsx`) — importés depuis longtemps mais **jamais rendus** (code mort découvert pendant l'exploration) ; maintenant réellement câblés (`!summary ? <Skeleton /> : <contenu réel />`), donc les cartes stats et le graphique ont enfin un état de chargement au lieu de s'afficher immédiatement avec des valeurs par défaut.
+3. **`src/components/WeeklyProgressChart.tsx`** — root cause du problème "graphiques pas clairs" : le composant faisait `data ?? mockData`, donc affichait silencieusement **7 jours de fausses calories fabriquées** dès que `data` était `undefined`, et un graphique vide sans aucun message quand `data` était un vrai tableau à zéro. Le fallback `mockData` a été supprimé ; `data` est maintenant un prop requis, et un vrai état vide (icône + titre + description + bouton "Log a meal") s'affiche quand `data.every(d => d.calories === 0)`, avec un `onLogMealClick` qui bascule vers l'onglet Track.
+4. **Bannière d'accueil rendue actionnable** — les 3 pastilles "1 Log meals / 2 Get AI insights / 3 Plan your week" (jusqu'ici décoratives) sont devenues de vrais boutons qui basculent vers l'onglet Track ou Plan — c'est ce qui rend "l'objectif visible en premier lieu" concret plutôt que décoratif.
+5. **i18n** — ajout de `dashboard.tabOverview`/`tabTrack`/`tabPlan`/`chartEmptyTitle`/`chartEmptyDesc`/`chartEmptyCta` ; suppression des clés mortes `dashboard.tabAnalyze`/`tabPlanner` (jamais utilisées ailleurs — restes d'une itération de design par onglets jamais câblée) et `noAnalysis`/`noAnalysisDesc`/`loadingPlan` (jamais référencées dans `page.tsx`). Parité EN/FR vérifiée (`npx tsx scripts/check-translations.ts`, 460 clés).
+6. **Vérifié dans un vrai navigateur** (pas seulement `tsc`/`eslint`/`vitest`, tous verts par ailleurs) : inscription → atterrissage sur l'onglet Overview avec le vrai état vide (0/2000 kcal, "No data yet" + CTA), clic sur chaque pastille de la bannière et sur le CTA du graphique → bascule vers le bon onglet à chaque fois, aucune erreur console.
 
 ---
 
