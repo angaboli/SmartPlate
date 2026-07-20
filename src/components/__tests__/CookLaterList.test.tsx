@@ -31,6 +31,7 @@ const savedRecipe: SavedRecipeDTO = {
     servings: 4,
     calories: 300,
     category: 'Regular',
+    status: 'published',
     goal: null,
     aiRecommended: false,
     isImported: false,
@@ -87,6 +88,22 @@ describe('CookLaterList', () => {
     expect(screen.getByText('Lunch')).toBeInTheDocument();
     expect(screen.getByText('Dinner')).toBeInTheDocument();
     expect(screen.getByText('Bulgur, Parsley')).toBeInTheDocument();
+  });
+
+  it('shows a pending-review badge for an imported recipe awaiting review', () => {
+    mockCookLater({
+      savedRecipes: [{ ...savedRecipe, recipe: { ...savedRecipe.recipe, status: 'pending_review' } }],
+    });
+    renderWithProviders(<CookLaterList />);
+
+    expect(screen.getByText('Pending Review')).toBeInTheDocument();
+  });
+
+  it('does not show a status badge for a published recipe', () => {
+    renderWithProviders(<CookLaterList />);
+
+    expect(screen.queryByText('Pending Review')).not.toBeInTheDocument();
+    expect(screen.queryByText('Published')).not.toBeInTheDocument();
   });
 
   it('marks a recipe as cooked and toggles the button label', async () => {

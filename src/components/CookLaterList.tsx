@@ -16,6 +16,7 @@ import {
 import { formatDate } from '@/lib/date-locale';
 import { bi } from '@/lib/bilingual';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
+import { recipeStatusStyles, recipeStatusLabelKeys } from '@/lib/recipe-status';
 
 export function CookLaterList() {
   const { savedRecipes, isLoading, unsaveRecipe, markAsCooked } = useCookLater();
@@ -76,11 +77,18 @@ export function CookLaterList() {
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-semibold text-lg">{bi(recipe.title, recipe.titleFr, language)}</h3>
-                    {recipe.category === 'SafariTaste' && (
-                      <Badge variant="outline" className="border-[#8A6A4F] text-[#8A6A4F]">
-                        SafariTaste
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {recipe.category === 'SafariTaste' && (
+                        <Badge variant="outline" className="border-[#8A6A4F] text-[#8A6A4F]">
+                          SafariTaste
+                        </Badge>
+                      )}
+                      {recipe.status !== 'published' && recipeStatusStyles[recipe.status] && (
+                        <Badge className={recipeStatusStyles[recipe.status]}>
+                          {t(recipeStatusLabelKeys[recipe.status] || '') || recipe.status}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">

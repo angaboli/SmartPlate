@@ -180,7 +180,7 @@ describe('submitForReview', () => {
 
 describe('reviewRecipe', () => {
   it('publishes a pending_review recipe', async () => {
-    db.recipe.findUnique.mockResolvedValue({ id: 'r1', status: 'pending_review' });
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', status: 'pending_review', authorId: 'u3' });
     db.recipe.update.mockResolvedValue({ id: 'r1', status: 'published' });
 
     await reviewRecipe('r1', 'published', undefined, editorUser);
@@ -194,6 +194,23 @@ describe('reviewRecipe', () => {
 
   it('throws when regular user tries to review', async () => {
     await expect(reviewRecipe('r1', 'published', undefined, regularUser)).rejects.toThrow();
+  });
+
+  it('throws when the reviewer is the recipe author, even as an editor or admin', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', status: 'pending_review', authorId: 'u2' });
+
+    await expect(reviewRecipe('r1', 'published', undefined, editorUser)).rejects.toThrow(
+      'Cannot review your own recipe',
+    );
+    expect(db.recipe.update).not.toHaveBeenCalled();
+  });
+
+  it('throws when an admin tries to review their own imported recipe', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', status: 'pending_review', authorId: 'u1' });
+
+    await expect(reviewRecipe('r1', 'published', undefined, adminUser)).rejects.toThrow(
+      'Cannot review your own recipe',
+    );
   });
 });
 

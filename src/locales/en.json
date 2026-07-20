@@ -385,7 +385,7 @@
   "import.fetching": "Fetching recipe...",
   "import.partialDetection": "Some details couldn't be detected — you can edit manually",
   "import.invalidLink": "Invalid or inaccessible link",
-  "import.saved": "Saved to Cook Later",
+  "import.saved": "Added to Cook Later — pending review before it's published",
   "import.source": "Source",
   "import.author": "Author",
   "import.prepTime": "Prep Time",

@@ -22,6 +22,7 @@ export interface SavedRecipeDTO {
     servings: number | null;
     calories: number | null;
     category: string;
+    status: string;
     goal: string | null;
     aiRecommended: boolean;
     isImported: boolean;

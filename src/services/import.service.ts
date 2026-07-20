@@ -56,7 +56,13 @@ export async function saveImport(userId: string, data: SaveImportInput) {
 
   // Use a transaction to create Import + Recipe + SavedRecipe atomically
   return db.$transaction(async (tx) => {
-    // Create the recipe (auto-published since it's a personal import)
+    // Imports always go through review before publication — even for an
+    // admin — the same as a manually-created recipe (see reviewRecipe() in
+    // recipes.service.ts, which also bans the author from reviewing their
+    // own submission). The SavedRecipe below still works for a
+    // pending_review recipe: getRecipeById() lets the author view their own
+    // unpublished recipe, so it shows up in the importer's Cook Later list
+    // right away.
     const recipe = await tx.recipe.create({
       data: {
         authorId: userId,
@@ -70,8 +76,8 @@ export async function saveImport(userId: string, data: SaveImportInput) {
         isImported: true,
         sourceUrl: data.url,
         sourceProvider: provider,
-        status: 'published',
-        publishedAt: new Date(),
+        status: 'pending_review',
+        publishedAt: null,
         ingredients:
           data.ingredients.length > 0
             ? {

@@ -289,6 +289,13 @@ export async function reviewRecipe(
   const recipe = await db.recipe.findUnique({ where: { id } });
   if (!recipe) throw new NotFoundError('Recipe not found');
 
+  // Applies regardless of how the recipe was created (RecipeForm or
+  // import) — separation of duties: whoever submitted it can't also be
+  // the one who approves it, even if they hold editor/admin rights.
+  if (recipe.authorId === user.sub) {
+    throw new ForbiddenError('Cannot review your own recipe');
+  }
+
   if (recipe.status !== 'pending_review') {
     throw new ValidationError(
       `Cannot review recipe with status "${recipe.status}"`,

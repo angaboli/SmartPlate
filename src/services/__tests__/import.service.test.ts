@@ -52,6 +52,25 @@ describe('saveImport', () => {
     expect(result.import.id).toBe('i1');
   });
 
+  it('always creates the imported recipe pending review, never auto-published', async () => {
+    db.recipe.create.mockResolvedValue({ id: 'r1', title: 'Test' });
+    db.import.create.mockResolvedValue({ id: 'i1' });
+    db.savedRecipe.create.mockResolvedValue({ id: 's1' });
+
+    await saveImport('u1', {
+      url: 'https://example.com/recipe',
+      title: 'Test',
+      ingredients: ['flour'],
+      steps: ['Mix'],
+    });
+
+    expect(db.recipe.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'pending_review', publishedAt: null }),
+      }),
+    );
+  });
+
   it('throws on empty title', async () => {
     await expect(
       saveImport('u1', {

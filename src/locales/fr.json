@@ -385,7 +385,7 @@
   "import.fetching": "Récupération de la recette...",
   "import.partialDetection": "Certains détails n'ont pas pu être détectés — vous pouvez modifier manuellement",
   "import.invalidLink": "Lien invalide ou inaccessible",
-  "import.saved": "Enregistrée pour plus tard",
+  "import.saved": "Ajoutée à Cook Later — en attente de revue avant publication",
   "import.source": "Source",
   "import.author": "Auteur",
   "import.prepTime": "Temps de préparation",
