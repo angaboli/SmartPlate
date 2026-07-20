@@ -232,7 +232,15 @@ Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt q
 
 ## Backlog — Qualité d'extraction des imports (scraping)
 
-> **Statut** : ✅ Implémentée (2026-07-20) pour Instagram/TikTok, approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par deux appels réels à l'API OpenAI** (script de fumée : une légende bien structurée correctement découpée, une légende sans recette retournant des tableaux vides sans invention). **Gap découvert le jour même pour YouTube — voir "Reste à faire" ci-dessous.**
+> **Statut** : ✅ Implémentée (2026-07-20) pour Instagram/TikTok, approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par des appels réels à l'API OpenAI**. Une régression signalée par l'utilisateur le jour même a été corrigée (voir ci-dessous). Gap distinct découvert pour YouTube — voir "Reste à faire" plus bas.
+
+### Régression corrigée le jour même — `extractFromOpenGraph()` perdait le texte brut de la légende
+
+**Signalé par l'utilisateur (2026-07-20)** : l'import était devenu strictement pire qu'avant l'ajout de l'IA — avant, toute la légende brute atterrissait dans le titre (moche mais récupérable, l'utilisateur voyait tout et pouvait trier à la main) ; après l'ajout de l'IA, certains imports (y compris sur Instagram) ne montraient plus rien d'exploitable du tout, avec le même message "Some details couldn't be detected".
+
+**Cause** : `extractFromOpenGraph()` adoptait le titre renvoyé par l'IA dès qu'il était non vide, **même quand l'IA ne trouvait aucun ingrédient ni étape** (légendes en prose libre, sans format de liste clair). Le titre "propre" mais généré à vide remplaçait alors silencieusement le `og:title` brut — qui, pour Instagram/TikTok, contient souvent la légende complète et était le seul endroit où l'utilisateur pouvait encore voir/copier le texte de la recette.
+
+**Correctif** : le titre structuré par l'IA n'est adopté que si elle a aussi trouvé au moins un ingrédient ou une étape. Si l'IA ne trouve aucune structure, le comportement retombe exactement sur l'ancien (titre brut conservé) — le pire cas n'est donc jamais pire qu'avant l'ajout de l'IA, seulement le cas "l'IA a réussi mais n'a rien trouvé" manquait cette même garantie que le cas "l'IA a échoué" avait déjà. 1 test de non-régression ajouté, plus un nouveau script de fumée contre l'API réelle avec une légende en prose libre confirmant que l'IA structure quand même correctement les cas réalistes.
 
 ### Reste à faire — le fetch YouTube reste incomplet (`og:description` tronqué)
 
