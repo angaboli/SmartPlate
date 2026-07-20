@@ -232,18 +232,18 @@ Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt q
 
 ## Backlog — Qualité d'extraction des imports (scraping)
 
-> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17).
+> **Statut** : ✅ Implémentée (2026-07-20), approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par deux appels réels à l'API OpenAI** (script de fumée : une légende bien structurée correctement découpée, une légende sans recette retournant des tableaux vides sans invention).
 
 ### Problème constaté
 
-`extractFromOpenGraph()` dans `src/services/import-extractor.ts` (déclenché quand la page importée n'a pas de JSON-LD `@type: "Recipe"` — typiquement les posts Instagram/TikTok, dont la légende contient souvent titre + ingrédients + préparation dans un seul bloc de texte) met tout le contenu brut dans `title`/`description`, avec `ingredients: []` et `steps: []` (`isPartial: true`). Résultat pour l'utilisateur : un import où le titre contient la recette entière au lieu d'un vrai titre, et les champs ingrédients/étapes vides à remplir à la main.
+`extractFromOpenGraph()` dans `src/services/import-extractor.ts` (déclenché quand la page importée n'a pas de JSON-LD `@type: "Recipe"` — typiquement les posts Instagram/TikTok, dont la légende contient souvent titre + ingrédients + préparation dans un seul bloc de texte) mettait tout le contenu brut dans `title`/`description`, avec `ingredients: []` et `steps: []` (`isPartial: true`). Résultat pour l'utilisateur : un import où le titre contenait la recette entière au lieu d'un vrai titre, et les champs ingrédients/étapes vides à remplir à la main.
 
-### Piste à explorer
+### Ce qui a été fait
 
-Séparer titre / ingrédients / préparation à partir du texte brut de la légende plutôt que de tout laisser dans `title` :
-- Heuristiques de parsing de texte (détection de listes à puces/numérotées pour les ingrédients, mots-clés "ingrédients"/"préparation"/"étapes" comme séparateurs de sections, première ligne ou phrase courte comme titre) — gain rapide mais fragile selon le format de légende.
-- Ou passer par l'IA déjà utilisée ailleurs dans l'app (`src/services/ai.service.ts`, GPT-4o-mini) pour structurer le texte brut en `{ title, ingredients[], steps[] }` — plus robuste face à des formats de légende variés, mais ajoute un appel IA (coût + latence + rate limiting) au flux d'import qui est aujourd'hui purement déterministe (parsing HTML, pas d'IA).
-- Dans tous les cas, garder `isPartial: true` tant que la confiance dans le parsing n'est pas établie, pour que l'UI d'import continue de signaler à l'utilisateur de vérifier/compléter manuellement.
+1. **`structureRecipeCaption()`** (`src/services/ai.service.ts`) — nouvelle fonction, même pattern que `analyzeMeal`/`generateGroceryList` (appel `gpt-4o-mini`, `response_format: json_object`, schéma Zod `CaptionStructureResultSchema`). Prompt dédié qui demande d'ignorer hashtags/emojis décoratifs/appels à l'action ("follow for more"), de ne jamais inventer d'ingrédient/étape absent du texte, et de renvoyer des tableaux vides plutôt que de deviner quand la légende ne contient pas clairement de recette. Texte d'entrée tronqué à 2000 caractères (coût/latence bornés quel que soit le contenu du `og:description` scrapé).
+2. **`extractFromOpenGraph()`** (`src/services/import-extractor.ts`) — devenue asynchrone ; appelle `structureRecipeCaption()` avec le `og:description` brut quand il existe, et n'utilise le titre structuré que s'il est non vide (sinon garde le `og:title` brut). **Dégradation gracieuse totale** : tout échec de l'appel IA (timeout, erreur réseau, JSON malformé) retombe exactement sur le comportement d'avant (titre = `og:title` brut, ingrédients/étapes vides, `isPartial: true`) — aucun import qui fonctionnait avant ne peut se mettre à échouer à cause de ce changement. N'est jamais appelée quand le JSON-LD `@type: "Recipe"` a déjà réussi (sites avec vraies données structurées) ni quand il n'y a pas de `og:description` à structurer.
+3. **Pas de rate limit dédié ajouté** — le rate limit d'import existant (`checkRateLimit` dans `import.service.ts`, 10/heure par utilisateur, déjà appliqué sur l'endpoint d'extraction/preview) borne déjà mécaniquement le nombre de nouveaux appels IA par utilisateur, puisque chaque tentative d'extraction passe par ce garde-fou avant même d'atteindre `extractRecipeFromUrl()`.
+4. **Tests** : 4 nouveaux tests dans `import-extractor.test.ts` (structuration réussie avec `isPartial: false`, repli gracieux si l'IA échoue, pas d'appel IA si le JSON-LD a déjà réussi, pas d'appel IA si pas de `og:description`) — mock de `@/services/ai.service` comme dans `meal-log.service.test.ts`/`planner.service.test.ts`. `structureRecipeCaption()` elle-même reste non testée unitairement (comme le reste d'`ai.service.ts`, appels OpenAI réels), validée à la place par le script de fumée.
 
 ---
 
