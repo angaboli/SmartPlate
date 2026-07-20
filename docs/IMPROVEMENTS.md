@@ -67,7 +67,7 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 `SECURITY.md` a été entièrement réécrit pour être exact, avec une checklist M9 qui distingue clairement ce qui est fait de ce qui ne l'est pas (CORS, complexité mot de passe, caps taille/redirect import, Sentry).
 
-### 6. Couverture de tests concentrée sur un tiers du code — 🟡 Largement résolu, API + composants clés (2026-07-20)
+### 6. Couverture de tests concentrée sur un tiers du code — 🟢 Résolu : API, composants, et E2E (2026-07-20)
 15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limitait explicitement `coverage.include` à ces deux dossiers, avec **0 test** sur `src/lib/rbac.ts`, `src/services/user.service.ts`, et les 28 routes API — alors que RBAC/admin est la surface la plus sensible du projet.
 
 **Fait (2026-07-16)** :
@@ -86,12 +86,19 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 Choix d'infra notables (détails dans les commits `test(components): ...`) : environnement jsdom activé par fichier via `// @vitest-environment jsdom` (le reste de la suite reste en `node`) ; `renderWithProviders()` utilise l'option `wrapper` de RTL (pas un pré-wrap de l'élément) pour que `rerender()` conserve le Provider Redux/TanStack Query ; polyfills `hasPointerCapture`/`scrollIntoView`/`ResizeObserver` ajoutés à `vitest.setup.ts` (gardés derrière un check `typeof Element !== 'undefined'` pour ne pas casser les tests en environnement `node`) pour les composants Radix Select/Dropdown.
 
+**Fait (2026-07-20)** : Playwright installé et **3 parcours critiques vérifiés en conditions réelles dans un vrai navigateur** (pas seulement écrits — voir "Piège évité" ci-dessous) : `e2e/auth.spec.ts` (register → logout → login via la vraie UI), `e2e/meal-log.spec.ts` (saisie texte → analyse IA → `AIAnalysisCard`/`SmartSuggestions`), `e2e/import.spec.ts` (import d'une URL → édition → sauvegarde dans Cook Later). Détail complet de l'infra dans `docs/TESTING.md` (nouvelle section "E2E (Playwright)"). Points clés :
+- **Local uniquement, pas dans la CI** — la CI n'a ni vraie DB (son `DATABASE_URL` est un placeholder juste pour que `next build` passe) ni les libs système de Chromium. Les tests tournent contre la même DB Neon de dev que `pnpm dev`, avec nettoyage automatique (voir plus bas).
+- **Appels externes côté serveur mockés** — `src/services/ai.service.ts` a gagné un `OPENAI_BASE_URL` surchargeable (no-op partout ailleurs), pointé vers `e2e/mock-servers/server.mjs` (serveur Node sans dépendance) ; le mocking réseau de Playwright ne peut pas intercepter des appels que l'app fait elle-même côté serveur. Le flux d'import pointe simplement vers `GET /recipe-fixture` de ce même mock plutôt qu'un vrai site.
+- **Une seule session partagée** — `e2e/global-setup.ts` enregistre un utilisateur une fois et sauvegarde la session (`storageState`), réutilisée par tous les specs sauf `auth.spec.ts`. Nécessaire car l'inscription est limitée à 5/heure par IP (`src/app/api/v1/auth/register/route.ts`), une vraie protection de prod qu'il n'était pas question d'affaiblir pour les tests.
+- **Nettoyage automatique** — `e2e/global-teardown.ts` supprime les users `@e2e.smartplate.test`, les recettes importées depuis `/recipe-fixture`, et les lignes de rate-limit `register` créées localement (`127.0.0.1`/`::1`/`::ffff:127.0.0.1` uniquement — jamais les IP réelles de prod). Suite entièrement rejouable sans intervention manuelle, vérifié par 2 runs consécutifs.
+
+**Piège évité** : `next dev` refuse une 2e instance dans le même dossier même sur un port différent — la config utilise `next build && next start` pour l'app testée, ce qui évite le conflit avec un `pnpm dev` du développeur déjà lancé. Autre piège : Chromium ne se lance pas dans un sandbox/VM fraîchement provisionné sans les libs système (`libnspr4` etc.) — nécessite `sudo npx playwright install-deps chromium` (ou `sudo env "PATH=$PATH" npx ...` si Node vient de nvm/volta/fnm, sudo ne voyant pas ce PATH par défaut) avant de pouvoir exécuter quoi que ce soit.
+
 **Explicitement hors périmètre (décision assumée, pas un oubli)** :
 - Les ~46 primitives `src/components/ui/**` (shadcn/Radix) et les composants purement présentationnels sans branche logique (`EmptyState`, `LoadingState`, `Logo`, `skeletons.tsx`) — tester du HTML statique sans état n'apporte pas de valeur de non-régression proportionnée à l'effort.
-- `WeeklyPlanner.tsx` — repose sur `react-dnd`, nettement plus coûteux à tester unitairement (drag-and-drop) ; à couvrir plutôt via un parcours E2E le jour où Playwright est installé.
-- **0 test E2E** — Playwright toujours documenté dans `TESTING.md` comme stack cible mais jamais installé. Si budget dispo : 2-3 parcours critiques (login, log meal + analyse IA, import de recette, et idéalement le drag-and-drop du planner).
+- `WeeklyPlanner.tsx` (drag-and-drop `react-dnd`) — pas couvert par le premier passage E2E ; candidat naturel pour un futur 4e parcours si besoin.
 
-**Effort restant** : L (E2E) si budget dispo, sinon le sujet peut être considéré clos côté tests unitaires/composants.
+**Effort restant** : aucun jugé nécessaire dans l'immédiat — le sujet peut être considéré clos.
 
 ### 7. ~~Aucun suivi d'erreurs en production~~ — ✅ Résolu (2026-07-16)
 `SENTRY_DSN` était mentionné comme variable optionnelle mais jamais câblé (pas de dépendance Sentry) — les échecs silencieux (quota OpenAI, parsing cassé) ne remontaient qu'aux logs pino de Vercel.
@@ -304,7 +311,7 @@ Sur `src/app/page.tsx`, juste sous la section Hero (ligne ~44), ajouter un slide
 1. ~~**Sprint doc-cleanup** (P0-1, P1-5, P2-11)~~ — ✅ Fait (2026-07-15/16) : les 6 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`, `SECURITY.md`) corrigés.
 2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
 3. ~~**P0-3** (timeout OpenAI)~~ — ✅ Fait (2026-07-15).
-4. ~~**Sprint tests critiques** (P1-6, priorité 1-2)~~ — 🟡 Fait pour RBAC/auth, les 28 routes API et les composants React à logique métier (2026-07-16 → 2026-07-20). Reste uniquement Playwright (priorité 3, voir section 6 ci-dessus).
+4. ~~**Sprint tests critiques** (P1-6, toutes priorités)~~ — ✅ Fait (2026-07-16 → 2026-07-20) : RBAC/auth, les 28 routes API, les composants React à logique métier, et 3 parcours E2E Playwright critiques. Voir section 6 ci-dessus pour le détail complet.
 5. ~~**Sprint observabilité** (P1-7)~~ — ✅ Fait (2026-07-16) : Sentry installé app-wide.
 6. Le reste (P2-8, P2-9, P3, + les gaps réels découverts en P1-5 : complexité mot de passe, caps taille/redirect import) peut être traité au fil de l'eau selon la charge produit réelle.
 7. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
