@@ -67,7 +67,7 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 `SECURITY.md` a été entièrement réécrit pour être exact, avec une checklist M9 qui distingue clairement ce qui est fait de ce qui ne l'est pas (CORS, complexité mot de passe, caps taille/redirect import, Sentry).
 
-### 6. Couverture de tests concentrée sur un tiers du code — 🟡 Largement résolu côté routes API (2026-07-17)
+### 6. Couverture de tests concentrée sur un tiers du code — 🟡 Largement résolu, API + composants clés (2026-07-20)
 15 fichiers de tests, tous en unitaire sur `src/lib/**` et `src/services/**`. `vitest.config.ts` limitait explicitement `coverage.include` à ces deux dossiers, avec **0 test** sur `src/lib/rbac.ts`, `src/services/user.service.ts`, et les 28 routes API — alors que RBAC/admin est la surface la plus sensible du projet.
 
 **Fait (2026-07-16)** :
@@ -78,10 +78,20 @@ En vérifiant chaque affirmation du doc contre le code réel, bien plus d'écart
 
 **Fait (2026-07-17)** : toutes les routes API restantes couvertes, même pattern d'intégration (mock du/des service(s) + `getCurrentUser`/`requireAuth`, appel direct du handler exporté avec un `NextRequest`/`params` construits) — recipes CRUD + submit/review/status (5 routes, 30 tests), cook-later + imports (4 routes, 20 tests), meal-logs + scan + summary (3 routes, 14 tests), planner + generate/adjust/meals/groceries (6 routes, 24 tests), admin/users + auth/register + me (3 routes, 13 tests), et health + les 2 crons (3 routes, 8 tests, y compris le cas `CRON_SECRET` absent/incorrect). **Les 28 routes API ont maintenant au moins un test.** Suite complète : 195 → **347 tests**, tous verts (`tsc --noEmit`, `eslint`, `vitest run`, build de prod vérifiés).
 
-**Reste à faire** :
-- **0 test de composant** React (`src/components/**`, 60+ fichiers) — toujours pas traité.
-- **0 test E2E** — Playwright toujours documenté dans `TESTING.md` comme stack cible mais jamais installé. Si budget dispo : 2-3 parcours critiques (login, log meal + analyse IA, import de recette).
-**Effort restant** : M (composants) à L (E2E) selon l'ambition.
+**Fait (2026-07-20)** : infrastructure de test de composants installée (React Testing Library + jsdom + `@testing-library/user-event`), puis les 13 composants portant une vraie logique métier/état ont été couverts — 108 tests sur 13 fichiers :
+- Formulaires/dialogues avec validation et mutations : `RecipeForm` (8), `MealInput` (9), `ImportRecipeDialog` (6), `AddEditMealDialog` (7), `DeleteRecipeDialog` (5), `GroceryListDialog` (7).
+- Rendu piloté par hooks/contexte : `RecipeCard` (5), `CookLaterList` (6).
+- Layout/nav avec logique de rôle et d'état : `Header` (6), `Navigation` (6), `LanguageSelector` (1).
+- Présentation avec branches conditionnelles notables : `AIAnalysisCard` (6), `SmartSuggestions` (2).
+
+Choix d'infra notables (détails dans les commits `test(components): ...`) : environnement jsdom activé par fichier via `// @vitest-environment jsdom` (le reste de la suite reste en `node`) ; `renderWithProviders()` utilise l'option `wrapper` de RTL (pas un pré-wrap de l'élément) pour que `rerender()` conserve le Provider Redux/TanStack Query ; polyfills `hasPointerCapture`/`scrollIntoView`/`ResizeObserver` ajoutés à `vitest.setup.ts` (gardés derrière un check `typeof Element !== 'undefined'` pour ne pas casser les tests en environnement `node`) pour les composants Radix Select/Dropdown.
+
+**Explicitement hors périmètre (décision assumée, pas un oubli)** :
+- Les ~46 primitives `src/components/ui/**` (shadcn/Radix) et les composants purement présentationnels sans branche logique (`EmptyState`, `LoadingState`, `Logo`, `skeletons.tsx`) — tester du HTML statique sans état n'apporte pas de valeur de non-régression proportionnée à l'effort.
+- `WeeklyPlanner.tsx` — repose sur `react-dnd`, nettement plus coûteux à tester unitairement (drag-and-drop) ; à couvrir plutôt via un parcours E2E le jour où Playwright est installé.
+- **0 test E2E** — Playwright toujours documenté dans `TESTING.md` comme stack cible mais jamais installé. Si budget dispo : 2-3 parcours critiques (login, log meal + analyse IA, import de recette, et idéalement le drag-and-drop du planner).
+
+**Effort restant** : L (E2E) si budget dispo, sinon le sujet peut être considéré clos côté tests unitaires/composants.
 
 ### 7. ~~Aucun suivi d'erreurs en production~~ — ✅ Résolu (2026-07-16)
 `SENTRY_DSN` était mentionné comme variable optionnelle mais jamais câblé (pas de dépendance Sentry) — les échecs silencieux (quota OpenAI, parsing cassé) ne remontaient qu'aux logs pino de Vercel.
@@ -286,7 +296,7 @@ Sur `src/app/page.tsx`, juste sous la section Hero (ligne ~44), ajouter un slide
 1. ~~**Sprint doc-cleanup** (P0-1, P1-5, P2-11)~~ — ✅ Fait (2026-07-15/16) : les 6 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`, `SECURITY.md`) corrigés.
 2. ~~**Sprint hardening CI/deps** (P0-2, P0-4)~~ — ✅ Fait (2026-07-15) : Next/jspdf/prisma épinglés et mis à jour (CVE corrigées), `engines`/`packageManager` ajoutés, gate `pnpm audit --prod --audit-level=high` actif en CI.
 3. ~~**P0-3** (timeout OpenAI)~~ — ✅ Fait (2026-07-15).
-4. ~~**Sprint tests critiques** (P1-6, priorité 1-2)~~ — 🟡 Fait pour le cœur RBAC/auth (2026-07-16) : `rbac.ts` et `user.service.ts` testés (0% → 100%/65-100%), 4 routes auth/RBAC couvertes. Reste les autres routes (recipes/imports/planner/meal-logs) et Playwright (priorité 3).
+4. ~~**Sprint tests critiques** (P1-6, priorité 1-2)~~ — 🟡 Fait pour RBAC/auth, les 28 routes API et les composants React à logique métier (2026-07-16 → 2026-07-20). Reste uniquement Playwright (priorité 3, voir section 6 ci-dessus).
 5. ~~**Sprint observabilité** (P1-7)~~ — ✅ Fait (2026-07-16) : Sentry installé app-wide.
 6. Le reste (P2-8, P2-9, P3, + les gaps réels découverts en P1-5 : complexité mot de passe, caps taille/redirect import) peut être traité au fil de l'eau selon la charge produit réelle.
 7. **Stockage R2** (voir backlog dédié ci-dessus) — à prioriser quand le besoin d'upload d'images se confirme ; résout aussi P2-10 en même temps.
