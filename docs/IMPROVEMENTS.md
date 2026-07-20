@@ -306,6 +306,30 @@ Sur `src/app/page.tsx`, juste sous la section Hero (ligne ~44), ajouter un slide
 
 ---
 
+## Backlog — Paiement (Stripe)
+
+> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-20) — **explicitement positionnée après tous les autres points de ce backlog**, à traiter en dernier.
+
+### Objectif
+
+Ajouter un moyen de paiement via Stripe. Aucune notion de plan payant/premium/abonnement n'existe aujourd'hui dans le produit (`prisma/schema.prisma` n'a ni `stripeCustomerId`, ni statut d'abonnement, ni distinction de fonctionnalités par palier) — ce point part donc de zéro, contrairement aux autres backlogs ci-dessus qui étendent de l'existant.
+
+### À décider avant tout travail technique
+
+1. **Quel est le modèle payant ?** — Abonnement récurrent (mensuel/annuel) type SaaS, achat unique, ou quota consommable (ex: au-delà de N analyses IA/imports gratuits par mois) ? Détermine complètement l'architecture Stripe à utiliser (Billing/Subscriptions vs Checkout ponctuel).
+2. **Qu'est-ce qui devient payant ?** — Candidats visibles dans le code actuel : le quota de 20 analyses IA/jour (`checkAnalysisRateLimit`), le nombre d'imports de recettes, l'accès à SafariTaste, ou une fonctionnalité pas encore prévue.
+3. **Impact RBAC** — un rôle/statut "payant" s'ajoute-t-il à `user`/`editor`/`admin` (`src/lib/rbac.ts`), ou reste-t-il orthogonal (ex: `User.subscriptionStatus` indépendant du rôle) ?
+
+### Approche technique à explorer (une fois les décisions ci-dessus prises)
+
+1. **Schéma** — a minima `User.stripeCustomerId String? @unique`, plus soit `User.subscriptionStatus`/`currentPeriodEnd` (abonnement), soit une table `Purchase`/`Entitlement` séparée (achat unique/quota) — migration Prisma classique, même mécanique que `Recipe.mealTypes` (2026-07-17).
+2. **Webhooks Stripe** — nouvel endpoint `POST /api/v1/webhooks/stripe`, vérification de signature (`stripe.webhooks.constructEvent`), à exclure de l'auth JWT standard (comme les crons avec `CRON_SECRET`, mais avec le secret de signature Stripe à la place).
+3. **Checkout/Billing Portal** — Stripe Checkout hébergé (pas de formulaire carte custom à construire/sécuriser soi-même) ; Billing Portal pour la gestion self-service (annulation, changement de moyen de paiement).
+4. **Variables d'environnement** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` à ajouter à `.env.example`/`docs/DEPLOYMENT.md`, dans le même esprit que les credentials R2/OpenAI déjà documentés.
+5. **Sécurité** — ne jamais faire confiance au client pour l'état d'abonnement (toujours revalider côté serveur via `stripeCustomerId` → statut réel avant de gater une fonctionnalité), et la CSP (`connect-src` dans `next.config.ts`) devra probablement s'ouvrir à Stripe.js si un élément Stripe custom (pas juste une redirection Checkout) est utilisé côté client — piège similaire à celui rencontré avec Sentry (2026-07-16).
+
+---
+
 ## Plan d'exécution suggéré
 
 1. ~~**Sprint doc-cleanup** (P0-1, P1-5, P2-11)~~ — ✅ Fait (2026-07-15/16) : les 6 docs (`ARCHITECTURE.md`, `PLAN.md`, `SETUP.md`, `DEPLOYMENT.md`, `USER_GUIDE.md`, `SECURITY.md`) corrigés.
