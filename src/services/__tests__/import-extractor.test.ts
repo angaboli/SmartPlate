@@ -154,6 +154,28 @@ describe('extractRecipeFromUrl — caption structuring (Open Graph fallback)', (
     expect(result.isPartial).toBe(true);
   });
 
+  it('keeps the raw og:title when the AI resolves but finds no real ingredients/steps', async () => {
+    // Regression: many real captions are unstructured prose the AI can't
+    // split into ingredients/steps at all. Overwriting the (often
+    // full-caption) og:title with the AI's empty-handed "clean" title in
+    // that case would silently throw away the only place left for the
+    // user to see and manually copy the recipe text — strictly worse than
+    // pre-AI behavior, not an improvement.
+    vi.mocked(structureRecipeCaption).mockResolvedValue({
+      title: 'A Nice Dish',
+      ingredients: [],
+      steps: [],
+    });
+    mockFetchSequence([{ text: async () => OG_ONLY_HTML('Just a nice dish, no clear recipe format here') }]);
+
+    const result = await extractRecipeFromUrl('https://instagram.com/p/abc');
+
+    expect(result.title).toBe('Check out this dish 😍 #recipe #foodie');
+    expect(result.ingredients).toEqual([]);
+    expect(result.steps).toEqual([]);
+    expect(result.isPartial).toBe(true);
+  });
+
   it('does not call the AI when JSON-LD extraction already succeeded', async () => {
     mockFetchSequence([{ text: async () => JSON_LD_HTML('https://scraped.example/pic.jpg') }, { ok: false, status: 403 }]);
 

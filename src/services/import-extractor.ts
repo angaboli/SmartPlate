@@ -199,9 +199,20 @@ async function extractFromOpenGraph(
   if (description) {
     try {
       const structured = await structureRecipeCaption(description);
-      if (structured.title) title = structured.title;
-      ingredients = structured.ingredients;
-      steps = structured.steps;
+      const foundStructure = structured.ingredients.length > 0 || structured.steps.length > 0;
+      // Only trust the AI's title when it also found real ingredients/steps.
+      // Many real captions are unstructured prose the AI can't split at
+      // all — in that case the raw og:title (which, for Instagram/TikTok,
+      // is often the full caption) is the only place left for the user to
+      // see and manually copy the recipe text. Overwriting it with a
+      // "clean" but empty-handed title would silently throw that text
+      // away, turning an already-imperfect import into a strictly worse
+      // one.
+      if (foundStructure) {
+        if (structured.title) title = structured.title;
+        ingredients = structured.ingredients;
+        steps = structured.steps;
+      }
     } catch {
       // Fall through with the raw og:title and empty ingredients/steps.
     }
