@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,9 +17,16 @@ export function renderWithProviders(
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
 
-  return render(
-    <Provider store={store}>
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-    </Provider>,
-  );
+  // Use RTL's `wrapper` option (rather than pre-wrapping `ui`) so that
+  // `rerender()` re-applies the Provider/QueryClientProvider tree instead of
+  // replacing it with the bare new element.
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <Provider store={store}>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </Provider>
+    );
+  }
+
+  return render(ui, { wrapper: Wrapper });
 }
