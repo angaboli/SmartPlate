@@ -7,6 +7,7 @@ import { Brain, TrendingUp, Calendar, Utensils, Sparkles, CheckCircle, Download 
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { useState } from 'react';
 import { ImportRecipeDialog } from '@/components/ImportRecipeDialog';
+import { FeaturedRecipesCarousel } from '@/components/FeaturedRecipesCarousel';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomePage() {
@@ -110,6 +111,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <FeaturedRecipesCarousel />
 
       {/* Features Section */}
       <section className="container px-4 md:px-6">

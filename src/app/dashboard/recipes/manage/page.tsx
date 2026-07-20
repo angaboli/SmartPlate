@@ -23,8 +23,9 @@ import {
 } from '@/components/ui/table';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { TableSkeleton } from '@/components/skeletons';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useDeleteRecipe, useChangeRecipeStatus } from '@/hooks/useRecipes';
+import { useDeleteRecipe, useChangeRecipeStatus, useSetFeatured } from '@/hooks/useRecipes';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { bi } from '@/lib/bilingual';
 import { formatDate } from '@/lib/date-locale';
@@ -38,6 +39,7 @@ interface RecipeRow {
   createdAt: string;
   publishedAt: string | null;
   reviewNote: string | null;
+  featured: boolean;
 }
 
 const statusBadge: Record<string, string> = {
@@ -63,6 +65,7 @@ export default function RecipeManagePage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const deleteRecipe = useDeleteRecipe();
   const changeStatus = useChangeRecipeStatus();
+  const setFeatured = useSetFeatured();
 
   const role = user?.role;
 
@@ -102,6 +105,19 @@ export default function RecipeManagePage() {
       {
         onSuccess: () => {
           toast.success(t('manage.statusChanged') + ' ' + (t(statusLabelKeys[newStatus] || '') || newStatus));
+          fetchRecipes();
+        },
+        onError: (err) => toast.error(err.message),
+      },
+    );
+  }
+
+  function handleFeaturedChange(recipeId: string, featured: boolean) {
+    setFeatured.mutate(
+      { id: recipeId, featured },
+      {
+        onSuccess: () => {
+          toast.success(t(featured ? 'manage.featured' : 'manage.unfeatured'));
           fetchRecipes();
         },
         onError: (err) => toast.error(err.message),
@@ -154,7 +170,7 @@ export default function RecipeManagePage() {
       </div>
 
       {loading ? (
-        <TableSkeleton rows={5} cols={5} />
+        <TableSkeleton rows={5} cols={6} />
       ) : recipes.length === 0 ? (
         <p className="text-muted-foreground">{t('manage.noRecipes')}</p>
       ) : (
@@ -166,6 +182,7 @@ export default function RecipeManagePage() {
                 <TableHead>{t('manage.tableStatus')}</TableHead>
                 <TableHead>{t('manage.tableCreated')}</TableHead>
                 <TableHead>{t('manage.tableNote')}</TableHead>
+                <TableHead>{t('manage.tableFeatured')}</TableHead>
                 <TableHead>{t('manage.tableActions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -204,6 +221,14 @@ export default function RecipeManagePage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                     {r.reviewNote || '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={r.featured}
+                      onCheckedChange={(checked) => handleFeaturedChange(r.id, checked)}
+                      disabled={setFeatured.isPending}
+                      aria-label={t('manage.tableFeatured')}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">

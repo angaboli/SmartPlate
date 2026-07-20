@@ -11,6 +11,7 @@ import {
   submitForReview,
   reviewRecipe,
   deleteRecipe,
+  setRecipeFeatured,
 } from '../recipes.service';
 import type { JwtPayload } from '@/lib/auth';
 
@@ -72,6 +73,27 @@ describe('listRecipes', () => {
       expect.objectContaining({ skip: 0, take: 20 }),
     );
     expect(result.meta.totalPages).toBe(1);
+  });
+
+  it('filters by featured and orders by featuredOrder when requested', async () => {
+    db.recipe.findMany.mockResolvedValue([]);
+    await listRecipes({ featured: true }, null);
+
+    expect(db.recipe.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ featured: true }),
+        orderBy: { featuredOrder: 'asc' },
+      }),
+    );
+  });
+
+  it('orders by createdAt when not filtering by featured', async () => {
+    db.recipe.findMany.mockResolvedValue([]);
+    await listRecipes({}, adminUser);
+
+    expect(db.recipe.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'desc' } }),
+    );
   });
 });
 
@@ -226,5 +248,72 @@ describe('deleteRecipe', () => {
   it('throws NotFoundError when recipe does not exist', async () => {
     db.recipe.findUnique.mockResolvedValue(null);
     await expect(deleteRecipe('r1', adminUser)).rejects.toThrow('not found');
+  });
+});
+
+describe('setRecipeFeatured', () => {
+  it('throws when a regular user tries to feature a recipe', async () => {
+    await expect(setRecipeFeatured('r1', true, regularUser)).rejects.toThrow();
+  });
+
+  it('assigns the next featuredOrder when newly featured', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', featured: false, featuredOrder: null });
+    db.recipe.count.mockResolvedValue(2);
+    db.recipe.aggregate.mockResolvedValue({ _max: { featuredOrder: 3 } });
+    db.recipe.update.mockResolvedValue({ id: 'r1', featured: true, featuredOrder: 4 });
+
+    await setRecipeFeatured('r1', true, editorUser);
+
+    expect(db.recipe.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { featured: true, featuredOrder: 4 },
+      }),
+    );
+  });
+
+  it('starts featuredOrder at 0 when no recipe is currently featured', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', featured: false, featuredOrder: null });
+    db.recipe.count.mockResolvedValue(0);
+    db.recipe.aggregate.mockResolvedValue({ _max: { featuredOrder: null } });
+    db.recipe.update.mockResolvedValue({ id: 'r1', featured: true, featuredOrder: 0 });
+
+    await setRecipeFeatured('r1', true, adminUser);
+
+    expect(db.recipe.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { featured: true, featuredOrder: 0 } }),
+    );
+  });
+
+  it('keeps the existing featuredOrder when already featured', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', featured: true, featuredOrder: 2 });
+    db.recipe.update.mockResolvedValue({ id: 'r1', featured: true, featuredOrder: 2 });
+
+    await setRecipeFeatured('r1', true, adminUser);
+
+    expect(db.recipe.aggregate).not.toHaveBeenCalled();
+    expect(db.recipe.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { featured: true, featuredOrder: 2 } }),
+    );
+  });
+
+  it('clears featuredOrder when un-featuring', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', featured: true, featuredOrder: 2 });
+    db.recipe.update.mockResolvedValue({ id: 'r1', featured: false, featuredOrder: null });
+
+    await setRecipeFeatured('r1', false, adminUser);
+
+    expect(db.recipe.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { featured: false, featuredOrder: null } }),
+    );
+  });
+
+  it('throws when the featured cap is already reached', async () => {
+    db.recipe.findUnique.mockResolvedValue({ id: 'r1', featured: false, featuredOrder: null });
+    db.recipe.count.mockResolvedValue(8);
+
+    await expect(setRecipeFeatured('r1', true, adminUser)).rejects.toThrow(
+      'Cannot feature more than 8 recipes at once',
+    );
+    expect(db.recipe.update).not.toHaveBeenCalled();
   });
 });

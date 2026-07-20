@@ -22,6 +22,8 @@ export interface RecipeDTO {
   isImported: boolean;
   sourceUrl: string | null;
   sourceProvider: string | null;
+  featured: boolean;
+  featuredOrder: number | null;
   status: string;
   authorId: string | null;
   reviewNote: string | null;
@@ -53,6 +55,7 @@ async function fetchRecipes(
   if (filters.goal) params.set('goal', filters.goal);
   if (filters.aiRecommended !== undefined)
     params.set('aiRecommended', String(filters.aiRecommended));
+  if (filters.featured !== undefined) params.set('featured', String(filters.featured));
   params.set('page', String(page));
   params.set('limit', String(limit));
 
@@ -191,6 +194,34 @@ export function useChangeRecipeStatus() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to change status');
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['recipes'] });
+      qc.invalidateQueries({ queryKey: ['recipe', variables.id] });
+    },
+  });
+}
+
+export function useSetFeatured() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      featured,
+    }: {
+      id: string;
+      featured: boolean;
+    }): Promise<RecipeDTO> => {
+      const res = await fetchWithAuth(`/api/v1/recipes/${id}/featured`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update featured status');
       }
       return res.json();
     },

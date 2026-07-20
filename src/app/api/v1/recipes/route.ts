@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
             ? false
             : undefined,
       status: (searchParams.get('status') as RecipeStatus) || undefined,
+      featured:
+        searchParams.get('featured') === 'true'
+          ? true
+          : searchParams.get('featured') === 'false'
+            ? false
+            : undefined,
     };
 
     const page = Math.max(1, Number(searchParams.get('page')) || 1);

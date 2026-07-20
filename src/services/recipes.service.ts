@@ -14,7 +14,12 @@ export interface RecipeFilters {
   goal?: string;
   aiRecommended?: boolean;
   status?: RecipeStatus;
+  featured?: boolean;
 }
+
+// Keeps the homepage carousel readable — an editorial curation limit, not a
+// technical one (see setRecipeFeatured below).
+const MAX_FEATURED_RECIPES = 8;
 
 export interface Pagination {
   page: number;
@@ -64,6 +69,10 @@ export async function listRecipes(
     where.aiRecommended = filters.aiRecommended;
   }
 
+  if (filters.featured !== undefined) {
+    where.featured = filters.featured;
+  }
+
   // Status filtering based on role
   if (filters.status && user && (user.role === 'editor' || user.role === 'admin')) {
     where.status = filters.status;
@@ -80,7 +89,9 @@ export async function listRecipes(
     db.recipe.findMany({
       where,
       include: recipeInclude,
-      orderBy: { createdAt: 'desc' },
+      // A curated carousel should follow the admin's chosen order, not
+      // recency.
+      orderBy: filters.featured === true ? { featuredOrder: 'asc' } : { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -334,6 +345,53 @@ export async function changeRecipeStatus(
       publishedAt: newStatus === 'published' ? (recipe.publishedAt ?? new Date()) : null,
       reviewNote: newStatus === 'rejected' ? recipe.reviewNote : null,
     },
+    include: recipeInclude,
+  });
+}
+
+// ─── Feature recipe on the homepage carousel (editor/admin) ──
+
+export async function setRecipeFeatured(
+  id: string,
+  featured: boolean,
+  user: JwtPayload,
+) {
+  if (!canManagePublicationStatus(user)) {
+    throw new ForbiddenError('Only editors and admins can feature a recipe');
+  }
+
+  const recipe = await db.recipe.findUnique({ where: { id } });
+  if (!recipe) throw new NotFoundError('Recipe not found');
+
+  if (featured && !recipe.featured) {
+    const count = await db.recipe.count({ where: { featured: true } });
+    if (count >= MAX_FEATURED_RECIPES) {
+      throw new ValidationError(
+        `Cannot feature more than ${MAX_FEATURED_RECIPES} recipes at once`,
+      );
+    }
+  }
+
+  // New features are appended to the end of the curated order; un-featuring
+  // clears it. No reordering UI in this first pass — an editor/admin who
+  // wants a different order can un-feature and re-feature to move an item
+  // to the end.
+  let featuredOrder: number | null = null;
+  if (featured) {
+    if (recipe.featured) {
+      featuredOrder = recipe.featuredOrder;
+    } else {
+      const { _max } = await db.recipe.aggregate({
+        where: { featured: true },
+        _max: { featuredOrder: true },
+      });
+      featuredOrder = (_max.featuredOrder ?? -1) + 1;
+    }
+  }
+
+  return db.recipe.update({
+    where: { id },
+    data: { featured, featuredOrder },
     include: recipeInclude,
   });
 }

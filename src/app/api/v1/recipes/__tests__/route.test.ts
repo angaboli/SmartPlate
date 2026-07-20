@@ -72,6 +72,22 @@ describe('GET /api/v1/recipes', () => {
     );
   });
 
+  it('parses the featured filter from the query string', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(null);
+    vi.mocked(listRecipes).mockResolvedValue({
+      data: [],
+      meta: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    } as never);
+
+    await GET(makeGetRequest('?featured=true'));
+
+    expect(listRecipes).toHaveBeenCalledWith(
+      expect.objectContaining({ featured: true }),
+      null,
+      { page: 1, limit: 20 },
+    );
+  });
+
   it('clamps limit to 100 and page to a minimum of 1', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
     vi.mocked(listRecipes).mockResolvedValue({

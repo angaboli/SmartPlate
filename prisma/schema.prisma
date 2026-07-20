@@ -118,6 +118,8 @@ model Recipe {
   isImported     Boolean      @default(false)
   sourceUrl      String?
   sourceProvider String?
+  featured       Boolean      @default(false)
+  featuredOrder  Int?
 
   status         RecipeStatus @default(draft)
   publishedAt    DateTime?

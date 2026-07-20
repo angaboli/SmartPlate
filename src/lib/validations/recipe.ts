@@ -77,7 +77,12 @@ export const changeRecipeStatusSchema = z.object({
   status: z.enum(['draft', 'pending_review', 'published', 'rejected']),
 });
 
+export const setFeaturedSchema = z.object({
+  featured: z.boolean(),
+});
+
 export type CreateRecipeInput = z.infer<typeof createRecipeSchema>;
 export type UpdateRecipeInput = z.infer<typeof updateRecipeSchema>;
 export type ReviewRecipeInput = z.infer<typeof reviewRecipeSchema>;
 export type ChangeRecipeStatusInput = z.infer<typeof changeRecipeStatusSchema>;
+export type SetFeaturedInput = z.infer<typeof setFeaturedSchema>;

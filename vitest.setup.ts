@@ -28,4 +28,31 @@ if (typeof Element !== 'undefined') {
       disconnect() {}
     };
   }
+  // embla-carousel-react (src/components/ui/carousel.tsx) also uses this
+  // to detect slide visibility — same jsdom gap as ResizeObserver above.
+  if (typeof globalThis.IntersectionObserver === 'undefined') {
+    globalThis.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    } as unknown as typeof IntersectionObserver;
+  }
+  // embla-carousel-react (src/components/ui/carousel.tsx) calls
+  // window.matchMedia on mount to watch for reduced-motion/breakpoint
+  // changes — jsdom doesn't implement it at all.
+  if (typeof window.matchMedia !== 'function') {
+    window.matchMedia = (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+  }
 }
