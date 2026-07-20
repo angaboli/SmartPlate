@@ -308,19 +308,21 @@ Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt q
 
 ## Backlog — Carrousel de recettes mises en avant sous le hero (page d'accueil)
 
-> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-17).
+> **Statut** : ✅ Implémentée (2026-07-20), vérifiée dans un vrai navigateur après correction d'un bug de câblage découvert pendant la vérification.
 
-### Objectif
+### Ce qui a été fait
 
-Sur `src/app/page.tsx`, juste sous la section Hero (ligne ~44), ajouter un slider/carrousel affichant quelques éléments (recettes) choisis manuellement par un admin — pas une sélection automatique (ex: `aiRecommended`, plus récent, plus populaire), mais une mise en avant éditoriale contrôlée.
+1. **Schéma** — `Recipe.featured Boolean @default(false)` + `Recipe.featuredOrder Int?` (migration `20260720184601_recipe_featured`, appliquée via `prisma migrate deploy`), exactement le champ proposé à l'origine.
+2. **`setRecipeFeatured()`** (`src/services/recipes.service.ts`) — réservé editor/admin (`canManagePublicationStatus`), plafond de 8 recettes en vedette simultanément (`MAX_FEATURED_RECIPES`), ordre attribué automatiquement en fin de liste à la mise en vedette (pas de réordonnancement manuel dans cette v1 — retirer puis remettre en vedette pour déplacer un élément en fin de liste). Nouvelle route `PATCH /api/v1/recipes/[id]/featured`, même pattern que `/status`.
+3. **`listRecipes()`** — nouveau filtre `featured?: boolean` (même pattern que `aiRecommended`), tri par `featuredOrder: 'asc'` quand `featured: true` est demandé (au lieu de `createdAt: 'desc'`) pour respecter l'ordre éditorial choisi.
+4. **UI admin** — toggle `Switch` dans `src/app/dashboard/recipes/manage/page.tsx` (nouvelle colonne "Featured" dans le tableau).
+5. **Carrousel** — `src/components/FeaturedRecipesCarousel.tsx`, sous la section Hero de `src/app/page.tsx`. Utilise `src/components/ui/carousel.tsx` (primitive shadcn/embla-carousel-react déjà présente dans les dépendances mais jamais utilisée jusqu'ici) et réutilise `RecipeCard` tel quel pour chaque slide. Ne rend rien pendant le chargement ni s'il n'y a aucune recette en vedette (pas de section vide/cassée sur la page d'accueil).
+6. **Bug trouvé et corrigé pendant la vérification manuelle** : la route `GET /api/v1/recipes/route.ts` ne lisait jamais le paramètre `?featured=` de la query string — le filtre était bien implémenté dans `listRecipes()` et le hook client, mais jamais réellement transmis depuis la route elle-même. Résultat en test manuel : le carrousel affichait les mêmes recettes par défaut (les plus anciennes) peu importe ce qui était réellement marqué "en vedette" en base. Diagnostic initial erroné (redémarrage du serveur dev demandé en pensant à un client Prisma périmé, comme l'incident `mealTypes` du 17/07) — le vrai correctif était de faire lire `searchParams.get('featured')` dans la route, exactement comme `aiRecommended`. 1 test dédié ajouté sur cette route pour éviter que ce trou de câblage se reproduise silencieusement.
+7. **Tests** : 8 tests `setRecipeFeatured`/filtre `listRecipes`, 5 tests route `/featured`, 1 test route `/recipes` (paramètre `featured`), 4 tests composant `FeaturedRecipesCarousel`. Polyfills `matchMedia`/`IntersectionObserver` ajoutés à `vitest.setup.ts` (embla-carousel-react en a besoin, absents de jsdom). **Vérifié dans un vrai navigateur** : 3 recettes marquées en vedette directement en base apparaissent dans le bon ordre sur la page d'accueil, avec flèches précédent/suivant fonctionnelles ; suite complète (453 tests)/tsc/eslint/build de prod tous verts.
 
-### Approche technique à explorer
+### Objectif d'origine (pour référence)
 
-1. **Marquer un contenu comme "en vedette"** — option simple : réutiliser le pattern déjà existant sur `Recipe` (`aiRecommended: Boolean` dans `prisma/schema.prisma`) en ajoutant un champ similaire, ex. `featured: Boolean @default(false)` + `featuredOrder: Int?` pour contrôler l'ordre d'affichage dans le slider (nécessiterait une migration Prisma, même mécanique que celle faite pour `Recipe.mealTypes`/`SavedRecipe.tags` le 2026-07-17).
-2. **UI admin** — un toggle "Mettre en vedette" quelque part dans `src/app/dashboard/recipes/manage/page.tsx` (la page de gestion des recettes déjà réservée aux editor/admin) ou dans `RecipeForm.tsx` lui-même (visible seulement si `isAdmin`, même pattern que le champ "Status"). Prévoir une limite raisonnable du nombre d'éléments en vedette simultanément (ex: 5-8) pour que le slider reste lisible.
-3. **Composant slider** — pas de librairie de carrousel dans les dépendances actuelles (`package.json`) ; à choisir : une implémentation maison légère (scroll horizontal + boutons précédent/suivant, cohérent avec le reste de l'UI shadcn) ou une librairie dédiée (embla-carousel, déjà utilisée par certains composants shadcn/ui — à vérifier si `src/components/ui/` en contient déjà une variante inutilisée).
-4. **API** — `GET /api/v1/recipes` accepte déjà un objet `RecipeFilters` (`src/services/recipes.service.ts`) ; ajouter `featured?: boolean` au filtre plutôt que créer un nouvel endpoint dédié, cohérent avec le filtre `aiRecommended` existant.
-5. **RBAC** — seul editor/admin doit pouvoir modifier `featured` (réutiliser `requireRole`/`canManagePublicationStatus` déjà en place), mais le champ doit être lisible publiquement (page d'accueil non authentifiée).
+Sur `src/app/page.tsx`, juste sous la section Hero, ajouter un slider/carrousel affichant quelques éléments (recettes) choisis manuellement par un admin — pas une sélection automatique (ex: `aiRecommended`, plus récent, plus populaire), mais une mise en avant éditoriale contrôlée.
 
 ---
 
