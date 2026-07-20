@@ -271,6 +271,14 @@ Second gap découvert en creusant : `reviewRecipe()` (`src/services/recipes.serv
 7. **API** : nouvel endpoint dédié `POST /api/v1/meal-logs/scan` (plutôt qu'étendre `POST /api/v1/meal-logs`) — évite un corps de requête polymorphe (texte vs photo) avec des champs conditionnellement requis sur la même route.
 8. **Tests** : `createMealLogFromPhoto` (4 tests : succès, data URL malformée, MIME refusé, taille dépassée) dans `meal-log.service.test.ts` ; `scanMealPhotoSchema` (5 tests) dans `validations/__tests__/meal-log.test.ts`. `ai.service.ts` reste non testé unitairement (comme le reste du fichier, appels OpenAI réels) — validé à la place par le script de fumée en conditions réelles.
 
+### Reste à faire — le scan photo n'alimente pas le bloc texte "Qu'avez-vous mangé aujourd'hui ?"
+
+**Demandé par l'utilisateur (2026-07-20)** : après un scan photo, la description générée par l'IA (`mealDescription`, déjà stockée comme `MealLog.mealText` — voir point 1 ci-dessus) n'est actuellement affichée que dans `AIAnalysisCard`/`SmartSuggestions`, jamais réinjectée dans le textarea de `MealInput.tsx` (`mealText`/`t('mealInput.whatDidYouEat')`). Résultat : ce bloc ne reflète pas ce qui a été mangé quand l'entrée se fait par photo, alors qu'il fonctionne comme un journal en texte libre pour la saisie manuelle.
+
+**Comportement voulu** : que ce soit une saisie texte ou un scan photo, le contenu doit finir par apparaître dans le bloc texte — après un scan réussi, ajouter la description reconnue (`mealDescription`) à la suite du texte déjà présent dans le textarea (pas un remplacement, pour permettre plusieurs scans/saisies dans la même session), de la même manière que le "Quick Add" (`MealInput.tsx`) ajoute déjà un élément au texte existant plutôt que de l'écraser.
+
+**Piste technique** : dans `src/app/dashboard/page.tsx`, `handleScanPhoto`'s `onSuccess` reçoit déjà `data` (le `MealLogDTO` complet, avec `data.mealText`) — il suffit de faire remonter ce texte à `MealInput` (ex: nouveau prop `onPhotoDescriptionAdded?: (text: string) => void` appelé après un scan réussi, que `MealInput` utilise pour faire `setMealText((prev) => prev ? \`${prev}, ${text}\` : text)`, même logique que `handleQuickAdd`).
+
 ---
 
 ## Backlog — Carrousel de recettes mises en avant sous le hero (page d'accueil)
