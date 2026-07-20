@@ -8,3 +8,24 @@ import { cleanup } from '@testing-library/react';
 afterEach(() => {
   cleanup();
 });
+
+// This setup file runs for every test file, including the ones using the
+// default 'node' environment (no `Element`/DOM globals) — only patch when
+// a jsdom environment actually provided them.
+if (typeof Element !== 'undefined') {
+  // jsdom doesn't implement these, but Radix UI primitives (Select,
+  // Popover, Dropdown...) call them when opening/positioning content.
+  if (typeof Element.prototype.hasPointerCapture !== 'function') {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (typeof Element.prototype.scrollIntoView !== 'function') {
+    Element.prototype.scrollIntoView = () => {};
+  }
+  if (typeof globalThis.ResizeObserver === 'undefined') {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
+}
