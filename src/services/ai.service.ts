@@ -536,37 +536,51 @@ const MAX_CAPTION_INPUT_CHARS = 4000;
 
 const CaptionStructureResultSchema = z.object({
   title: z.string(),
+  description: z.string().nullable(),
+  prepTimeMin: z.number().int().positive().nullable(),
+  cookTimeMin: z.number().int().positive().nullable(),
+  servings: z.number().int().positive().nullable(),
   ingredients: z.array(z.string()),
   steps: z.array(z.string()),
 });
 
 export type CaptionStructureResult = z.infer<typeof CaptionStructureResultSchema>;
 
-const CAPTION_STRUCTURE_SYSTEM_PROMPT = `You are a recipe caption parser for SmartPlate. You will be given a raw social media caption (e.g. from an Instagram or TikTok post) that may describe a recipe.
+const CAPTION_STRUCTURE_SYSTEM_PROMPT = `You are a recipe caption parser for SmartPlate. You will be given a raw social media caption (e.g. from an Instagram, TikTok, or YouTube post) that may describe a recipe.
 
-Extract a clean, short recipe title, and split any ingredients from any preparation steps.
+Extract a clean, short recipe title, split any ingredients from any preparation steps, and propose any of description/prepTimeMin/cookTimeMin/servings that are missing from the caption but can be reasonably estimated from the ingredients and steps you found.
 
 Rules:
 - Ignore hashtags, emojis used purely as decoration, calls-to-action ("follow for more", "link in bio"), and unrelated commentary.
 - "title" must be a short, clean recipe name — never the full caption.
 - If the caption doesn't clearly contain ingredients and/or steps, return an empty array for that field rather than guessing.
 - Do not invent ingredients or steps that are not present in the text.
+- "description" — if the caption already contains an appetizing 1-2 sentence description of the dish, use it (cleaned up); otherwise write a short original one yourself based on the ingredients/steps. Null only if you found no real ingredients/steps to describe.
+- "prepTimeMin"/"cookTimeMin"/"servings" — if the caption states them, use those values; otherwise propose a realistic estimate based on standard cooking practice for the specific ingredients/quantities/steps found (cookTimeMin should be null, not 0, for a dish with no cooking step, e.g. a raw salad). Null for any of these you cannot reasonably estimate — never guess wildly.
 - Preserve the original language of the caption in your output.
 - Return ONLY the JSON object, no markdown formatting, no code blocks.
 
 Return a JSON object with this exact structure:
 {
   "title": "...",
+  "description": "..." | null,
+  "prepTimeMin": <integer minutes> | null,
+  "cookTimeMin": <integer minutes> | null,
+  "servings": <integer> | null,
   "ingredients": ["..."],
   "steps": ["..."]
 }`;
 
 /**
- * Structures a raw social-media caption into a clean title/ingredients/steps
- * shape. Used by the import-extraction Open Graph fallback (src/services/
- * import-extractor.ts), which today only has an unstructured caption to work
- * with — real JSON-LD recipe sites already provide structured data and never
- * call this.
+ * Structures a raw social-media caption into a clean title/description/
+ * ingredients/steps/timing/servings shape, proposing values for anything
+ * missing from the caption when it can be reasonably estimated from the
+ * ingredients/steps found. Used by the import-extraction Open Graph
+ * fallback (src/services/import-extractor.ts), which today only has an
+ * unstructured caption to work with — real JSON-LD recipe sites already
+ * provide structured data and never call this (see
+ * proposeMissingRecipeFields below for backfilling gaps in that path
+ * instead).
  */
 export async function structureRecipeCaption(
   rawText: string,
@@ -588,4 +602,70 @@ export async function structureRecipeCaption(
 
   const parsed = JSON.parse(content);
   return CaptionStructureResultSchema.parse(parsed);
+}
+
+// ─── Propose missing recipe fields (JSON-LD gap-filling) ─────
+
+const ProposedRecipeFieldsSchema = z.object({
+  description: z.string().nullable(),
+  prepTimeMin: z.number().int().positive().nullable(),
+  cookTimeMin: z.number().int().positive().nullable(),
+  servings: z.number().int().positive().nullable(),
+});
+
+export type ProposedRecipeFields = z.infer<typeof ProposedRecipeFieldsSchema>;
+
+const PROPOSE_MISSING_FIELDS_SYSTEM_PROMPT = `You are a professional recipe assistant for SmartPlate. You will be given a recipe's title, ingredients, and steps (already extracted from a real source), where some metadata is missing.
+
+Propose realistic values for description/prepTimeMin/cookTimeMin/servings based on standard cooking practice for the specific ingredients, quantities, and steps given.
+
+Rules:
+- "description" — a short, appetizing 1-2 sentence description of the dish.
+- "prepTimeMin"/"cookTimeMin" — realistic estimates in minutes. cookTimeMin should be null (not 0) if the steps involve no cooking (e.g. a raw salad or no-bake dish).
+- "servings" — a realistic estimate from the ingredient quantities given.
+- Null for any field you cannot reasonably estimate from what's given — never guess wildly.
+- Match the language of the provided title/ingredients/steps.
+- Return ONLY the JSON object, no markdown formatting, no code blocks.
+
+Return a JSON object with this exact structure:
+{
+  "description": "..." | null,
+  "prepTimeMin": <integer minutes> | null,
+  "cookTimeMin": <integer minutes> | null,
+  "servings": <integer> | null
+}`;
+
+/**
+ * Proposes values for description/prepTimeMin/cookTimeMin/servings when a
+ * JSON-LD-sourced recipe (real recipe sites, which usually already provide
+ * most fields deterministically) is missing some of them. Only called by
+ * import-extractor.ts when there's an actual gap to fill and real
+ * ingredients/steps exist to reason from — most JSON-LD imports never hit
+ * this, since the source page already provides everything.
+ */
+export async function proposeMissingRecipeFields(input: {
+  title: string;
+  ingredients: string[];
+  steps: string[];
+}): Promise<ProposedRecipeFields> {
+  const response = await createChatCompletion({
+    model: 'gpt-4o-mini',
+    temperature: 0.3,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: PROPOSE_MISSING_FIELDS_SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: `Title: ${input.title}\n\nIngredients:\n${input.ingredients.join('\n')}\n\nSteps:\n${input.steps.join('\n')}`,
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error('AI returned an empty response');
+  }
+
+  const parsed = JSON.parse(content);
+  return ProposedRecipeFieldsSchema.parse(parsed);
 }

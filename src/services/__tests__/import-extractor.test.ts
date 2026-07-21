@@ -6,11 +6,27 @@ vi.mock('@/lib/storage', () => ({
 }));
 vi.mock('../ai.service', () => ({
   structureRecipeCaption: vi.fn(),
+  proposeMissingRecipeFields: vi.fn(),
 }));
 
 import { extractRecipeFromUrl } from '../import-extractor';
 import { uploadObject } from '@/lib/storage';
-import { structureRecipeCaption } from '../ai.service';
+import { structureRecipeCaption, proposeMissingRecipeFields } from '../ai.service';
+
+function mockStructuredCaption(
+  overrides: Partial<Awaited<ReturnType<typeof structureRecipeCaption>>>,
+) {
+  vi.mocked(structureRecipeCaption).mockResolvedValue({
+    title: '',
+    description: null,
+    prepTimeMin: null,
+    cookTimeMin: null,
+    servings: null,
+    ingredients: [],
+    steps: [],
+    ...overrides,
+  });
+}
 
 const JSON_LD_HTML = (imageUrl: string) => `
 <html><head>
@@ -124,7 +140,7 @@ const OG_ONLY_HTML = (description: string) => `
 
 describe('extractRecipeFromUrl — caption structuring (Open Graph fallback)', () => {
   it('structures the caption into a clean title/ingredients/steps and clears isPartial', async () => {
-    vi.mocked(structureRecipeCaption).mockResolvedValue({
+    mockStructuredCaption({
       title: 'Creamy Chicken Pasta',
       ingredients: ['200g pasta', '2 chicken breasts'],
       steps: ['Cook the pasta', 'Grill the chicken'],
@@ -161,7 +177,7 @@ describe('extractRecipeFromUrl — caption structuring (Open Graph fallback)', (
     // that case would silently throw away the only place left for the
     // user to see and manually copy the recipe text — strictly worse than
     // pre-AI behavior, not an improvement.
-    vi.mocked(structureRecipeCaption).mockResolvedValue({
+    mockStructuredCaption({
       title: 'A Nice Dish',
       ingredients: [],
       steps: [],
@@ -253,13 +269,134 @@ const YOUTUBE_HTML = (fullDescription: string) => `
 </body></html>
 `;
 
+describe('extractRecipeFromUrl — AI-proposed description/timing/servings (Open Graph fallback)', () => {
+  it('uses the AI-proposed fields when real structure was found', async () => {
+    mockStructuredCaption({
+      title: 'Creamy Chicken Pasta',
+      description: 'A quick, creamy weeknight pasta with grilled chicken.',
+      prepTimeMin: 10,
+      cookTimeMin: 20,
+      servings: 4,
+      ingredients: ['200g pasta', '2 chicken breasts'],
+      steps: ['Cook the pasta', 'Grill the chicken'],
+    });
+    mockFetchSequence([{ text: async () => OG_ONLY_HTML('Creamy chicken pasta caption') }]);
+
+    const result = await extractRecipeFromUrl('https://instagram.com/p/abc');
+
+    expect(result.description).toBe('A quick, creamy weeknight pasta with grilled chicken.');
+    expect(result.prepTimeMin).toBe(10);
+    expect(result.cookTimeMin).toBe(20);
+    expect(result.servings).toBe(4);
+  });
+
+  it('keeps the raw description and leaves timing/servings null when no structure was found', async () => {
+    mockStructuredCaption({
+      title: '',
+      description: 'Should be ignored',
+      prepTimeMin: 10,
+      ingredients: [],
+      steps: [],
+    });
+    mockFetchSequence([{ text: async () => OG_ONLY_HTML('Just a nice dish, no clear format') }]);
+
+    const result = await extractRecipeFromUrl('https://instagram.com/p/abc');
+
+    expect(result.description).toBe('Just a nice dish, no clear format');
+    expect(result.prepTimeMin).toBeNull();
+  });
+});
+
+const JSON_LD_HTML_PARTIAL = () => `
+<html><head>
+<script type="application/ld+json">
+${JSON.stringify({
+  '@type': 'Recipe',
+  name: 'Test Recipe',
+  prepTime: 'PT10M',
+  recipeIngredient: ['1 egg', '1 cup flour'],
+  recipeInstructions: ['Mix', 'Bake'],
+})}
+</script>
+</head><body></body></html>
+`;
+
+describe('extractRecipeFromUrl — proposing missing fields for JSON-LD recipes', () => {
+  it('fills only the gaps, leaving fields the source already provided untouched', async () => {
+    vi.mocked(proposeMissingRecipeFields).mockResolvedValue({
+      description: 'A simple baked egg and flour dish.',
+      prepTimeMin: 999, // should be ignored — prepTime was already provided
+      cookTimeMin: 25,
+      servings: 2,
+    });
+    mockFetchSequence([{ text: async () => JSON_LD_HTML_PARTIAL() }]);
+
+    const result = await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(proposeMissingRecipeFields).toHaveBeenCalledWith({
+      title: 'Test Recipe',
+      ingredients: ['1 egg', '1 cup flour'],
+      steps: ['Mix', 'Bake'],
+    });
+    expect(result.prepTimeMin).toBe(10); // from JSON-LD, untouched
+    expect(result.description).toBe('A simple baked egg and flour dish.');
+    expect(result.cookTimeMin).toBe(25);
+    expect(result.servings).toBe(2);
+  });
+
+  it('does not call the AI when the source already provides every field', async () => {
+    mockFetchSequence([{
+      text: async () => `<html><head><script type="application/ld+json">${JSON.stringify({
+        '@type': 'Recipe',
+        name: 'Complete Recipe',
+        description: 'Already has one.',
+        prepTime: 'PT10M',
+        cookTime: 'PT20M',
+        recipeYield: '4 servings',
+        recipeIngredient: ['1 egg'],
+        recipeInstructions: ['Cook it'],
+      })}</script></head><body></body></html>`,
+    }]);
+
+    await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(proposeMissingRecipeFields).not.toHaveBeenCalled();
+  });
+
+  it('does not call the AI when there are no ingredients/steps to reason from', async () => {
+    mockFetchSequence([{
+      text: async () => `<html><head><script type="application/ld+json">${JSON.stringify({
+        '@type': 'Recipe',
+        name: 'Empty Recipe',
+      })}</script></head><body></body></html>`,
+    }]);
+
+    await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(proposeMissingRecipeFields).not.toHaveBeenCalled();
+  });
+
+  it('does not call the AI for the Open Graph fallback path (already covered by structureRecipeCaption)', async () => {
+    mockStructuredCaption({
+      title: 'A Dish',
+      ingredients: ['1 egg'],
+      steps: ['Cook it'],
+    });
+    mockFetchSequence([{ text: async () => OG_ONLY_HTML('A caption') }]);
+
+    await extractRecipeFromUrl('https://instagram.com/p/abc');
+
+    expect(proposeMissingRecipeFields).not.toHaveBeenCalled();
+  });
+});
+
 describe('extractRecipeFromUrl — YouTube full description (og:description is truncated)', () => {
   it('structures the caption from the full embedded description, not the truncated og:description', async () => {
     const fullDescription =
       'Best Tabbouleh Recipe! Watch how I make this fresh salad in under 20 minutes.\n\n' +
       'Ingredients:\n- 1 cup bulgur\n- 1 bunch parsley\n- 2 tomatoes\n\n' +
       'Steps:\n1. Soak the bulgur\n2. Chop everything\n3. Mix and serve';
-    vi.mocked(structureRecipeCaption).mockResolvedValue({
+    mockStructuredCaption({
       title: 'Tabbouleh',
       ingredients: ['1 cup bulgur', '1 bunch parsley', '2 tomatoes'],
       steps: ['Soak the bulgur', 'Chop everything', 'Mix and serve'],
@@ -276,7 +413,7 @@ describe('extractRecipeFromUrl — YouTube full description (og:description is t
   });
 
   it('falls back to the truncated og:description when shortDescription is absent', async () => {
-    vi.mocked(structureRecipeCaption).mockResolvedValue({
+    mockStructuredCaption({
       title: '',
       ingredients: [],
       steps: [],
@@ -292,7 +429,7 @@ describe('extractRecipeFromUrl — YouTube full description (og:description is t
   });
 
   it('does not apply the YouTube full-description logic to non-YouTube URLs', async () => {
-    vi.mocked(structureRecipeCaption).mockResolvedValue({
+    mockStructuredCaption({
       title: '',
       ingredients: [],
       steps: [],

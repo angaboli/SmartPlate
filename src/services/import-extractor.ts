@@ -6,7 +6,7 @@ import {
   MAX_UPLOAD_SIZE_BYTES,
   MIME_EXTENSIONS,
 } from '@/lib/validations/upload';
-import { structureRecipeCaption } from '@/services/ai.service';
+import { structureRecipeCaption, proposeMissingRecipeFields } from '@/services/ai.service';
 
 export interface ExtractedRecipe {
   title: string;
@@ -238,33 +238,46 @@ async function extractFromOpenGraph(
     '';
   const ogDescription =
     $('meta[property="og:description"]').attr('content')?.trim() || null;
-  const description = fullDescription || ogDescription;
+  const rawDescription = fullDescription || ogDescription;
   const imageUrl =
     $('meta[property="og:image"]').attr('content')?.trim() || null;
 
   let title = ogTitle;
+  let description = rawDescription;
+  let prepTimeMin: number | null = null;
+  let cookTimeMin: number | null = null;
+  let servings: number | null = null;
   let ingredients: string[] = [];
   let steps: string[] = [];
 
-  if (description) {
+  if (rawDescription) {
     try {
-      const structured = await structureRecipeCaption(description);
+      const structured = await structureRecipeCaption(rawDescription);
       const foundStructure = structured.ingredients.length > 0 || structured.steps.length > 0;
-      // Only trust the AI's title when it also found real ingredients/steps.
-      // Many real captions are unstructured prose the AI can't split at
-      // all — in that case the raw og:title (which, for Instagram/TikTok,
-      // is often the full caption) is the only place left for the user to
-      // see and manually copy the recipe text. Overwriting it with a
-      // "clean" but empty-handed title would silently throw that text
-      // away, turning an already-imperfect import into a strictly worse
-      // one.
+      // Only trust the AI's fields when it also found real ingredients/
+      // steps. Many real captions are unstructured prose the AI can't
+      // split at all — in that case the raw og:title (which, for
+      // Instagram/TikTok, is often the full caption) is the only place
+      // left for the user to see and manually copy the recipe text.
+      // Overwriting it with "clean" but empty-handed fields would
+      // silently throw that text away, turning an already-imperfect
+      // import into a strictly worse one.
       if (foundStructure) {
         if (structured.title) title = structured.title;
         ingredients = structured.ingredients;
         steps = structured.steps;
+        // Same reasoning for description: prefer the AI's short, clean
+        // one, but only once we know it actually engaged with real
+        // recipe content — otherwise keep the raw caption/description
+        // as the fallback the user can still read.
+        if (structured.description) description = structured.description;
+        prepTimeMin = structured.prepTimeMin;
+        cookTimeMin = structured.cookTimeMin;
+        servings = structured.servings;
       }
     } catch {
-      // Fall through with the raw og:title and empty ingredients/steps.
+      // Fall through with the raw og:title/description and empty
+      // ingredients/steps/timing/servings.
     }
   }
 
@@ -272,9 +285,9 @@ async function extractFromOpenGraph(
     title,
     description,
     imageUrl,
-    prepTimeMin: null,
-    cookTimeMin: null,
-    servings: null,
+    prepTimeMin,
+    cookTimeMin,
+    servings,
     calories: null,
     ingredients,
     steps,
@@ -404,11 +417,48 @@ export async function extractRecipeFromUrl(
     }
   }
 
+  const fromJsonLd = extracted !== null;
+
   // Strategy 2: Open Graph fallback
   if (!extracted) {
     const fullDescription =
       provider === 'youtube' ? extractYouTubeFullDescription(html) : null;
     extracted = await extractFromOpenGraph($, provider, fullDescription);
+  }
+
+  // JSON-LD recipe sites usually already provide everything, but some omit
+  // a description, cook time, or servings. The Open Graph fallback path
+  // above already asks the AI to propose these in the same call as the
+  // title/ingredients/steps structuring (structureRecipeCaption), so this
+  // only runs for the JSON-LD path — avoids a second, redundant AI call on
+  // the same import for fields that call already tried to fill.
+  if (fromJsonLd && extracted.ingredients.length > 0) {
+    const missingDescription = !extracted.description;
+    const missingTiming =
+      extracted.prepTimeMin == null || extracted.cookTimeMin == null || extracted.servings == null;
+    if (missingDescription || missingTiming) {
+      try {
+        const proposed = await proposeMissingRecipeFields({
+          title: extracted.title,
+          ingredients: extracted.ingredients,
+          steps: extracted.steps,
+        });
+        if (missingDescription && proposed.description) {
+          extracted.description = proposed.description;
+        }
+        if (extracted.prepTimeMin == null && proposed.prepTimeMin != null) {
+          extracted.prepTimeMin = proposed.prepTimeMin;
+        }
+        if (extracted.cookTimeMin == null && proposed.cookTimeMin != null) {
+          extracted.cookTimeMin = proposed.cookTimeMin;
+        }
+        if (extracted.servings == null && proposed.servings != null) {
+          extracted.servings = proposed.servings;
+        }
+      } catch {
+        // Best-effort — leave the gaps as extracted (possibly still null).
+      }
+    }
   }
 
   if (extracted.imageUrl) {
