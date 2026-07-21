@@ -23,6 +23,32 @@ export interface ExtractedRecipe {
 }
 
 /**
+ * Extracts the full, untruncated video description from a YouTube watch
+ * page's raw HTML. YouTube's og:description meta tag is always truncated
+ * to ~200 characters — nowhere near enough to reach a recipe video's
+ * ingredients/steps section, which is usually further down. The complete
+ * description is embedded as a JSON string field ("shortDescription")
+ * inside a large inline script blob (ytInitialPlayerResponse) that every
+ * watch page ships — the same field tools like yt-dlp read. No YouTube
+ * API key needed, but it depends on an undocumented internal field that
+ * YouTube could change without notice; best-effort only, with the
+ * caller falling back to the (truncated) og:description on any failure.
+ */
+function extractYouTubeFullDescription(html: string): string | null {
+  const match = html.match(/"shortDescription":"((?:\\.|[^"\\])*)"/);
+  if (!match) return null;
+  try {
+    // The captured text is the raw (escaped) body of a JSON string —
+    // wrapping it back in quotes and parsing it is the simplest correct
+    // way to undo those escapes (\n, \", unicode, etc.).
+    const decoded = JSON.parse(`"${match[1]}"`);
+    return typeof decoded === 'string' ? decoded.trim() || null : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Detect provider from URL hostname.
  */
 function detectProvider(url: string): ExtractedRecipe['provider'] {
@@ -194,17 +220,25 @@ function extractFromJsonLd(
  * og:title with empty ingredients/steps — the exact behavior this had
  * before the AI step existed — so this never turns a previously-working
  * import into a failed one.
+ *
+ * @param fullDescription For YouTube, og:description is truncated by
+ * YouTube itself (~200 chars) and routinely cuts off before reaching a
+ * video's ingredients/steps section. When available (see
+ * extractYouTubeFullDescription below), the untruncated description is
+ * passed in here and preferred over the OG tag.
  */
 async function extractFromOpenGraph(
   $: cheerio.CheerioAPI,
   provider: ExtractedRecipe['provider'],
+  fullDescription?: string | null,
 ): Promise<ExtractedRecipe> {
   const ogTitle =
     $('meta[property="og:title"]').attr('content')?.trim() ||
     $('title').text().trim() ||
     '';
-  const description =
+  const ogDescription =
     $('meta[property="og:description"]').attr('content')?.trim() || null;
+  const description = fullDescription || ogDescription;
   const imageUrl =
     $('meta[property="og:image"]').attr('content')?.trim() || null;
 
@@ -372,7 +406,9 @@ export async function extractRecipeFromUrl(
 
   // Strategy 2: Open Graph fallback
   if (!extracted) {
-    extracted = await extractFromOpenGraph($, provider);
+    const fullDescription =
+      provider === 'youtube' ? extractYouTubeFullDescription(html) : null;
+    extracted = await extractFromOpenGraph($, provider, fullDescription);
   }
 
   if (extracted.imageUrl) {

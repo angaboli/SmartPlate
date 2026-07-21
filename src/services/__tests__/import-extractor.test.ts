@@ -243,3 +243,68 @@ describe('extractRecipeFromUrl — calories from JSON-LD nutrition info', () => 
     expect(result.calories).toBeNull();
   });
 });
+
+const YOUTUBE_HTML = (fullDescription: string) => `
+<html><head>
+<meta property="og:title" content="Best Tabbouleh Recipe" />
+<meta property="og:description" content="Best Tabbouleh Recipe! Watch how I make this fresh salad in under 20 minutes..." />
+</head><body>
+<script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":${JSON.stringify(fullDescription)}}};</script>
+</body></html>
+`;
+
+describe('extractRecipeFromUrl — YouTube full description (og:description is truncated)', () => {
+  it('structures the caption from the full embedded description, not the truncated og:description', async () => {
+    const fullDescription =
+      'Best Tabbouleh Recipe! Watch how I make this fresh salad in under 20 minutes.\n\n' +
+      'Ingredients:\n- 1 cup bulgur\n- 1 bunch parsley\n- 2 tomatoes\n\n' +
+      'Steps:\n1. Soak the bulgur\n2. Chop everything\n3. Mix and serve';
+    vi.mocked(structureRecipeCaption).mockResolvedValue({
+      title: 'Tabbouleh',
+      ingredients: ['1 cup bulgur', '1 bunch parsley', '2 tomatoes'],
+      steps: ['Soak the bulgur', 'Chop everything', 'Mix and serve'],
+    });
+    mockFetchSequence([{ text: async () => YOUTUBE_HTML(fullDescription) }]);
+
+    const result = await extractRecipeFromUrl('https://www.youtube.com/watch?v=abc123');
+
+    expect(structureRecipeCaption).toHaveBeenCalledWith(
+      expect.stringContaining('1 cup bulgur'),
+    );
+    expect(result.ingredients).toEqual(['1 cup bulgur', '1 bunch parsley', '2 tomatoes']);
+    expect(result.isPartial).toBe(false);
+  });
+
+  it('falls back to the truncated og:description when shortDescription is absent', async () => {
+    vi.mocked(structureRecipeCaption).mockResolvedValue({
+      title: '',
+      ingredients: [],
+      steps: [],
+    });
+    mockFetchSequence([{
+      text: async () =>
+        '<html><head><meta property="og:title" content="A Video" /><meta property="og:description" content="Truncated..." /></head><body></body></html>',
+    }]);
+
+    await extractRecipeFromUrl('https://www.youtube.com/watch?v=abc123');
+
+    expect(structureRecipeCaption).toHaveBeenCalledWith('Truncated...');
+  });
+
+  it('does not apply the YouTube full-description logic to non-YouTube URLs', async () => {
+    vi.mocked(structureRecipeCaption).mockResolvedValue({
+      title: '',
+      ingredients: [],
+      steps: [],
+    });
+    // Even if the page happened to contain a shortDescription-shaped field,
+    // it should be ignored for a non-YouTube provider.
+    mockFetchSequence([{ text: async () => YOUTUBE_HTML('This full description should be ignored here') }]);
+
+    await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(structureRecipeCaption).toHaveBeenCalledWith(
+      'Best Tabbouleh Recipe! Watch how I make this fresh salad in under 20 minutes...',
+    );
+  });
+});

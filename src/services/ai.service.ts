@@ -528,9 +528,11 @@ Return a JSON object:
 
 // ─── Recipe caption structuring (import scraping fallback) ──
 
-// Social captions rarely run long; capping input keeps token cost/latency
-// bounded regardless of what a scraped og:description happens to contain.
-const MAX_CAPTION_INPUT_CHARS = 2000;
+// Capping input keeps token cost/latency bounded regardless of what a
+// scraped caption/description happens to contain. Sized for a full
+// (untruncated) YouTube video description — see extractYouTubeFullDescription
+// in import-extractor.ts — since Instagram/TikTok captions are shorter.
+const MAX_CAPTION_INPUT_CHARS = 4000;
 
 const CaptionStructureResultSchema = z.object({
   title: z.string(),
