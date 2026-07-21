@@ -373,6 +373,8 @@
   "profile.failedSaveGoals": "Échec de l'enregistrement des objectifs",
   "profile.progressTracking": "Suivi des progrès",
   "profile.trackDailyMeals": "Suivre les repas quotidiens",
+  "profile.weeklyProgressEmails": "E-mails de progression hebdomadaires",
+  "profile.aiSuggestionsNotifications": "Notifications de suggestions IA",
   "profile.weeklyEmails": "Courriels de progrès hebdomadaires",
   "profile.aiNotifications": "Notifications de suggestions IA",
   "profile.dietaryPreferences": "Préférences alimentaires",

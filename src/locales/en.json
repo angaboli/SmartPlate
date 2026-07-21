@@ -373,6 +373,8 @@
   "profile.failedSaveGoals": "Failed to save goals",
   "profile.progressTracking": "Progress Tracking",
   "profile.trackDailyMeals": "Track daily meals",
+  "profile.weeklyProgressEmails": "Weekly progress emails",
+  "profile.aiSuggestionsNotifications": "AI suggestion notifications",
   "profile.weeklyEmails": "Weekly progress emails",
   "profile.aiNotifications": "AI suggestions notifications",
   "profile.dietaryPreferences": "Dietary Preferences",
