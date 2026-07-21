@@ -37,7 +37,7 @@ export function FeaturedRecipesCarousel() {
       <Carousel opts={{ align: 'start' }} className="px-10">
         <CarouselContent>
           {recipes.map((recipe) => (
-            <CarouselItem key={recipe.id} className="sm:basis-1/2 lg:basis-1/3">
+            <CarouselItem key={recipe.id} className="sm:basis-1/2 lg:basis-1/4">
               <RecipeCard recipe={recipe} />
             </CarouselItem>
           ))}
