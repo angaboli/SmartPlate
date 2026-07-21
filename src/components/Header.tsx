@@ -2,14 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Moon, Sun, Menu, LogIn, LogOut, User } from 'lucide-react';
+import { Moon, Sun, Menu, LogIn, LogOut, User, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  useSubscription,
+  useCreateCheckoutSession,
+  useCreatePortalSession,
+} from '@/hooks/useSubscription';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +34,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const { t } = useLanguage();
+  const { hasActiveAccess } = useSubscription();
+  const checkout = useCreateCheckoutSession();
+  const portal = useCreatePortalSession();
 
   useEffect(() => {
     setMounted(true);
@@ -76,6 +85,11 @@ export function Header({ onMenuClick }: HeaderProps) {
                   <span className="hidden sm:inline text-sm">
                     {user?.name || user?.email}
                   </span>
+                  {hasActiveAccess && (
+                    <Badge variant="secondary" className="hidden sm:inline-flex">
+                      {t('subscription.proBadge')}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -89,6 +103,17 @@ export function Header({ onMenuClick }: HeaderProps) {
                     <User className="mr-2 h-4 w-4" />
                     {t('header.profile')}
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    hasActiveAccess ? portal.mutate() : checkout.mutate()
+                  }
+                  disabled={checkout.isPending || portal.isPending}
+                >
+                  <Crown className="mr-2 h-4 w-4" />
+                  {hasActiveAccess
+                    ? t('subscription.manageBilling')
+                    : t('subscription.upgrade')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
