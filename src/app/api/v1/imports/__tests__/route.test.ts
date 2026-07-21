@@ -9,11 +9,15 @@ vi.mock('@/services/import.service', () => ({
   listImports: vi.fn(),
   checkRateLimit: vi.fn(),
 }));
+vi.mock('@/services/subscription.service', () => ({
+  checkImportQuota: vi.fn(),
+}));
 
 import { POST, GET } from '../route';
 import { requireAuth } from '@/lib/auth';
 import { saveImport, listImports, checkRateLimit } from '@/services/import.service';
-import { AppError } from '@/lib/errors';
+import { checkImportQuota } from '@/services/subscription.service';
+import { AppError, SubscriptionRequiredError } from '@/lib/errors';
 
 function makePostRequest(body: unknown) {
   return new NextRequest('http://localhost/api/v1/imports', {
@@ -35,6 +39,7 @@ const validBody = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(checkImportQuota).mockResolvedValue(undefined);
 });
 
 describe('POST /api/v1/imports', () => {
@@ -63,6 +68,19 @@ describe('POST /api/v1/imports', () => {
     const res = await POST(makePostRequest(validBody));
 
     expect(res.status).toBe(429);
+    expect(saveImport).not.toHaveBeenCalled();
+  });
+
+  it('returns 402 when the free import quota is reached', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
+    vi.mocked(checkRateLimit).mockResolvedValue(undefined);
+    vi.mocked(checkImportQuota).mockRejectedValue(
+      new SubscriptionRequiredError('Free plan is limited to 5 imports.'),
+    );
+
+    const res = await POST(makePostRequest(validBody));
+
+    expect(res.status).toBe(402);
     expect(saveImport).not.toHaveBeenCalled();
   });
 

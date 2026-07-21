@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NotFoundError } from '@/lib/errors';
+import { checkFavoritesQuota } from './subscription.service';
 
 const savedRecipeInclude = {
   recipe: {
@@ -32,6 +33,8 @@ export async function saveRecipe(
   if (!recipe || recipe.status !== 'published') {
     throw new NotFoundError('Recipe not found');
   }
+
+  await checkFavoritesQuota(userId);
 
   return db.savedRecipe.create({
     data: { userId, recipeId, tags: tags ?? [] },

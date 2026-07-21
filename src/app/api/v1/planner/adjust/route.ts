@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { checkPlannerRateLimit, adjustPlanWithAI } from '@/services/planner.service';
+import { requireActiveSubscription } from '@/services/subscription.service';
 import { handleApiError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
@@ -13,6 +14,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const weekOffset = Math.max(-52, Math.min(52, parseInt(body.week, 10) || 0));
 
+    // AI Coach (tracking + planning) is a paid-only feature
+    await requireActiveSubscription(user.sub);
     await checkPlannerRateLimit(user.sub);
     const plan = await adjustPlanWithAI(user.sub, weekOffset);
 

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import type { Role } from '@prisma/client';
+import type { Role, SubscriptionStatus } from '@prisma/client';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 
 // ─── Profile ────────────────────────────────────────
@@ -10,6 +10,8 @@ export interface ProfileDTO {
   name: string | null;
   avatarUrl: string | null;
   role: string;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionCurrentPeriodEnd: Date | null;
   settings: {
     language: string;
     goal: string;
@@ -42,6 +44,8 @@ export async function getProfile(userId: string): Promise<ProfileDTO> {
     name: user.name,
     avatarUrl: user.avatarUrl,
     role: user.role,
+    subscriptionStatus: user.subscriptionStatus,
+    subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
     settings: {
       language: s?.language ?? 'en',
       goal: s?.goal ?? 'maintain',

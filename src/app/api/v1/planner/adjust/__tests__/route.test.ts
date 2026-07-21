@@ -8,11 +8,15 @@ vi.mock('@/services/planner.service', () => ({
   checkPlannerRateLimit: vi.fn(),
   adjustPlanWithAI: vi.fn(),
 }));
+vi.mock('@/services/subscription.service', () => ({
+  requireActiveSubscription: vi.fn(),
+}));
 
 import { POST } from '../route';
 import { getCurrentUser } from '@/lib/auth';
 import { checkPlannerRateLimit, adjustPlanWithAI } from '@/services/planner.service';
-import { AppError } from '@/lib/errors';
+import { requireActiveSubscription } from '@/services/subscription.service';
+import { AppError, SubscriptionRequiredError } from '@/lib/errors';
 
 function makeRequest(body: unknown = {}) {
   return new NextRequest('http://localhost/api/v1/planner/adjust', {
@@ -23,6 +27,7 @@ function makeRequest(body: unknown = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(requireActiveSubscription).mockResolvedValue(undefined);
 });
 
 describe('POST /api/v1/planner/adjust', () => {
@@ -32,6 +37,18 @@ describe('POST /api/v1/planner/adjust', () => {
     const res = await POST(makeRequest());
 
     expect(res.status).toBe(401);
+    expect(adjustPlanWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 402 when the user has no active subscription', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
+    vi.mocked(requireActiveSubscription).mockRejectedValue(
+      new SubscriptionRequiredError('This feature requires an active subscription.'),
+    );
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(402);
     expect(adjustPlanWithAI).not.toHaveBeenCalled();
   });
 

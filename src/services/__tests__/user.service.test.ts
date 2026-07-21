@@ -99,6 +99,24 @@ describe('getProfile', () => {
 
     expect(profile.avatarUrl).toBe('https://pub-xxx.r2.dev/avatars/u1/pic.jpg');
   });
+
+  it('exposes subscription status and period end from the user record', async () => {
+    const periodEnd = new Date('2026-08-01T00:00:00.000Z');
+    db.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      email: 'u1@test.com',
+      name: 'User One',
+      role: 'user',
+      subscriptionStatus: 'trialing',
+      subscriptionCurrentPeriodEnd: periodEnd,
+      settings: null,
+    });
+
+    const profile = await getProfile('u1');
+
+    expect(profile.subscriptionStatus).toBe('trialing');
+    expect(profile.subscriptionCurrentPeriodEnd).toBe(periodEnd);
+  });
 });
 
 describe('updateProfile', () => {

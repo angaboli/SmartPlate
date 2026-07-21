@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/db', () => import('../../lib/__mocks__/db'));
+vi.mock('../subscription.service', () => ({
+  checkFavoritesQuota: vi.fn(),
+}));
 
 import { db } from '../../lib/__mocks__/db';
 import { listSavedRecipes, saveRecipe, unsaveRecipe, updateSavedRecipe } from '../cook-later.service';
+import { checkFavoritesQuota } from '../subscription.service';
+import { SubscriptionRequiredError } from '@/lib/errors';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(checkFavoritesQuota).mockResolvedValue(undefined);
 });
 
 describe('listSavedRecipes', () => {
@@ -37,6 +43,16 @@ describe('saveRecipe', () => {
   it('throws NotFoundError when recipe does not exist', async () => {
     db.recipe.findUnique.mockResolvedValue(null);
     await expect(saveRecipe('u1', 'r1')).rejects.toThrow('not found');
+  });
+
+  it('throws SubscriptionRequiredError when the free favorites quota is reached', async () => {
+    db.recipe.findUnique.mockResolvedValue({ status: 'published' });
+    vi.mocked(checkFavoritesQuota).mockRejectedValue(
+      new SubscriptionRequiredError('Free plan is limited to 3 saved recipes.'),
+    );
+
+    await expect(saveRecipe('u1', 'r1')).rejects.toThrow(SubscriptionRequiredError);
+    expect(db.savedRecipe.create).not.toHaveBeenCalled();
   });
 });
 

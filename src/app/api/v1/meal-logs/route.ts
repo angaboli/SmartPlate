@@ -5,6 +5,7 @@ import {
   createMealLog,
   listMealLogs,
 } from '@/services/meal-log.service';
+import { requireActiveSubscription } from '@/services/subscription.service';
 import { handleApiError, AuthError } from '@/lib/errors';
 import { createMealLogSchema } from '@/lib/validations/meal-log';
 
@@ -14,6 +15,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { mealText, mealType } = createMealLogSchema.parse(body);
 
+    // AI Coach (tracking + planning) is a paid-only feature
+    await requireActiveSubscription(user.sub);
     // Rate limit check
     await checkAnalysisRateLimit(user.sub);
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { saveImport, listImports, checkRateLimit } from '@/services/import.service';
+import { checkImportQuota } from '@/services/subscription.service';
 import { handleApiError, AuthError } from '@/lib/errors';
 import { saveImportSchema } from '@/lib/validations/import';
 
@@ -10,8 +11,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = saveImportSchema.parse(body);
 
-    // Rate limit check
+    // Rate limit check (abuse prevention, time-windowed)
     await checkRateLimit(user.sub);
+    // Free-plan lifetime import cap (separate concern from the above)
+    await checkImportQuota(user.sub);
 
     const result = await saveImport(user.sub, {
       url: data.url,

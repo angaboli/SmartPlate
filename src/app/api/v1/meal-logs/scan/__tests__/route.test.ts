@@ -8,11 +8,15 @@ vi.mock('@/services/meal-log.service', () => ({
   checkAnalysisRateLimit: vi.fn(),
   createMealLogFromPhoto: vi.fn(),
 }));
+vi.mock('@/services/subscription.service', () => ({
+  requireActiveSubscription: vi.fn(),
+}));
 
 import { POST } from '../route';
 import { requireAuth } from '@/lib/auth';
 import { checkAnalysisRateLimit, createMealLogFromPhoto } from '@/services/meal-log.service';
-import { AppError, ValidationError } from '@/lib/errors';
+import { requireActiveSubscription } from '@/services/subscription.service';
+import { AppError, SubscriptionRequiredError, ValidationError } from '@/lib/errors';
 
 function makeRequest(body: unknown) {
   return new NextRequest('http://localhost/api/v1/meal-logs/scan', {
@@ -25,6 +29,7 @@ const validBody = { imageDataUrl: 'data:image/jpeg;base64,abc123', mealType: 'lu
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(requireActiveSubscription).mockResolvedValue(undefined);
 });
 
 describe('POST /api/v1/meal-logs/scan', () => {
@@ -56,6 +61,18 @@ describe('POST /api/v1/meal-logs/scan', () => {
     const res = await POST(makeRequest(validBody));
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 402 when the user has no active subscription', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ sub: 'u1', email: 'a@test.com', role: 'user' });
+    vi.mocked(requireActiveSubscription).mockRejectedValue(
+      new SubscriptionRequiredError('This feature requires an active subscription.'),
+    );
+
+    const res = await POST(makeRequest(validBody));
+
+    expect(res.status).toBe(402);
+    expect(createMealLogFromPhoto).not.toHaveBeenCalled();
   });
 
   it('returns 429 when the daily analysis limit is reached', async () => {

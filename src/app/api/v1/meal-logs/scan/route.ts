@@ -4,6 +4,7 @@ import {
   checkAnalysisRateLimit,
   createMealLogFromPhoto,
 } from '@/services/meal-log.service';
+import { requireActiveSubscription } from '@/services/subscription.service';
 import { handleApiError, AuthError } from '@/lib/errors';
 import { scanMealPhotoSchema } from '@/lib/validations/meal-log';
 
@@ -13,6 +14,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { imageDataUrl, mealType } = scanMealPhotoSchema.parse(body);
 
+    // AI Coach (tracking + planning) is a paid-only feature
+    await requireActiveSubscription(user.sub);
     // Same daily quota as text-based analysis — vision calls are slower/
     // costlier, but a separate quota adds complexity not justified yet.
     await checkAnalysisRateLimit(user.sub);
