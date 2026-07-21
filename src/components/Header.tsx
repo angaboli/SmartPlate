@@ -104,17 +104,19 @@ export function Header({ onMenuClick }: HeaderProps) {
                     {t('header.profile')}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    hasActiveAccess ? portal.mutate() : checkout.mutate()
-                  }
-                  disabled={checkout.isPending || portal.isPending}
-                >
-                  <Crown className="mr-2 h-4 w-4" />
-                  {hasActiveAccess
-                    ? t('subscription.manageBilling')
-                    : t('subscription.upgrade')}
-                </DropdownMenuItem>
+                {user?.role !== 'admin' && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      hasActiveAccess ? portal.mutate() : checkout.mutate()
+                    }
+                    disabled={checkout.isPending || portal.isPending}
+                  >
+                    <Crown className="mr-2 h-4 w-4" />
+                    {hasActiveAccess
+                      ? t('subscription.manageBilling')
+                      : t('subscription.upgrade')}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {

@@ -219,7 +219,7 @@ export default function DashboardPage() {
   const analyzed = latestLog !== null;
   const isMealSaving = addMealMutation.isPending || updateMealMutation.isPending;
 
-  if (user && !isSubscriptionLoading && !hasActiveAccess) {
+  if (user && user.role !== 'admin' && !isSubscriptionLoading && !hasActiveAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4 pb-20">
         <div className="w-full max-w-md">

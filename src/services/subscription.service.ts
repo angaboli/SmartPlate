@@ -141,9 +141,11 @@ function mapStripeStatus(
 export async function requireActiveSubscription(userId: string): Promise<void> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { subscriptionStatus: true },
+    select: { role: true, subscriptionStatus: true },
   });
   if (!user) throw new NotFoundError('User not found');
+  // Admins manage/test the whole app and are never paywalled.
+  if (user.role === 'admin') return;
 
   if (!hasActiveAccess(user.subscriptionStatus)) {
     throw new SubscriptionRequiredError(
@@ -157,9 +159,10 @@ export async function requireActiveSubscription(userId: string): Promise<void> {
 export async function checkImportQuota(userId: string): Promise<void> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { subscriptionStatus: true },
+    select: { role: true, subscriptionStatus: true },
   });
   if (!user) throw new NotFoundError('User not found');
+  if (user.role === 'admin') return;
   if (hasActiveAccess(user.subscriptionStatus)) return;
 
   const count = await db['import'].count({ where: { userId } });
@@ -173,9 +176,10 @@ export async function checkImportQuota(userId: string): Promise<void> {
 export async function checkFavoritesQuota(userId: string): Promise<void> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { subscriptionStatus: true },
+    select: { role: true, subscriptionStatus: true },
   });
   if (!user) throw new NotFoundError('User not found');
+  if (user.role === 'admin') return;
   if (hasActiveAccess(user.subscriptionStatus)) return;
 
   const count = await db.savedRecipe.count({ where: { userId } });

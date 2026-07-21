@@ -193,6 +193,11 @@ describe('requireActiveSubscription', () => {
     db.user.findUnique.mockResolvedValue({ subscriptionStatus: 'none' });
     await expect(requireActiveSubscription('u1')).rejects.toThrow(SubscriptionRequiredError);
   });
+
+  it('never blocks an admin, even with no subscription', async () => {
+    db.user.findUnique.mockResolvedValue({ role: 'admin', subscriptionStatus: 'none' });
+    await expect(requireActiveSubscription('u1')).resolves.toBeUndefined();
+  });
 });
 
 describe('checkImportQuota', () => {
@@ -213,6 +218,12 @@ describe('checkImportQuota', () => {
     db['import'].count.mockResolvedValue(5);
     await expect(checkImportQuota('u1')).rejects.toThrow(SubscriptionRequiredError);
   });
+
+  it('never blocks an admin, even past the cap', async () => {
+    db.user.findUnique.mockResolvedValue({ role: 'admin', subscriptionStatus: 'none' });
+    await expect(checkImportQuota('u1')).resolves.toBeUndefined();
+    expect(db['import'].count).not.toHaveBeenCalled();
+  });
 });
 
 describe('checkFavoritesQuota', () => {
@@ -232,5 +243,11 @@ describe('checkFavoritesQuota', () => {
     db.user.findUnique.mockResolvedValue({ subscriptionStatus: 'none' });
     db.savedRecipe.count.mockResolvedValue(3);
     await expect(checkFavoritesQuota('u1')).rejects.toThrow(SubscriptionRequiredError);
+  });
+
+  it('never blocks an admin, even past the cap', async () => {
+    db.user.findUnique.mockResolvedValue({ role: 'admin', subscriptionStatus: 'none' });
+    await expect(checkFavoritesQuota('u1')).resolves.toBeUndefined();
+    expect(db.savedRecipe.count).not.toHaveBeenCalled();
   });
 });
