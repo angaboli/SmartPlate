@@ -199,3 +199,47 @@ describe('extractRecipeFromUrl — caption structuring (Open Graph fallback)', (
     expect(result.isPartial).toBe(true);
   });
 });
+
+const JSON_LD_HTML_WITH_NUTRITION = (nutrition: unknown) => `
+<html><head>
+<script type="application/ld+json">
+${JSON.stringify({
+  '@type': 'Recipe',
+  name: 'Test Recipe',
+  recipeIngredient: ['1 egg'],
+  recipeInstructions: ['Cook it'],
+  nutrition,
+})}
+</script>
+</head><body></body></html>
+`;
+
+describe('extractRecipeFromUrl — calories from JSON-LD nutrition info', () => {
+  it('parses a "N calories" string', async () => {
+    mockFetchSequence([
+      { text: async () => JSON_LD_HTML_WITH_NUTRITION({ '@type': 'NutritionInformation', calories: '250 calories' }) },
+    ]);
+
+    const result = await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(result.calories).toBe(250);
+  });
+
+  it('parses a bare number', async () => {
+    mockFetchSequence([
+      { text: async () => JSON_LD_HTML_WITH_NUTRITION({ '@type': 'NutritionInformation', calories: 480 }) },
+    ]);
+
+    const result = await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(result.calories).toBe(480);
+  });
+
+  it('is null when there is no nutrition info', async () => {
+    mockFetchSequence([{ text: async () => JSON_LD_HTML_WITH_NUTRITION(undefined) }]);
+
+    const result = await extractRecipeFromUrl('https://example.com/recipe');
+
+    expect(result.calories).toBeNull();
+  });
+});

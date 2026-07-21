@@ -9,6 +9,7 @@ export interface ExtractedRecipeDTO {
   prepTimeMin: number | null;
   cookTimeMin: number | null;
   servings: number | null;
+  calories: number | null;
   ingredients: string[];
   steps: string[];
   provider: 'instagram' | 'tiktok' | 'youtube' | 'website';

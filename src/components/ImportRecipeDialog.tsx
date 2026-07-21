@@ -17,6 +17,8 @@ import {
   Loader2,
   Clock,
   User,
+  Users,
+  Flame,
   ChefHat
 } from 'lucide-react';
 type RecipeSource = 'Instagram' | 'TikTok' | 'YouTube' | 'Other';
@@ -39,7 +41,11 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
   // Editable fields
   const [editableTitle, setEditableTitle] = useState('');
   const [editableAuthor, setEditableAuthor] = useState('');
+  const [editableDescription, setEditableDescription] = useState('');
   const [editablePrepTime, setEditablePrepTime] = useState('');
+  const [editableCookTime, setEditableCookTime] = useState('');
+  const [editableServings, setEditableServings] = useState('');
+  const [editableCalories, setEditableCalories] = useState('');
   const [editableIngredients, setEditableIngredients] = useState('');
   const [editableSteps, setEditableSteps] = useState('');
   const [selectedTags, setSelectedTags] = useState<RecipeTag[]>([]);
@@ -85,7 +91,11 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
         setIsPartial(data.isPartial);
         setEditableTitle(data.title);
         setEditableAuthor('');
+        setEditableDescription(data.description || '');
         setEditablePrepTime(data.prepTimeMin ? `${data.prepTimeMin} min` : '');
+        setEditableCookTime(data.cookTimeMin ? `${data.cookTimeMin} min` : '');
+        setEditableServings(data.servings ? String(data.servings) : '');
+        setEditableCalories(data.calories ? String(data.calories) : '');
         setEditableIngredients(data.ingredients.join('\n'));
         setEditableSteps(data.steps.join('\n'));
       },
@@ -107,19 +117,24 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
       .map((s) => s.trim())
       .filter(Boolean);
 
-    // Parse prep time from the editable field
+    // Parse prep/cook time from the editable fields (free-text like "20 min")
     const prepMatch = editablePrepTime.match(/(\d+)/);
     const prepTimeMin = prepMatch ? parseInt(prepMatch[1], 10) : null;
+    const cookMatch = editableCookTime.match(/(\d+)/);
+    const cookTimeMin = cookMatch ? parseInt(cookMatch[1], 10) : null;
+    const servings = editableServings.trim() ? parseInt(editableServings, 10) || null : null;
+    const calories = editableCalories.trim() ? parseInt(editableCalories, 10) || null : null;
 
     saveMutation.mutate(
       {
         url: url.trim(),
         title: editableTitle.trim(),
-        description: fetchedRecipe.description,
+        description: editableDescription.trim() || null,
         imageUrl: fetchedRecipe.imageUrl,
         prepTimeMin,
-        cookTimeMin: fetchedRecipe.cookTimeMin,
-        servings: fetchedRecipe.servings,
+        cookTimeMin,
+        servings,
+        calories,
         ingredients,
         steps,
         tags: selectedTags,
@@ -142,7 +157,11 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
     setIsPartial(false);
     setEditableTitle('');
     setEditableAuthor('');
+    setEditableDescription('');
     setEditablePrepTime('');
+    setEditableCookTime('');
+    setEditableServings('');
+    setEditableCalories('');
     setEditableIngredients('');
     setEditableSteps('');
     setSelectedTags([]);
@@ -245,6 +264,16 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">{t('recipeForm.description')}</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editableDescription}
+                    onChange={(e) => setEditableDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="edit-author" className="flex items-center gap-1.5">
@@ -269,6 +298,51 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
                       value={editablePrepTime}
                       onChange={(e) => setEditablePrepTime(e.target.value)}
                       placeholder="25 min"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cooktime" className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
+                      {t('import.cookTime')}
+                    </Label>
+                    <Input
+                      id="edit-cooktime"
+                      value={editableCookTime}
+                      onChange={(e) => setEditableCookTime(e.target.value)}
+                      placeholder="15 min"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-servings" className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5" />
+                      {t('recipeForm.servings')}
+                    </Label>
+                    <Input
+                      id="edit-servings"
+                      type="number"
+                      min={1}
+                      value={editableServings}
+                      onChange={(e) => setEditableServings(e.target.value)}
+                      placeholder="4"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-calories" className="flex items-center gap-1.5">
+                      <Flame className="h-3.5 w-3.5" />
+                      {t('recipeForm.calories')}
+                    </Label>
+                    <Input
+                      id="edit-calories"
+                      type="number"
+                      min={0}
+                      value={editableCalories}
+                      onChange={(e) => setEditableCalories(e.target.value)}
+                      placeholder="450"
                     />
                   </div>
                 </div>

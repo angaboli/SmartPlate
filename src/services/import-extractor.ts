@@ -15,6 +15,7 @@ export interface ExtractedRecipe {
   prepTimeMin: number | null;
   cookTimeMin: number | null;
   servings: number | null;
+  calories: number | null;
   ingredients: string[];
   steps: string[];
   provider: 'instagram' | 'tiktok' | 'youtube' | 'website';
@@ -60,6 +61,19 @@ function parseServings(
   if (recipeYield == null) return null;
   const raw = Array.isArray(recipeYield) ? recipeYield[0] : recipeYield;
   if (typeof raw === 'number') return raw;
+  const match = String(raw).match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * Parse calories from schema.org NutritionInformation (e.g. "250 calories",
+ * "250 kcal", or a bare number).
+ */
+function parseCalories(nutrition: unknown): number | null {
+  if (!nutrition || typeof nutrition !== 'object') return null;
+  const raw = (nutrition as Record<string, unknown>).calories;
+  if (raw == null) return null;
+  if (typeof raw === 'number') return Math.round(raw);
   const match = String(raw).match(/(\d+)/);
   return match ? parseInt(match[1], 10) : null;
 }
@@ -141,6 +155,7 @@ function extractFromJsonLd(
   const servings = parseServings(
     recipe.recipeYield as string | string[] | number,
   );
+  const calories = parseCalories(recipe.nutrition);
 
   const ingredients: string[] = Array.isArray(recipe.recipeIngredient)
     ? recipe.recipeIngredient
@@ -159,6 +174,7 @@ function extractFromJsonLd(
     prepTimeMin,
     cookTimeMin,
     servings,
+    calories,
     ingredients,
     steps,
     provider,
@@ -225,6 +241,7 @@ async function extractFromOpenGraph(
     prepTimeMin: null,
     cookTimeMin: null,
     servings: null,
+    calories: null,
     ingredients,
     steps,
     provider,

@@ -21,8 +21,9 @@ const extractedRecipe = {
   description: 'A fresh salad',
   imageUrl: null,
   prepTimeMin: 20,
-  cookTimeMin: null,
+  cookTimeMin: 10,
   servings: 4,
+  calories: 320,
   ingredients: ['Bulgur', 'Parsley'],
   steps: ['Chop', 'Mix'],
   provider: 'website' as const,
@@ -64,8 +65,41 @@ describe('ImportRecipeDialog', () => {
     await user.click(screen.getByRole('button', { name: /fetch recipe/i }));
 
     expect(screen.getByDisplayValue('Tabbouleh')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('A fresh salad')).toBeInTheDocument();
     expect(screen.getByDisplayValue('20 min')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('10 min')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('4')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('320')).toBeInTheDocument();
     expect(screen.getByLabelText(/ingredients/i)).toHaveValue('Bulgur\nParsley');
+  });
+
+  it('saves the description, cook time, servings, and calories as edited', async () => {
+    renderWithProviders(<ImportRecipeDialog open onOpenChange={vi.fn()} />);
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/source/i), 'https://example.com/recipe');
+    await user.click(screen.getByRole('button', { name: /fetch recipe/i }));
+
+    await user.clear(screen.getByLabelText(/description/i));
+    await user.type(screen.getByLabelText(/description/i), 'An even fresher salad');
+    await user.clear(screen.getByLabelText(/^cook time$/i));
+    await user.type(screen.getByLabelText(/^cook time$/i), '15 min');
+    await user.clear(screen.getByLabelText(/servings/i));
+    await user.type(screen.getByLabelText(/servings/i), '6');
+    await user.clear(screen.getByLabelText(/calories/i));
+    await user.type(screen.getByLabelText(/calories/i), '400');
+    await user.click(screen.getByRole('button', { name: /add to cook later/i }));
+
+    const saveMutate = vi.mocked(useSaveImport).mock.results[0].value.mutate;
+    expect(saveMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'An even fresher salad',
+        cookTimeMin: 15,
+        servings: 6,
+        calories: 400,
+      }),
+      expect.any(Object),
+    );
   });
 
   it('saves with every selected meal tag', async () => {
