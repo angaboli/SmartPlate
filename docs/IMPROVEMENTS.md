@@ -232,7 +232,7 @@ Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt q
 
 ## Backlog — Qualité d'extraction des imports (scraping)
 
-> **Statut** : ✅ Implémentée (2026-07-20) pour Instagram/TikTok, approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par des appels réels à l'API OpenAI**. Une régression signalée par l'utilisateur le jour même a été corrigée (voir ci-dessous). Gap distinct découvert pour YouTube — voir "Reste à faire" plus bas.
+> **Statut** : ✅ Implémentée (2026-07-20/21) pour Instagram/TikTok/YouTube, approche IA choisie par l'utilisateur entre les deux pistes proposées. **Confirmée par des appels réels à l'API OpenAI et une vraie vidéo YouTube**. Une régression signalée par l'utilisateur le jour même a été corrigée ; le gap YouTube (description tronquée) découvert dans la foulée a été résolu le lendemain — détails ci-dessous.
 
 ### Régression corrigée le jour même — `extractFromOpenGraph()` perdait le texte brut de la légende
 
@@ -242,14 +242,16 @@ Objectif recherché : des outils séparés avec un rôle clair chacun, plutôt q
 
 **Correctif** : le titre structuré par l'IA n'est adopté que si elle a aussi trouvé au moins un ingrédient ou une étape. Si l'IA ne trouve aucune structure, le comportement retombe exactement sur l'ancien (titre brut conservé) — le pire cas n'est donc jamais pire qu'avant l'ajout de l'IA, seulement le cas "l'IA a réussi mais n'a rien trouvé" manquait cette même garantie que le cas "l'IA a échoué" avait déjà. 1 test de non-régression ajouté, plus un nouveau script de fumée contre l'API réelle avec une légende en prose libre confirmant que l'IA structure quand même correctement les cas réalistes.
 
-### Reste à faire — le fetch YouTube reste incomplet (`og:description` tronqué)
+### ✅ Résolu (2026-07-21) — le fetch YouTube était incomplet (`og:description` tronqué)
 
-**Signalé par l'utilisateur (2026-07-20)**, le jour même de l'implémentation ci-dessus : pour une URL YouTube, `extractFromOpenGraph()` utilise la balise `og:description` de la page — mais YouTube n'y met qu'un extrait tronqué de la description de la vidéo (les premières lignes), pas la description complète. Beaucoup de vidéos de recettes ont une intro avant la vraie section "INGRÉDIENTS"/"PRÉPARATION", qui se retrouve donc coupée avant même d'atteindre `structureRecipeCaption()` — l'IA reçoit un texte tronqué et ne peut structurer que ce qu'elle reçoit, elle n'y peut rien.
+**Signalé par l'utilisateur (2026-07-20)**, le jour même de l'implémentation de la structuration IA : pour une URL YouTube, `extractFromOpenGraph()` utilisait la balise `og:description` de la page — mais YouTube n'y met qu'un extrait tronqué de la description de la vidéo (~200 caractères), pas la description complète. Beaucoup de vidéos de recettes ont une intro avant la vraie section "INGRÉDIENTS"/"PRÉPARATION", qui se retrouvait donc coupée avant même d'atteindre `structureRecipeCaption()`.
 
-**Pistes à explorer** (aucune tranchée) :
-- Scraper le JSON embarqué dans la page (`ytInitialData`, dans une balise `<script>`) pour en extraire la description complète — pas d'API key nécessaire, mais dépend d'un format interne non documenté par YouTube qui peut changer sans préavis (fragile, même risque que le scraping HTML classique mais moins stable dans le temps).
-- Utiliser l'API officielle YouTube Data API v3 (`videos.list`, champ `snippet.description`) — beaucoup plus robuste et stable, mais nécessite une clé API Google Cloud à provisionner (nouvelle dépendance externe, quota à surveiller même si le quota gratuit est généreux).
-- Dans tous les cas, une fois la description complète récupérée, elle doit passer par `structureRecipeCaption()` (déjà en place) exactement comme pour Instagram/TikTok — pas de nouveau prompt à écrire, juste une source de texte plus complète en entrée.
+**Correctif** — piste "scraper le JSON embarqué" retenue (pas de nouvelle clé API à provisionner) :
+- `extractYouTubeFullDescription()` (`src/services/import-extractor.ts`) — extrait le champ `"shortDescription"` embarqué dans le HTML brut d'une page `/watch` (le même champ que lisent des outils comme yt-dlp), via une regex ciblée + `JSON.parse()` pour décoder proprement les échappements (retours à la ligne, guillemets, emojis unicode). Best-effort : toute erreur retombe sur le `og:description` tronqué existant, donc aucun import qui fonctionnait avant ne peut se mettre à échouer.
+- `extractFromOpenGraph()` accepte maintenant un paramètre `fullDescription` optionnel, préféré au `og:description` quand disponible — uniquement câblé pour le provider `youtube` (Instagram/TikTok continuent d'utiliser `og:description`, qui n'est pas tronqué de la même façon pour eux).
+- `MAX_CAPTION_INPUT_CHARS` (`src/services/ai.service.ts`) relevé de 2000 à 4000 caractères — une description YouTube complète est structurellement plus longue qu'une légende Instagram/TikTok.
+- **Vérifié avec un vrai appel réseau + un vrai appel OpenAI** contre une vidéo YouTube de recette réelle (`Tabbouleh Made EASY`) : 9 ingrédients et 5 étapes correctement extraits avec quantités précises, `isPartial: false` — avant ce correctif, cette même vidéo n'aurait rien retourné (titre tronqué, ingrédients/étapes vides).
+- 3 nouveaux tests (description complète utilisée pour un provider YouTube, repli sur `og:description` si `shortDescription` absent, non-application aux providers non-YouTube).
 
 ### Problème constaté
 
