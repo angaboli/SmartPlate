@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCookLater } from '@/contexts/CookLaterContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,10 @@ export function CookLaterList() {
           >
             <div className="flex flex-col gap-4 p-4 sm:flex-row">
               {/* Thumbnail */}
-              <div className="relative h-48 w-full flex-shrink-0 overflow-hidden rounded-lg bg-secondary sm:h-32 sm:w-48">
+              <Link
+                href={`/recipes/${recipe.id}`}
+                className="relative h-48 w-full flex-shrink-0 overflow-hidden rounded-lg bg-secondary sm:h-32 sm:w-48"
+              >
                 <ImageWithFallback
                   src={recipe.imageUrl || ''}
                   alt={bi(recipe.title, recipe.titleFr, language)}
@@ -70,13 +74,17 @@ export function CookLaterList() {
                     <CheckCircle2 className="h-8 w-8 text-white" />
                   </div>
                 )}
-              </div>
+              </Link>
 
               {/* Content */}
               <div className="flex flex-1 flex-col gap-3">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h3 className="font-semibold text-lg">{bi(recipe.title, recipe.titleFr, language)}</h3>
+                    <h3 className="font-semibold text-lg">
+                      <Link href={`/recipes/${recipe.id}`} className="hover:underline">
+                        {bi(recipe.title, recipe.titleFr, language)}
+                      </Link>
+                    </h3>
                     <div className="flex items-center gap-1.5">
                       {recipe.category === 'SafariTaste' && (
                         <Badge variant="outline" className="border-[#8A6A4F] text-[#8A6A4F]">
@@ -139,6 +147,9 @@ export function CookLaterList() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/recipes/${recipe.id}`}>{t('recipes.viewRecipe')}</Link>
+                  </Button>
                   <Button
                     variant={saved.isCooked ? 'secondary' : 'outline'}
                     size="sm"
