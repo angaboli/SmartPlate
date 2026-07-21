@@ -31,9 +31,14 @@ import {
   type Meal,
 } from '@/hooks/usePlanner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
+import { SubscriptionPaywall } from '@/components/SubscriptionPaywall';
 
 export default function DashboardPage() {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const { hasActiveAccess, isLoading: isSubscriptionLoading } = useSubscription();
   const nf = new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US');
 
   const [mounted, setMounted] = useState(false);
@@ -213,6 +218,16 @@ export default function DashboardPage() {
 
   const analyzed = latestLog !== null;
   const isMealSaving = addMealMutation.isPending || updateMealMutation.isPending;
+
+  if (user && !isSubscriptionLoading && !hasActiveAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 pb-20">
+        <div className="w-full max-w-md">
+          <SubscriptionPaywall />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20">
