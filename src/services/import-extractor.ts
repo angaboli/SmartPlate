@@ -48,6 +48,23 @@ function extractYouTubeFullDescription(html: string): string | null {
   }
 }
 
+// YouTube shows this exact boilerplate (translated per viewer locale) as
+// og:description whenever a video genuinely has no description set —
+// common for Shorts, whose creators rarely write one. It isn't truncated
+// real content the way a normal og:description is; it's a fixed, useless
+// site-wide placeholder. Matching on it lets us treat "no description"
+// as no description, instead of feeding this text to the AI (wasted
+// call — there's nothing to structure) or showing it to the user as if
+// it said something about the video.
+const YOUTUBE_GENERIC_DESCRIPTION_MARKERS = [
+  'Enjoy the videos and music',
+  'Profitez des vidéos et de la musique',
+];
+
+function isGenericYouTubeDescription(text: string): boolean {
+  return YOUTUBE_GENERIC_DESCRIPTION_MARKERS.some((marker) => text.includes(marker));
+}
+
 /**
  * Detect provider from URL hostname.
  */
@@ -236,8 +253,12 @@ async function extractFromOpenGraph(
     $('meta[property="og:title"]').attr('content')?.trim() ||
     $('title').text().trim() ||
     '';
-  const ogDescription =
+  const rawOgDescription =
     $('meta[property="og:description"]').attr('content')?.trim() || null;
+  const ogDescription =
+    provider === 'youtube' && rawOgDescription && isGenericYouTubeDescription(rawOgDescription)
+      ? null
+      : rawOgDescription;
   const rawDescription = fullDescription || ogDescription;
   const imageUrl =
     $('meta[property="og:image"]').attr('content')?.trim() || null;

@@ -412,6 +412,30 @@ describe('extractRecipeFromUrl — YouTube full description (og:description is t
     expect(result.isPartial).toBe(false);
   });
 
+  it('treats YouTube\'s generic "no description" boilerplate as no description at all', async () => {
+    // Real-world case: a YouTube Short with no description set at all —
+    // shortDescription is empty, so og:description is YouTube's own
+    // fixed placeholder text ("Profitez des vidéos..." / "Enjoy the
+    // videos..."), not truncated real content. Showing that text to the
+    // user as "the description" is actively misleading, and there's
+    // nothing in it to structure, so the AI should not even be called.
+    mockFetchSequence([{
+      text: async () =>
+        '<html><head>' +
+        '<meta property="og:title" content="+1000 calories repas perte de poids de sportif! (recette Poulet coco curry)" />' +
+        '<meta property="og:description" content="Profitez des vidéos et de la musique que vous aimez, mettez en ligne des contenus originaux, et partagez-les avec vos amis, vos proches et le monde entier." />' +
+        '<script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":""}};</script>' +
+        '</head><body></body></html>',
+    }]);
+
+    const result = await extractRecipeFromUrl('https://www.youtube.com/shorts/a-ITrZm9xm8');
+
+    expect(structureRecipeCaption).not.toHaveBeenCalled();
+    expect(result.title).toBe('+1000 calories repas perte de poids de sportif! (recette Poulet coco curry)');
+    expect(result.description).toBeNull();
+    expect(result.isPartial).toBe(true);
+  });
+
   it('falls back to the truncated og:description when shortDescription is absent', async () => {
     mockStructuredCaption({
       title: '',
