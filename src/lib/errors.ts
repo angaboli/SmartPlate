@@ -53,6 +53,13 @@ export class ValidationError extends AppError {
   }
 }
 
+export class SubscriptionRequiredError extends AppError {
+  constructor(message = 'Subscription required') {
+    super(message, 402);
+    this.name = 'SubscriptionRequiredError';
+  }
+}
+
 // ─── Shared error handler ──────────────────────────
 
 export function handleApiError(error: unknown) {
