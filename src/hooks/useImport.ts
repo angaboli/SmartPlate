@@ -69,6 +69,11 @@ async function saveImportApi(data: SaveImportInput): Promise<unknown> {
     if (res.status === 429) {
       throw new Error(body.error || 'Rate limit exceeded. Try again later.');
     }
+    if (res.status === 402) {
+      const error = new Error(body.error || 'Free plan import limit reached.');
+      (error as Error & { status?: number }).status = 402;
+      throw error;
+    }
     throw new Error(body.error || 'Failed to save import');
   }
   return res.json();

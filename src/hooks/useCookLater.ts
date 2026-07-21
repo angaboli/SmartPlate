@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 export interface SavedRecipeDTO {
@@ -96,6 +97,9 @@ export function useSaveRecipe() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cook-later'] });
     },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
   });
 }
 
@@ -105,6 +109,9 @@ export function useUnsaveRecipe() {
     mutationFn: unsaveRecipeApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cook-later'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 }

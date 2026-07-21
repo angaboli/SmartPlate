@@ -223,6 +223,15 @@ export function ImportRecipeDialog({ open, onOpenChange }: ImportRecipeDialogPro
             </div>
           )}
 
+          {/* Free-plan import limit reached */}
+          {saveMutation.isError &&
+            (saveMutation.error as Error & { status?: number }).status === 402 && (
+              <div className="flex items-center gap-2 rounded-lg border border-[#F4A261]/50 bg-[#F4A261]/10 p-4">
+                <AlertCircle className="h-5 w-5 text-[#F4A261]" />
+                <p className="text-sm text-[#F4A261]">{t('import.limitReached')}</p>
+              </div>
+            )}
+
           {/* Partial Detection Warning */}
           {isPartial && fetchedRecipe && (
             <div className="flex items-center gap-2 rounded-lg border border-[#F4A261]/50 bg-[#F4A261]/10 p-4">
