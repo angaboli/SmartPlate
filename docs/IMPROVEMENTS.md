@@ -343,25 +343,27 @@ Sur `src/app/page.tsx`, juste sous la section Hero, ajouter un slider/carrousel 
 
 ## Backlog — Paiement (Stripe)
 
-> **Statut** : idée produit, non planifiée en détail, pas commencée. Demandée par l'utilisateur (2026-07-20) — **explicitement positionnée après tous les autres points de ce backlog**, à traiter en dernier.
+> **Statut** : ✅ Fait (2026-07-21). Demandé par l'utilisateur (2026-07-20) — dernier point du backlog, traité en dernier comme prévu.
 
-### Objectif
+### Décisions produit (utilisateur, 2026-07-20)
 
-Ajouter un moyen de paiement via Stripe. Aucune notion de plan payant/premium/abonnement n'existe aujourd'hui dans le produit (`prisma/schema.prisma` n'a ni `stripeCustomerId`, ni statut d'abonnement, ni distinction de fonctionnalités par palier) — ce point part donc de zéro, contrairement aux autres backlogs ci-dessus qui étendent de l'existant.
+1. **Modèle** — abonnement récurrent unique à 2,99€/mois avec 7 jours d'essai gratuit (pas de palier annuel, pas d'achat unique).
+2. **Payant** : tout le tableau de bord Coach IA (Overview/Track/Plan — suivi de repas, analyse IA, planification hebdo), imports illimités (au-delà de 5 imports à vie), favoris illimités (au-delà de 3 recettes enregistrées).
+3. **Gratuit** : navigation du catalogue de recettes (`/recipes`), 5 imports à vie, 3 recettes favorites.
+4. **RBAC** — orthogonal au rôle (`user`/`editor`/`admin` inchangés) ; `User.subscriptionStatus` est un statut indépendant, jamais mis dans le JWT (staleness jusqu'à 24h sinon) — toujours revalidé via une lecture DB fraîche côté serveur, et via `GET /api/v1/me` côté client.
 
-### À décider avant tout travail technique
+### Implémentation
 
-1. **Quel est le modèle payant ?** — Abonnement récurrent (mensuel/annuel) type SaaS, achat unique, ou quota consommable (ex: au-delà de N analyses IA/imports gratuits par mois) ? Détermine complètement l'architecture Stripe à utiliser (Billing/Subscriptions vs Checkout ponctuel).
-2. **Qu'est-ce qui devient payant ?** — Candidats visibles dans le code actuel : le quota de 20 analyses IA/jour (`checkAnalysisRateLimit`), le nombre d'imports de recettes, l'accès à SafariTaste, ou une fonctionnalité pas encore prévue.
-3. **Impact RBAC** — un rôle/statut "payant" s'ajoute-t-il à `user`/`editor`/`admin` (`src/lib/rbac.ts`), ou reste-t-il orthogonal (ex: `User.subscriptionStatus` indépendant du rôle) ?
-
-### Approche technique à explorer (une fois les décisions ci-dessus prises)
-
-1. **Schéma** — a minima `User.stripeCustomerId String? @unique`, plus soit `User.subscriptionStatus`/`currentPeriodEnd` (abonnement), soit une table `Purchase`/`Entitlement` séparée (achat unique/quota) — migration Prisma classique, même mécanique que `Recipe.mealTypes` (2026-07-17).
-2. **Webhooks Stripe** — nouvel endpoint `POST /api/v1/webhooks/stripe`, vérification de signature (`stripe.webhooks.constructEvent`), à exclure de l'auth JWT standard (comme les crons avec `CRON_SECRET`, mais avec le secret de signature Stripe à la place).
-3. **Checkout/Billing Portal** — Stripe Checkout hébergé (pas de formulaire carte custom à construire/sécuriser soi-même) ; Billing Portal pour la gestion self-service (annulation, changement de moyen de paiement).
-4. **Variables d'environnement** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` à ajouter à `.env.example`/`docs/DEPLOYMENT.md`, dans le même esprit que les credentials R2/OpenAI déjà documentés.
-5. **Sécurité** — ne jamais faire confiance au client pour l'état d'abonnement (toujours revalider côté serveur via `stripeCustomerId` → statut réel avant de gater une fonctionnalité), et la CSP (`connect-src` dans `next.config.ts`) devra probablement s'ouvrir à Stripe.js si un élément Stripe custom (pas juste une redirection Checkout) est utilisé côté client — piège similaire à celui rencontré avec Sentry (2026-07-16).
+- **Schéma** — migration `20260721000000_user_subscription_fields` : enum `SubscriptionStatus` (`none|trialing|active|past_due|canceled`), `User.stripeCustomerId`/`stripeSubscriptionId` (uniques), `subscriptionStatus` (défaut `none`), `subscriptionCurrentPeriodEnd`, index sur `stripeCustomerId`.
+- **`src/lib/stripe.ts`** — client Stripe singleton (mirror de `storage.ts`/`ai.service.ts`), avec une valeur de repli non-vide car le SDK Stripe lève une exception à la construction si la clé est vide (contrairement à S3/OpenAI).
+- **`src/services/subscription.service.ts`** — `hasActiveAccess`, `getOrCreateStripeCustomer`, `createCheckoutSession` (essai 7 jours via `subscription_data.trial_period_days`), `createPortalSession`, `syncSubscriptionFromStripeEvent` (webhook → DB), `requireActiveSubscription`, `checkImportQuota`/`checkFavoritesQuota` (quotas à vie via `db.import.count`/`db.savedRecipe.count`, distincts du rate-limiting horaire existant).
+- **Routes** — `POST /api/v1/stripe/checkout`, `POST /api/v1/stripe/portal` (JWT requis) ; `POST /api/v1/webhooks/stripe` (pas de JWT — signature Stripe vérifiée sur le corps brut via `request.text()`).
+- **Gating serveur** — `checkImportQuota` dans `POST /api/v1/imports` (après le rate-limit horaire existant) ; `checkFavoritesQuota` dans `cook-later.service.ts`'s `saveRecipe` ; `requireActiveSubscription` dans les 4 endpoints IA (`meal-logs` POST/scan, `planner/generate`/`adjust`) — le vrai périmètre de sécurité, vu l'absence de `middleware.ts`.
+- **`SubscriptionRequiredError`** (402) dans `errors.ts`, même pattern que les autres classes d'erreur.
+- **Frontend** — `useSubscription()`/`useCreateCheckoutSession`/`useCreatePortalSession` (`src/hooks/useSubscription.ts`, construit sur `useProfile()` existant) ; `SubscriptionPaywall` affiché à la place des onglets du dashboard si non-abonné ; badge "Pro"/menu upgrade-billing dans `Header.tsx` ; bannière persistante + toast pour la limite d'import atteinte dans `ImportRecipeDialog.tsx` ; `useCookLater`'s `useSaveRecipe`/`useUnsaveRecipe` avaient **aucun** `onError` — corrigé au passage (bug pré-existant, silencieux même avant Stripe).
+- **Vérifié en réel** (compte Stripe test-mode) : produit + prix créés via script (`STRIPE_PRICE_ID`), session Checkout et Billing Portal réelles créées via le SDK, signature de webhook vérifiée avec un payload signé localement, et parcours navigateur complet (Playwright/agent-browser) — utilisateur jetable → `/dashboard` affiche le paywall → clic "Start free trial" → redirection réelle vers `checkout.stripe.com` affichant "7 days free, then €2.99/month" avec l'email pré-rempli. Utilisateur et client Stripe de test nettoyés après coup.
+- **68 fichiers de tests / 503+ tests** passent (`npx vitest run`), `tsc --noEmit` et `eslint` propres, `pnpm build` réussi avec les nouvelles routes enregistrées.
+- **Déploiement** — développé sur la branche `develop` (pas `main`) à la demande explicite de l'utilisateur, pour tester d'abord en preview avant toute mise en prod.
 
 ---
 

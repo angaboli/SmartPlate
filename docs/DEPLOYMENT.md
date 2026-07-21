@@ -74,7 +74,18 @@ NEXT_PUBLIC_APP_URL=https://smartplate.ai
 
 # Optional (not yet wired in code — see IMPROVEMENTS.md)
 SENTRY_DSN=https://...
+
+# Stripe (subscriptions) — secret keys are server-only, never NEXT_PUBLIC_
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
+
+`STRIPE_WEBHOOK_SECRET` in production is the signing secret shown when
+creating the webhook endpoint in the Stripe Dashboard (pointed at
+`https://<domain>/api/v1/webhooks/stripe`), not the `stripe listen`
+value used for local development.
 
 ---
 
