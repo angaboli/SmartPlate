@@ -58,7 +58,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   };
 
   return (
-    <div className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg">
+    <div className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg">
       <div className="relative aspect-video overflow-hidden bg-secondary">
         <ImageWithFallback
           src={recipe.imageUrl || ''}
@@ -84,7 +84,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         </div>
       </div>
 
-      <div className="p-5 space-y-4">
+      <div className="flex flex-1 flex-col space-y-4 p-5">
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold leading-tight line-clamp-2">{displayTitle}</h3>
@@ -128,7 +128,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           </Badge>
         )}
 
-        <Button variant="outline" className="w-full" asChild>
+        <Button variant="outline" className="mt-auto w-full" asChild>
           <Link href={`/recipes/${recipe.id}`}>{t('recipes.viewRecipe')}</Link>
         </Button>
       </div>
