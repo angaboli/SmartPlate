@@ -66,7 +66,12 @@ export default function AdminPage() {
       .then(setUsers)
       .catch(() => toast.error(t('admin.failedLoadUsers')))
       .finally(() => setLoading(false));
-  }, [accessToken, t]);
+    // `t` intentionally excluded — useLanguage() returns a new `t`
+    // identity every render (not memoized), so including it here
+    // retriggered this effect on every render: an infinite fetch loop
+    // (same root cause fixed in recipes/manage/page.tsx's fetchRecipes).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   async function handleRoleChange(userId: string, newRole: string) {
     try {

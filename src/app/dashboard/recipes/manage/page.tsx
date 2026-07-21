@@ -93,7 +93,15 @@ export default function RecipeManagePage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, statusFilter, t]);
+    // `t` is intentionally excluded: useLanguage() returns a new `t`
+    // function identity on every render (it isn't memoized), so including
+    // it here made this callback's identity change every render too —
+    // which retriggered the effect below on every render, in an infinite
+    // fetch loop (visible as a GET /api/v1/recipes?limit=100 spam in the
+    // server log). The translation itself doesn't need to be "fresh" per
+    // render for this callback to stay correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, statusFilter]);
 
   useEffect(() => {
     fetchRecipes();
