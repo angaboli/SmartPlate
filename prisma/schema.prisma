@@ -34,6 +34,14 @@ enum MealType {
   snack
 }
 
+enum SubscriptionStatus {
+  none
+  trialing
+  active
+  past_due
+  canceled
+}
+
 // ─── USERS ───────────────────────────────────────────
 
 model User {
@@ -46,6 +54,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  stripeCustomerId             String?            @unique
+  stripeSubscriptionId         String?            @unique
+  subscriptionStatus           SubscriptionStatus @default(none)
+  subscriptionCurrentPeriodEnd DateTime?
+
   settings      UserSettings?
   refreshTokens RefreshToken[]
   recipes       Recipe[]
@@ -54,6 +67,7 @@ model User {
   mealLogs      MealLog[]
   mealPlans     MealPlan[]
 
+  @@index([stripeCustomerId])
   @@map("users")
 }
 
