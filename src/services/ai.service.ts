@@ -669,3 +669,80 @@ export async function proposeMissingRecipeFields(input: {
   const parsed = JSON.parse(content);
   return ProposedRecipeFieldsSchema.parse(parsed);
 }
+
+// ─── Recipe translation (import bilingual backfill) ───
+
+const RecipeTranslationSchema = z.object({
+  sourceLanguage: z.enum(['en', 'fr']),
+  titleEn: z.string(),
+  titleFr: z.string(),
+  descriptionEn: z.string().nullable(),
+  descriptionFr: z.string().nullable(),
+  ingredientsEn: z.array(z.string()),
+  ingredientsFr: z.array(z.string()),
+  stepsEn: z.array(z.string()),
+  stepsFr: z.array(z.string()),
+});
+
+export type RecipeTranslationResult = z.infer<typeof RecipeTranslationSchema>;
+
+const RECIPE_TRANSLATION_SYSTEM_PROMPT = `You are a professional bilingual (English/French) recipe translator for SmartPlate. You will be given a recipe's title, optional description, ingredients list, and steps list, all written in a single source language (English or French).
+
+Tasks:
+1. Identify whether the source language is English or French.
+2. Produce the exact same content in BOTH languages.
+
+Rules:
+- For the field matching the source language, copy the input verbatim — do not rephrase, clean up, or "improve" it.
+- For the other language, produce a natural, accurate, professional translation (correct culinary vocabulary, keep quantities/units unchanged — never convert units).
+- ingredientsEn/ingredientsFr and stepsEn/stepsFr must each have exactly the same number of items, in the same order, as the input ingredients/steps — translate line by line, never merge, split, or reorder.
+- If description is null/empty, return null for both descriptionEn and descriptionFr.
+- Return ONLY the JSON object, no markdown formatting, no code blocks.
+
+Return a JSON object with this exact structure:
+{
+  "sourceLanguage": "en" | "fr",
+  "titleEn": "...",
+  "titleFr": "...",
+  "descriptionEn": "..." | null,
+  "descriptionFr": "..." | null,
+  "ingredientsEn": ["..."],
+  "ingredientsFr": ["..."],
+  "stepsEn": ["..."],
+  "stepsFr": ["..."]
+}`;
+
+/**
+ * Detects the source language of an imported recipe and backfills the
+ * other language (title/titleFr, description/descriptionFr, per-item
+ * text/textFr) so imported recipes display correctly for both EN and FR
+ * users via bi() (src/lib/bilingual.ts), matching manually-authored
+ * recipes which always have both fields filled in by the admin form.
+ */
+export async function translateRecipeContent(input: {
+  title: string;
+  description?: string | null;
+  ingredients: string[];
+  steps: string[];
+}): Promise<RecipeTranslationResult> {
+  const response = await createChatCompletion({
+    model: 'gpt-4o-mini',
+    temperature: 0.2,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: RECIPE_TRANSLATION_SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: `Title: ${input.title}\n\nDescription: ${input.description || '(none)'}\n\nIngredients:\n${input.ingredients.join('\n')}\n\nSteps:\n${input.steps.join('\n')}`,
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error('AI returned an empty response');
+  }
+
+  const parsed = JSON.parse(content);
+  return RecipeTranslationSchema.parse(parsed);
+}
