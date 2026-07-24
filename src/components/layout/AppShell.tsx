@@ -74,6 +74,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {t('footer.mealPlanner')}
                   </Link>
                 </li>
+                <li>
+                  <Link href="/pricing" className="hover:text-primary">
+                    {t('footer.pricing')}
+                  </Link>
+                </li>
               </ul>
             </div>
 

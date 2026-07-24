@@ -32,7 +32,16 @@ export default function PrivacyPage() {
             <li>{t('privacy.collectItem2')}</li>
             <li>{t('privacy.collectItem3')}</li>
             <li>{t('privacy.collectItem4')}</li>
+            <li>{t('privacy.collectItem5')}</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      {/* Payment Data */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">{t('privacy.paymentTitle')}</h2>
+          <p className="text-muted-foreground">{t('privacy.paymentDesc')}</p>
         </CardContent>
       </Card>
 
@@ -63,6 +72,14 @@ export default function PrivacyPage() {
         <CardContent className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">{t('privacy.cookiesTitle')}</h2>
           <p className="text-muted-foreground">{t('privacy.cookiesDesc')}</p>
+        </CardContent>
+      </Card>
+
+      {/* Data Retention */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">{t('privacy.retentionTitle')}</h2>
+          <p className="text-muted-foreground">{t('privacy.retentionDesc')}</p>
         </CardContent>
       </Card>
 

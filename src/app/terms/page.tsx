@@ -38,6 +38,20 @@ export default function TermsPage() {
         </CardContent>
       </Card>
 
+      {/* Subscriptions & Billing */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">{t('terms.subscriptionTitle')}</h2>
+          <p className="text-muted-foreground">{t('terms.subscriptionDesc')}</p>
+          <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+            <li>{t('terms.subscriptionItem1')}</li>
+            <li>{t('terms.subscriptionItem2')}</li>
+            <li>{t('terms.subscriptionItem3')}</li>
+            <li>{t('terms.subscriptionItem4')}</li>
+          </ul>
+        </CardContent>
+      </Card>
+
       {/* User Content */}
       <Card>
         <CardContent className="p-6 space-y-4">
@@ -59,6 +73,22 @@ export default function TermsPage() {
         <CardContent className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">{t('terms.liabilityTitle')}</h2>
           <p className="text-muted-foreground">{t('terms.liabilityDesc')}</p>
+        </CardContent>
+      </Card>
+
+      {/* Termination */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">{t('terms.terminationTitle')}</h2>
+          <p className="text-muted-foreground">{t('terms.terminationDesc')}</p>
+        </CardContent>
+      </Card>
+
+      {/* Governing Law */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">{t('terms.governingLawTitle')}</h2>
+          <p className="text-muted-foreground">{t('terms.governingLawDesc')}</p>
         </CardContent>
       </Card>
 
